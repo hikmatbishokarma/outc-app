@@ -71,3 +71,6 @@ android/local.properties
 **/linux/flutter/generated_plugin_registrant.h
 **/linux/flutter/generated_plugins.cmake
 **/linux/flutter/ephemeral/
+
+# Claude Code local session state (not part of the project)
+.claude/*.lock
