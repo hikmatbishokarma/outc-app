@@ -184,7 +184,8 @@ class _SideMenuState extends State<SideMenu> {
                                     useCache: true,
 
                                     onTap: () {},
-                                    name: SharedPrefServices.getfirstname()!
+                                    name: (SharedPrefServices.getfirstname() ??
+                                            "Guest")
                                         .toUpperCase(),
                                     textStyle: const TextStyle(
                                       fontSize: 15.0,

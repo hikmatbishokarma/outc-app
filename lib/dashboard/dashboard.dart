@@ -114,7 +114,8 @@ class _DashboardState extends State<Dashboard> {
               onTap: () {
                 scaffoldKey.currentState!.openDrawer();
               },
-              name: SharedPrefServices.getfirstname()!.toUpperCase(),
+              name: (SharedPrefServices.getfirstname() ?? "Guest")
+                  .toUpperCase(),
               textStyle: const TextStyle(
                 fontSize: 15.0,
                 fontFamily: 'poppins',
