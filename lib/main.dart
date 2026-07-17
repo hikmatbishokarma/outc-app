@@ -13,6 +13,7 @@ import 'package:outc/widgets/themes/app_dark_theme_data.dart';
 import 'package:outc/widgets/themes/app_light_theme_data.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
+import 'package:outc/core/module_registry.dart';
 
 Future main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,12 +22,14 @@ Future main() async {
 }
 
 List<SingleChildWidget> providers = [
-  ChangeNotifierProvider(create: (_) => ReportsProvider()),
-  ChangeNotifierProvider(create: (_) => FlightReportsProvider()),
-  ChangeNotifierProvider(create: (_) => VisaReportsProvider()),
-  ChangeNotifierProvider(create: (_) => CarReportsProvider()),
-  ChangeNotifierProvider(create: (_) => DepositReportsProvider()),
-  ChangeNotifierProvider(create: (_) => StatementReportsProvider()),
+  if (ModuleRegistry.agentEnabled) ...[
+    ChangeNotifierProvider(create: (_) => ReportsProvider()),
+    ChangeNotifierProvider(create: (_) => FlightReportsProvider()),
+    ChangeNotifierProvider(create: (_) => VisaReportsProvider()),
+    ChangeNotifierProvider(create: (_) => CarReportsProvider()),
+    ChangeNotifierProvider(create: (_) => DepositReportsProvider()),
+    ChangeNotifierProvider(create: (_) => StatementReportsProvider()),
+  ],
   ChangeNotifierProvider(create: (_) => OnewayProvider()),
 ];
 

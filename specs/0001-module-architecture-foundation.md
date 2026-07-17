@@ -1,6 +1,6 @@
 # 0001 — Module Architecture Foundation
 
-**Status:** Draft
+**Status:** Approved (2026-07-15) — approved on stated assumptions below, pending client confirmation
 **Module(s):** core (affects all modules)
 
 ## Overview
@@ -45,11 +45,23 @@ contract depends on the provider chosen (see Open Questions) and will be a follo
 - OTP/Firebase auth, registration API, SSR selection — tracked as separate specs (see the flight B2C
   journey gap analysis for the full list).
 
-## Open questions
+## Open questions — resolved with assumptions for this build
 
-These block full approval and are also open with the client — see `OUTC_STATUS_REPORT.md` §8:
+Still genuinely open with the client (see `OUTC_STATUS_REPORT.md` §8) — approved anyway on the
+assumptions below because the abstractions are cheap to redirect later (nothing depends on them yet).
+If the client answers differently, only the adapter/config changes, not the pipeline shape:
 
-- Which payment gateway should the default adapter target (Razorpay assumed likely, not confirmed)?
-- Is Agent in scope for the first shippable version at all, or purely an architectural placeholder for
-  now (i.e. do we need a working wallet-debit path yet, or just the seam for one later)?
-- Which service combination is the flagship package to demo first (Flight+Hotel assumed, not confirmed)?
+- **Payment gateway** — confirmed by the client to be **Cashfree**, not Razorpay (the original
+  assumption in this section). The block response returns `{ payment_link, pgType }`:
+  `pgType: 1` = Cashfree (customer), `pgType: 3` = wallet, already paid server-side (agent). This build
+  implements the real interface (`PaymentGateway`, `paymentGatewayFor`) and a real wallet adapter
+  (`WalletAlreadyPaidGateway`), with a mock adapter (`MockCashfreeGateway`) standing in for the actual
+  Cashfree SDK until sandbox/live environment and one test transaction are confirmed (tracked as
+  spec 0002).
+- **Agent scope** — assumed **architectural placeholder only** for this build: `BookingContext`
+  supports `payerType: agent`, and the wallet payment path (`pgType: 3`) is real and working since it's
+  just an immediate-success short-circuit on the backend's own confirmation. No wallet-*debit* API call
+  is made from this app — that already happens server-side before block returns. Not otherwise
+  confirmed with client.
+- **Flagship combo** — assumed **Flight+Hotel**, but this spec only implements the Flights reference
+  path; Hotel follows once the pattern is proven (see Out of scope). Not confirmed with client.

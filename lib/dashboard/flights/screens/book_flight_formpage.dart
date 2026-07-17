@@ -12,6 +12,8 @@ import 'package:outc/dashboard/flights/screens/ticketView.dart';
 import 'package:outc/dashboard/flights/widgets/colors.dart';
 import 'package:outc/dashboard/flights/widgets/progressbar.dart';
 import 'package:outc/services/api_services_list.dart';
+import 'package:outc/core/booking_context.dart';
+import 'package:outc/core/payment_gateway.dart';
 
 import 'package:outc/widgets/sharedprefservices.dart';
 
@@ -72,6 +74,8 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
   late FlightFormRequestModel flightFormModel;
 
   late flightPrice.FLightPriceRequestModel flightPriceRequestModel;
+
+  late final BookingContext _bookingContext;
 
   double basefare = 0;
   double taxes = 0;
@@ -275,15 +279,16 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
     super.initState();
 
     print(titleAdultControllers);
+    _bookingContext = BookingContext.current();
     flightFormModel = FlightFormRequestModel(
-      pgType: 3,
-      userId: int.parse(SharedPrefServices.getcustomerId().toString()),
+      pgType: _bookingContext.pgTypeValue,
+      userId: _bookingContext.userId,
       traceId: widget.traceId,
       currency: "INR",
       currencyRatio: 1,
       membership: 1,
       promoData: "",
-      roleType: 5,
+      roleType: _bookingContext.roleTypeValue,
       passengers: [],
       gstDetails: GstDetails(
         gstAddressLine1: " ",
@@ -305,8 +310,8 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
     );
 
     flightPriceRequestModel = flightPrice.FLightPriceRequestModel(
-        userId: int.parse(SharedPrefServices.getcustomerId().toString()),
-        roleType: 5,
+        userId: _bookingContext.userId,
+        roleType: _bookingContext.roleTypeValue,
         membership: 1,
         traceId: " ",
         flightIds: [],
@@ -1648,13 +1653,10 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
 
                                       addData();
 
-                                      flightFormModel.userId = int.parse(
-                                          SharedPrefServices.getcustomerId()
-                                              .toString());
-                                      // int.parse(
-                                      //     SharedPrefServices.getcustomerId()
-                                      //         .toString());
-                                      flightFormModel.pgType = 3;
+                                      flightFormModel.userId =
+                                          _bookingContext.userId;
+                                      flightFormModel.pgType =
+                                          _bookingContext.pgTypeValue;
                                       flightFormModel.traceId = widget.traceId;
                                       flightFormModel.passengers = passengers;
                                       flightFormModel.gstDetails = GstDetails(
@@ -1674,10 +1676,9 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                       flightFormModel.totalPrice = grandTotal;
 
                                       flightPriceRequestModel.userId =
-                                          int.parse(
-                                              SharedPrefServices.getcustomerId()
-                                                  .toString());
-                                      flightPriceRequestModel.roleType = 5;
+                                          _bookingContext.userId;
+                                      flightPriceRequestModel.roleType =
+                                          _bookingContext.roleTypeValue;
                                       flightPriceRequestModel.membership = 1;
                                       flightPriceRequestModel.traceId =
                                           widget.traceId;
@@ -1798,12 +1799,38 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                                   "bookingRefId $bookingRefNo");
 
                                               if (bookingRefNo.isNotEmpty) {
-                                                //  book..
-                                                apiService
-                                                    .flightOnewayBook(
-                                                        bookingRefNo)
-                                                    .then((value) async {
-                                                  if (value.statusCode == 203) {
+                                                setState(() {
+                                                  isApiCallProcess = false;
+                                                });
+                                                paymentGatewayFor(
+                                                        value.data.pgType)
+                                                    .open(
+                                                  context,
+                                                  PgBlockPaymentData(
+                                                    paymentLink:
+                                                        value.data.paymentLink,
+                                                    pgType: value.data.pgType,
+                                                  ),
+                                                  onResult: (pgResult) {
+                                                    if (pgResult.status !=
+                                                        PgResultStatus
+                                                            .success) {
+                                                      setState(() {
+                                                        isApiCallProcess =
+                                                            false;
+                                                      });
+                                                      return;
+                                                    }
+                                                    setState(() {
+                                                      isApiCallProcess = true;
+                                                    });
+                                                    //  book..
+                                                    apiService
+                                                        .flightOnewayBook(
+                                                            bookingRefNo)
+                                                        .then((value) async {
+                                                      if (value.statusCode ==
+                                                          203) {
                                                     setState(() {
                                                       isApiCallProcess = false;
                                                     });
@@ -1897,12 +1924,15 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                                         },
                                                       ),
                                                     );
-                                                  } else {
-                                                    setState(() {
-                                                      isApiCallProcess = false;
+                                                      } else {
+                                                        setState(() {
+                                                          isApiCallProcess =
+                                                              false;
+                                                        });
+                                                      }
                                                     });
-                                                  }
-                                                });
+                                                  },
+                                                );
                                               } else {
                                                 print("bookingRefId is null");
                                                 setState(() {

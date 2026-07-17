@@ -111,36 +111,32 @@ class FlightOnewayBlock {
 
 
 class Data {
-  final String encRequest;
-  final String accessCode;
+  final String paymentLink;
   final int pgType;
   final String bookingRefNo;
   final String bookingStatus;
 
   Data({
-    required this.encRequest,
-    required this.accessCode,
+    required this.paymentLink,
     required this.pgType,
     required this.bookingRefNo,
     required this.bookingStatus,
   });
 
-  
+
   factory Data.fromJson(Map<String, dynamic> json) {
     return Data(
-      encRequest: json["encRequest"] ?? '',
-      accessCode: json["accessCode"] ?? '',
+      paymentLink: json["payment_link"] ?? '',
       pgType: json["pgType"] ?? 0,
       bookingRefNo: json["BookingRefNo"] ?? '',
       bookingStatus: json["BookingStatus"] ?? '',
     );
   }
 
-  
+
   Map<String, dynamic> toJson() {
     return {
-      "encRequest": encRequest,
-      "accessCode": accessCode,
+      "payment_link": paymentLink,
       "pgType": pgType,
       "BookingRefNo": bookingRefNo,
       "BookingStatus": bookingStatus,

@@ -15,6 +15,7 @@ import 'package:outc/partnerSidemenu/reportfilterpages/visafilterpage.dart';
 import 'package:outc/widgets/colors/colors.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
 import 'package:page_transition/page_transition.dart';
+import 'package:outc/core/module_registry.dart';
 
 class SideMenu extends StatefulWidget {
   const SideMenu({super.key});
@@ -24,6 +25,58 @@ class SideMenu extends StatefulWidget {
 }
 
 class _SideMenuState extends State<SideMenu> {
+  Widget _reportRow(BuildContext context, String label, Widget page) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          PageTransition(
+            type: PageTransitionType.rightToLeft,
+            child: page,
+          ),
+        );
+      },
+      child: Container(
+        height: 52.0,
+        color: Colors.white,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const SizedBox(
+                  width: 10.0,
+                ),
+                const SizedBox(
+                  width: 10.0,
+                ),
+                Text(label,
+                    style: const TextStyle(
+                      fontSize: 14.0,
+                      color: Color(0xff626365),
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'poppins',
+                    )),
+              ],
+            ),
+            const Row(
+              children: [
+                ImageIcon(
+                  AssetImage("images/rightarrow.png"),
+                  size: 20,
+                  color: Color(0xff626365),
+                ),
+                SizedBox(
+                  width: 10,
+                )
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   bool isApiCallProcess = false;
   bool camgalaccess = false;
   late File imageFile;
@@ -185,11 +238,9 @@ class _SideMenuState extends State<SideMenu> {
                     ],
                   ),
                 )),
-            SharedPrefServices.getroleType.toString() == "user"
-                ? userOptions()
-                : SharedPrefServices.getroleType().toString() == "agent"
-                    ? agentOptions()
-                    : userOptions()
+            SharedPrefServices.getroleType().toString() == "agent"
+                ? agentOptions()
+                : userOptions()
           ],
         ),
       ),
@@ -950,214 +1001,22 @@ class _SideMenuState extends State<SideMenu> {
                     expanded: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              PageTransition(
-                                type: PageTransitionType.rightToLeft,
-                                child: const FlightFilterPage(),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            height: 52.0,
-                            color: Colors.white,
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 10.0,
-                                    ),
-                                    SizedBox(
-                                      width: 10.0,
-                                    ),
-                                    Text("FLIGHTS REPORTS",
-                                        style: TextStyle(
-                                          fontSize: 14.0,
-                                          color: Color(0xff626365),
-                                          fontWeight: FontWeight.w700,
-                                          fontFamily: 'poppins',
-                                        )),
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    ImageIcon(
-                                      AssetImage("images/rightarrow.png"),
-                                      size: 20,
-                                      color: Color(0xff626365),
-                                    ),
-                                    SizedBox(
-                                      width: 10,
-                                    )
-                                  ],
-                                ),
-                              ],
+                        for (final entry in [
+                          (AppModule.flights, "FLIGHTS REPORTS",
+                              const FlightFilterPage()),
+                          (AppModule.hotels, "HOTEL REPORTS",
+                              const HotelFilterPage()),
+                          (AppModule.cars, "CAR REPORTS",
+                              const CarFilterPage()),
+                          (AppModule.visa, "VISA REPORTS",
+                              const VisaFilterPage()),
+                        ])
+                          if (ModuleRegistry.isEnabled(entry.$1)) ...[
+                            _reportRow(context, entry.$2, entry.$3),
+                            const SizedBox(
+                              height: 5,
                             ),
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 5,
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              PageTransition(
-                                type: PageTransitionType.rightToLeft,
-                                child: const HotelFilterPage(),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            height: 52.0,
-                            color: Colors.white,
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 10.0,
-                                    ),
-                                    SizedBox(
-                                      width: 10.0,
-                                    ),
-                                    Text("HOTEL REPORTS",
-                                        style: TextStyle(
-                                          fontSize: 14.0,
-                                          color: Color(0xff626365),
-                                          fontWeight: FontWeight.w700,
-                                          fontFamily: 'poppins',
-                                        )),
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    ImageIcon(
-                                      AssetImage("images/rightarrow.png"),
-                                      size: 20,
-                                      color: Color(0xff626365),
-                                    ),
-                                    SizedBox(
-                                      width: 10,
-                                    )
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 5,
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              PageTransition(
-                                type: PageTransitionType.rightToLeft,
-                                child: const CarFilterPage(),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            height: 52.0,
-                            color: Colors.white,
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 10.0,
-                                    ),
-                                    SizedBox(
-                                      width: 10.0,
-                                    ),
-                                    Text("CAR REPORTS",
-                                        style: TextStyle(
-                                          fontSize: 14.0,
-                                          color: Color(0xff626365),
-                                          fontWeight: FontWeight.w700,
-                                          fontFamily: 'poppins',
-                                        )),
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    ImageIcon(
-                                      AssetImage("images/rightarrow.png"),
-                                      size: 20,
-                                      color: Color(0xff626365),
-                                    ),
-                                    SizedBox(
-                                      width: 10,
-                                    )
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 5,
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              PageTransition(
-                                type: PageTransitionType.rightToLeft,
-                                child: const VisaFilterPage(),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            height: 52.0,
-                            color: Colors.white,
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 10.0,
-                                    ),
-                                    SizedBox(
-                                      width: 10.0,
-                                    ),
-                                    Text("VISA REPORTS",
-                                        style: TextStyle(
-                                          fontSize: 14.0,
-                                          color: Color(0xff626365),
-                                          fontWeight: FontWeight.w700,
-                                          fontFamily: 'poppins',
-                                        )),
-                                  ],
-                                ),
-                                Row(
-                                  children: [
-                                    ImageIcon(
-                                      AssetImage("images/rightarrow.png"),
-                                      size: 20,
-                                      color: Color(0xff626365),
-                                    ),
-                                    SizedBox(
-                                      width: 10,
-                                    )
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 5,
-                        ),
+                          ],
                       ],
                     ),
                     builder: (_, collapsed, expanded) {
