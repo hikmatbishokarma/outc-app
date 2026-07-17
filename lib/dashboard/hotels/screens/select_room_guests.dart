@@ -55,7 +55,7 @@ class _SelectRoomGuestsState extends State<SelectRoomGuests> {
       appBar: AppBar(
         centerTitle: true,
         title: Text(
-          "AnjMal",
+          "OutC",
           style: TextStyle(
             fontSize: 22.0,
             fontFamily: 'poppins',

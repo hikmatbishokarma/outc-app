@@ -69,7 +69,7 @@ class _TicketViewState extends State<TicketView> {
         appBar: AppBar(
           centerTitle: true,
           title: Text(
-            "AnjMal",
+            "OutC",
             style: TextStyle(
               fontSize: 22.0,
               fontFamily: 'poppins',
@@ -1544,7 +1544,7 @@ class _TicketViewState extends State<TicketView> {
                           child: Padding(
                             padding: const EdgeInsets.only(
                                 left: 5, top: 1, right: 5),
-                            child: Text("Anjmal Travels",
+                            child: Text("OutC Travels",
                                 style: GoogleFonts.poppins(
                                     color: const Color(0xffbd0c21),
                                     fontSize: 16,

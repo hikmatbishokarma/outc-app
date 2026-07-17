@@ -93,7 +93,7 @@ class _DashboardState extends State<Dashboard> {
             width: 80,
           ),
           // Text(
-          //   "AnjMal",
+          //   "OutC",
           //   style: TextStyle(
           //     fontSize: 22.0,
           //     fontFamily: 'poppins',

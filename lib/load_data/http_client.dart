@@ -17,7 +17,7 @@ class HttpClient {
 
   Future<dynamic> post(String path, Map<String, dynamic> body,
       {String? tenantId, bool isLoad = true}) async {
-    var baseUrl = AppConstant.baseUrlanjmal + path;
+    var baseUrl = AppConstant.baseUrl + path;
 
     dynamic responseJson;
     var header = {

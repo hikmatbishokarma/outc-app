@@ -46,7 +46,7 @@ class APIService {
 
   // Customer Login
   Future<Loginauth> loginauth(Loginrequestauth requestModel) async {
-    String url = "${AppConstant.baseUrlanjmal}api/v1/admin/mobileLogin";
+    String url = "${AppConstant.baseUrl}api/v1/admin/mobileLogin";
     print(url);
     // int role = 2;
     try {
@@ -87,7 +87,7 @@ class APIService {
   // Partner Login
   Future<PartnerResponsemodel> partnerLoginauth(
       Loginrequestauth requestModel) async {
-    String url = "${AppConstant.baseUrlanjmal}api/v1/admin/mobileLogin";
+    String url = "${AppConstant.baseUrl}api/v1/admin/mobileLogin";
     print(url);
 
     try {
@@ -147,7 +147,7 @@ class APIService {
   }
 
   Future<FlightsList> matchingFlightsList(var data) async {
-    String url = "${AppConstant.baseUrlanjmal}api/v1/flights/airSearch";
+    String url = "${AppConstant.baseUrl}api/v1/flights/airSearch";
 
     try {
       final response = await http.post(
@@ -178,7 +178,7 @@ class APIService {
   }
 
   Future<FlightRoundtripModel> matchingFlightRoundtripList(var data) async {
-    String url = "${AppConstant.baseUrlanjmal}api/v1/flights/airSearch";
+    String url = "${AppConstant.baseUrl}api/v1/flights/airSearch";
     // var customerID = SharedPrefServices.getprofileID().toString();
     // var body = data;
     // body["customer"] = customerID;
@@ -209,7 +209,7 @@ class APIService {
   // domestic roundtrip flight
   Future<FlightDomesticRoundtripModel> matchingDomesticFlightRoundtripList(
       var data) async {
-    String url = "${AppConstant.baseUrlanjmal}api/v1/flights/airSearch";
+    String url = "${AppConstant.baseUrl}api/v1/flights/airSearch";
     // var customerID = SharedPrefServices.getprofileID().toString();
     // var body = data;
     // body["customer"] = customerID;
@@ -300,7 +300,7 @@ class APIService {
 
 // Hotels List
   Future<HotelsList> matchingHotelsList(var data) async {
-    String url = "${AppConstant.baseUrlanjmal}api/v1/hotels-v2/hotelsearch";
+    String url = "${AppConstant.baseUrl}api/v1/hotels-v2/hotelsearch";
 
     try {
       final response = await http.post(
@@ -334,7 +334,7 @@ class APIService {
 
   Future<SelectedHotelView> selectedHotel(
       String traceId, String hotelCode, String supplier) async {
-    String url = "${AppConstant.baseUrlanjmal}api/v1/hotels-v2/hotelrooms";
+    String url = "${AppConstant.baseUrl}api/v1/hotels-v2/hotelrooms";
     Map<String, String> viewHotelheaders = {
       "Content-Type": "application/json",
     };
@@ -382,7 +382,7 @@ class APIService {
   // Update Partner Password
   Future<UpdatePartnerPasswordResponse> updatePartnerPassword(
       Passwordupdaterequestmodel requestModel) async {
-    String url = "${AppConstant.baseUrlanjmal}api/v1/admin/changePassword";
+    String url = "${AppConstant.baseUrl}api/v1/admin/changePassword";
     print(url);
 
     try {
@@ -421,7 +421,7 @@ class APIService {
   // flight Price one way before block
   Future<PriceBookResponse> flightOnewayPrice(
       FLightPriceRequestModel requestModel) async {
-    String url = "${AppConstant.baseUrlanjmal}api/v1/flights/airPrice";
+    String url = "${AppConstant.baseUrl}api/v1/flights/airPrice";
     print(url);
     var payloadData = json.encode(requestModel.toJson());
     try {
@@ -466,7 +466,7 @@ class APIService {
   //flight one way block
   Future<FlightOnewayBlock> flightOnewayBlock(
       FlightFormRequestModel requestModel) async {
-    String url = "${AppConstant.baseUrlanjmal}api/v1/flights/airBlock";
+    String url = "${AppConstant.baseUrl}api/v1/flights/airBlock";
     print(url);
     var payloadData = json.encode(requestModel.toJson());
     try {
@@ -509,7 +509,7 @@ class APIService {
   //flight round trip block
   Future<FlightOnewayBlock> flightRoundTripBlock(
       FlightFormRequestModelRoundTrip requestModel) async {
-    String url = "${AppConstant.baseUrlanjmal}api/v1/flights/airBlock";
+    String url = "${AppConstant.baseUrl}api/v1/flights/airBlock";
     print(url);
     var payloadData = json.encode(requestModel.toJson());
     try {
@@ -552,7 +552,7 @@ class APIService {
   // flight one way Book
   Future<FlightOnewayBookResponse> flightOnewayBook(String refNumber) async {
     String url =
-        "${AppConstant.baseUrlanjmal}api/v1/flights/airBook/$refNumber";
+        "${AppConstant.baseUrl}api/v1/flights/airBook/$refNumber";
     print(url);
 
     try {

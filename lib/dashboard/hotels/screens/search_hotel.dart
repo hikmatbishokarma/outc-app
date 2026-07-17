@@ -57,13 +57,13 @@ class _HotelSearchPageState extends State<HotelSearchPage> {
   bool starFive = false;
 
   String whyAjmal1 =
-      "Our competitive rates and exclusive offers are what gives us a top notch over our competitors. We promise 'Unbeatable' services both in pricing and quality. Here is the one stop destination for your Dream Destination. AnjMal provide you the best travel packages at the lowest possible pricing that gives the best value for your each penny. We are your Travel Companion and works for you so that can get the best travel experience and live some memorable moments.";
+      "Our competitive rates and exclusive offers are what gives us a top notch over our competitors. We promise 'Unbeatable' services both in pricing and quality. Here is the one stop destination for your Dream Destination. OutC provide you the best travel packages at the lowest possible pricing that gives the best value for your each penny. We are your Travel Companion and works for you so that can get the best travel experience and live some memorable moments.";
 
   String whyAjmal2 =
       "We give you the pros and cons for all the different travel products and allow you to decide what works best for you and your family. We combine first-hand knowledge with exceptional special offers, and we take care of every detail to create a holiday as unique as you are. You will no more need to worry about coordinating flight bookings, hotel reservations, visa stamps or tours as all your needs are taken care of under one roof.";
 
   String whyAjmal3 =
-      "AnjMal can satisfy all your travel needs. Here, You can book flight tickets, hotels, bus tickets, activities and holiday packages at a cost-effective price. So, why go anywhere else? Visit us for a memorable travel experience in your budget.";
+      "OutC can satisfy all your travel needs. Here, You can book flight tickets, hotels, bus tickets, activities and holiday packages at a cost-effective price. So, why go anywhere else? Visit us for a memorable travel experience in your budget.";
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +82,7 @@ class _HotelSearchPageState extends State<HotelSearchPage> {
       appBar: AppBar(
         centerTitle: true,
         title: Text(
-          "AnjMal",
+          "OutC",
           style: TextStyle(
             fontSize: 22.0,
             fontFamily: 'poppins',
@@ -963,7 +963,7 @@ class _HotelSearchPageState extends State<HotelSearchPage> {
                   child: Column(
                     children: [
                       Text(
-                        "Why AnjMal ?",
+                        "Why OutC ?",
                         style: GoogleFonts.poppins(
                             color: Hotels_Colours.strongRed,
                             fontSize: 22,

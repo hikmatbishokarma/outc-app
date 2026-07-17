@@ -10,6 +10,7 @@ import 'package:outc/dashboard/visa/screens/visa_getLists.dart';
 import 'package:outc/dashboard/visa/screens/visa_guidelinespage.dart';
 import 'package:outc/dashboard/visa/widgets/colors.dart';
 import 'package:outc/dashboard/visa/widgets/progress_bar.dart';
+import 'package:outc/services/app_constants.dart';
 
 import 'package:outc/widgets/sharedprefservices.dart';
 
@@ -49,7 +50,7 @@ class _SearchCountryState extends State<SearchCountry> {
       appBar: AppBar(
         centerTitle: true,
         title: Text(
-          "AnjMal",
+          "OutC",
           style: TextStyle(
             fontSize: 22.0,
             fontFamily: 'poppins',
@@ -317,7 +318,7 @@ class _SearchCountryState extends State<SearchCountry> {
 
   Future<List<Datum>> fetchDataFromBackend(String countryname) async {
     var url = Uri.parse(
-        'http://anjmal.i2space.in/api/v1/visa/visaSearch/$countryname');
+        '${AppConstant.baseUrl}api/v1/visa/visaSearch/$countryname');
 
     final response = await http.get(url);
     print(url);

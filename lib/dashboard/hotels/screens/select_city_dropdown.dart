@@ -8,6 +8,7 @@ import 'package:outc/dashboard/hotels/models/get_cities_model.dart';
 import 'package:outc/dashboard/hotels/models/hotels_search_payload.dart';
 import 'package:outc/dashboard/hotels/screens/search_hotel.dart';
 import 'package:outc/dashboard/hotels/widgets/colors.dart';
+import 'package:outc/services/app_constants.dart';
 
 import 'package:outc/widgets/sharedprefservices.dart';
 
@@ -194,7 +195,7 @@ class _SelectHotelCityDropdownState extends State<SelectHotelCityDropdown> {
 
   Future<List<Datum>> fetchDataFromBackend(String city) async {
     var url = Uri.parse(
-        'http://anjmal.i2space.in/api/v1/hotels-v2/searchhotelcity/$city');
+        '${AppConstant.baseUrl}api/v1/hotels-v2/searchhotelcity/$city');
     final response = await http.get(url);
     print(url);
     if (response.statusCode == 200) {

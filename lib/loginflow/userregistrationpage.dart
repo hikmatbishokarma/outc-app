@@ -98,7 +98,7 @@ class _UserRegistrationState extends State<UserRegistration> {
                       height: 150.0,
                       alignment: Alignment.topCenter,
                       child:
-                          Center(child: Image.asset('images/anjmallogo.png')),
+                          Center(child: Image.asset('images/outc.png')),
                     ),
                   ),
                   const SizedBox(

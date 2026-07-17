@@ -42,7 +42,7 @@ class OnewayProvider with ChangeNotifier {
   ApiResponse<FlightsList>? _getFlightsList;
   ApiResponse<FlightsList>? get getFlightsList => _getFlightsList;
   Future<void> postData(var data) async {
-    String url = "${AppConstant.baseUrlanjmal}api/v1/flights/airSearch";
+    String url = "${AppConstant.baseUrl}api/v1/flights/airSearch";
     try {
       final response = await http.post(
         Uri.parse(url),
@@ -65,7 +65,7 @@ class OnewayProvider with ChangeNotifier {
 
 
 //  Future<FlightsList> matchingFlightsList(var data) async {
-//     String url = "${AppConstant.baseUrlanjmal}api/v1/flights/airSearch";
+//     String url = "${AppConstant.baseUrl}api/v1/flights/airSearch";
 //     // var customerID = SharedPrefServices.getprofileID().toString();
 //     // var body = data;
 //     // body["customer"] = customerID;

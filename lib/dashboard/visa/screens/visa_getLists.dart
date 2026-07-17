@@ -11,6 +11,7 @@ import 'package:outc/dashboard/visa/screens/visa_guidelinespage.dart';
 import 'package:http/http.dart' as http;
 import 'package:outc/dashboard/visa/widgets/colors.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
+import 'package:outc/services/app_constants.dart';
 
 class VisaLists extends StatefulWidget {
   final List<Datum> visaData;
@@ -29,7 +30,7 @@ class _VisaListsState extends State<VisaLists> {
       appBar: AppBar(
         centerTitle: true,
         title: Text(
-          "AnjMal",
+          "OutC",
           style: TextStyle(
             fontSize: 22.0,
             fontFamily: 'poppins',
@@ -370,7 +371,7 @@ class _VisaListsState extends State<VisaLists> {
 
   Future<Datum> fetchDataFromBackend(int visaCode) async {
     var url = Uri.parse(
-        'http://anjmal.i2space.in/api/v1/visa/getVisaMasterByVisaCode/$visaCode');
+        '${AppConstant.baseUrl}api/v1/visa/getVisaMasterByVisaCode/$visaCode');
 
     final response = await http.get(url);
     print(url);

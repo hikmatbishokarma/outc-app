@@ -41,7 +41,7 @@ class _BankDetailsPage extends State<BankDetailsPage> {
       appBar: AppBar(
         centerTitle: true,
         title: Text(
-          "AnjMal",
+          "OutC",
           style: TextStyle(
             fontSize: 22.0,
             fontFamily: 'poppins',
