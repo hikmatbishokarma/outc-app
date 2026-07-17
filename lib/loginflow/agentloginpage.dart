@@ -12,7 +12,8 @@ import 'package:outc/widgets/progressbar.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
 
 class AgentLogin extends StatefulWidget {
-  const AgentLogin({super.key});
+  final bool isGateMode;
+  const AgentLogin({super.key, this.isGateMode = false});
 
   @override
   State<AgentLogin> createState() => _AgentLoginState();
@@ -355,13 +356,17 @@ class _AgentLoginState extends State<AgentLogin> {
                     SharedPrefServices.setcurrencycode("INR");
                     SharedPrefServices.setcurrencyAmount("1.00");
 
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (BuildContext context) {
-                          return Dashboard();
-                        },
-                      ),
-                    );
+                    if (widget.isGateMode) {
+                      Navigator.of(context).pop(true);
+                    } else {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (BuildContext context) {
+                            return Dashboard();
+                          },
+                        ),
+                      );
+                    }
                   } else {
                     setState(() {
                       isApiCallProcess = false;

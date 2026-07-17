@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:outc/dashboard/dashboard.dart';
-import 'package:outc/loginflow/multiloginpage.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
 
 class Splashscreen extends StatefulWidget {
@@ -26,19 +25,14 @@ class _SplashscreenState extends State<Splashscreen> {
       // SharedPrefServices.setcurrencycode("INR");
       // SharedPrefServices.setcurrencyAmount("1.00");
 
-      SharedPrefServices.getislogged().toString() == "true"
-          ? Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (BuildContext context) {
-                  return Dashboard();
-                },
-              ),
-            )
-          : Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const MultiLoginScreen(),
-              ));
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (BuildContext context) {
+            return Dashboard();
+          },
+        ),
+      );
     });
   }
 

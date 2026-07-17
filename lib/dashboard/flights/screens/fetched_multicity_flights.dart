@@ -9,6 +9,7 @@ import 'package:outc/dashboard/flights/widgets/ticketdesign.dart';
 import 'package:outc/widgets/components/components.dart';
 import 'package:outc/widgets/components/dialogtabsview.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
+import 'package:outc/loginflow/auth_gate.dart';
 
 class FetchedMulticityFlights extends StatefulWidget {
   List<FlightDetailFlightDetail>? fulldata;
@@ -94,7 +95,7 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
       appBar: AppBar(
         centerTitle: true,
         title: Text(
-          "AnjMal",
+          "OutC",
           style: TextStyle(
             fontSize: 22.0,
             fontFamily: 'poppins',
@@ -944,7 +945,11 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                             ],
                                           ),
                                           ElevatedButton(
-                                              onPressed: () {
+                                              onPressed: () async {
+                                                final loggedIn =
+                                                    await ensureLoggedIn(
+                                                        context);
+                                                if (!loggedIn) return;
                                                 adultfare =
                                                     dataFlightDetails![index]
                                                         .fareFamilies!

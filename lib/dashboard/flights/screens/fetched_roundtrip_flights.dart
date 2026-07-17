@@ -7,6 +7,7 @@ import 'package:outc/dashboard/flights/widgets/colors.dart';
 import 'package:outc/dashboard/flights/widgets/ticketdesign.dart';
 
 import 'package:outc/widgets/sharedprefservices.dart';
+import 'package:outc/loginflow/auth_gate.dart';
 
 class FetchedRoundtripFlights extends StatefulWidget {
   List<FlightDetailFlightDetail>? fulldata;
@@ -582,7 +583,11 @@ class _FetchedRoundtripFlightsState extends State<FetchedRoundtripFlights> {
                                             ),
                                           ),
                                           ElevatedButton(
-                                              onPressed: () {
+                                              onPressed: () async {
+                                                final loggedIn =
+                                                    await ensureLoggedIn(
+                                                        context);
+                                                if (!loggedIn) return;
                                                 adultfare =
                                                     dataFlightDetails![index]
                                                         .fareFamilies!

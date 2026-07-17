@@ -13,7 +13,8 @@ import 'package:outc/widgets/sharedprefservices.dart';
 import 'package:page_transition/page_transition.dart';
 
 class UserLogin extends StatefulWidget {
-  const UserLogin({super.key});
+  final bool isGateMode;
+  const UserLogin({super.key, this.isGateMode = false});
 
   @override
   State<UserLogin> createState() => _UserLoginState();
@@ -119,7 +120,7 @@ class _UserLoginState extends State<UserLogin> {
                     ),
                     borderRadius: BorderRadius.circular(10.0),
                   ),
-                  hintText: "Enter your email address",
+                  hintText: "Enter Email or Phone Number",
                   prefixIcon: Icon(
                     Icons.email_outlined,
                     color: Colours.strongRed,
@@ -322,7 +323,7 @@ class _UserLoginState extends State<UserLogin> {
                       isApiCallProcess = false;
                     });
 
-                    showToast("Invalid Email. Please try again");
+                    showToast("Invalid Email or Phone Number. Please try again");
                   } else if (value.status == 200 || value.status == 201) {
                     // print("login url is working perfect uday");
 
@@ -357,13 +358,17 @@ class _UserLoginState extends State<UserLogin> {
                     SharedPrefServices.setcurrencycode("INR");
                     SharedPrefServices.setcurrencyAmount("1.00");
 
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (BuildContext context) {
-                          return Dashboard();
-                        },
-                      ),
-                    );
+                    if (widget.isGateMode) {
+                      Navigator.of(context).pop(true);
+                    } else {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (BuildContext context) {
+                            return Dashboard();
+                          },
+                        ),
+                      );
+                    }
                   } else {
                     setState(() {
                       isApiCallProcess = false;

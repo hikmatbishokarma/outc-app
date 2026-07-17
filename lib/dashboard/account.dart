@@ -41,7 +41,8 @@ class _MyAccountState extends State<MyAccount> {
                               useCache: true,
 
                               onTap: () {},
-                              name: SharedPrefServices.getfirstname()!
+                              name: (SharedPrefServices.getfirstname() ??
+                                      "Guest")
                                   .toUpperCase(),
                               textStyle: const TextStyle(
                                 fontSize: 25.0,
