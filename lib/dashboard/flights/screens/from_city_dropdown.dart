@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:outc/dashboard/flights/models/get_cities_by_search_model.dart';
 import 'package:http/http.dart' as http;
-import 'package:outc/dashboard/flights/screens/search_flights.dart';
 import 'package:outc/dashboard/flights/widgets/colors.dart';
 
 import 'package:outc/widgets/sharedprefservices.dart';
@@ -124,41 +123,25 @@ class _SelectCityState extends State<SelectCity> {
                             fontFamily: 'Poppins',
                             fontWeight: FontWeight.w700,
                           )),
-                      onTap: () {
-                        setState(() async {
-                          searchController.text =
-                              '${airport.city!}, ${airport.country}';
+                      onTap: () async {
+                        if (widget.type == "one") {
+                          await SharedPrefServices.setcityFrom(airport.city!);
+                          await SharedPrefServices.setairportcodeFrom(
+                              airport.airportCode!);
+                          await SharedPrefServices.setcountryFrom(
+                              airport.country!);
+                        } else if (widget.type == "two") {
+                          await SharedPrefServices.setcityFromTwo(
+                              airport.city!);
+                          await SharedPrefServices.setairportcodeFromTwo(
+                              airport.airportCode!);
+                          await SharedPrefServices.setcountryFromTwo(
+                              airport.country!);
+                        }
 
-                          if (widget.type == "one") {
-                            await SharedPrefServices.setcityFrom(airport.city!);
-                            await SharedPrefServices.setairportcodeFrom(
-                                airport.airportCode!);
-                            await SharedPrefServices.setcountryFrom(
-                                airport.country!);
-                          } else if (widget.type == "two") {
-                            await SharedPrefServices.setcityFromTwo(
-                                airport.city!);
-                            await SharedPrefServices.setairportcodeFromTwo(
-                                airport.airportCode!);
-                            await SharedPrefServices.setcountryFromTwo(
-                                airport.country!);
-                          }
-
-                          // await SharedPrefServices.setcityFrom(airport.city!);
-                          // await SharedPrefServices.setairportcodeFrom(
-                          //     airport.airportCode!);
-                          // await SharedPrefServices.setcountryFrom(
-                          //     airport.country!);
-                          airportList.clear();
-
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (BuildContext context) {
-                                return const FlightsListPage();
-                              },
-                            ),
-                          );
-                        });
+                        if (context.mounted) {
+                          Navigator.of(context).pop(airport);
+                        }
                       },
                       subtitle: Text(airport.displayName!,
                           style: const TextStyle(
