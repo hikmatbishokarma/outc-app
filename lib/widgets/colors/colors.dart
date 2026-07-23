@@ -5,11 +5,12 @@ class Colours {
   // static Color dardModerateBlue = Color(0xFF05004E);
   static Color pinks = const Color(0xFFFB8585);
   static Color grey = const Color(0xFFA7A7AA);
-  static Color strongRed = const Color(0xffbd0c21);
+  static Color strongRed = const Color(0xFF1B2A6B);
   static Color dardModerateBlue = const Color(0xff35459c);
   static Color veryDarkGrey = const Color(0xff444444);
-  static Color buttonColor = const Color(0xffbd0c21);
-  static Color orangeOutC = const Color(0xffec8333);
+  static Color buttonColor = const Color(0xFF1B2A6B);
+  static Color orangeOutC = const Color(0xFF1B2A6B);
   static Color borderGrey = const Color(0xffE0E0E0);
   static Color textBlack = const Color(0xff222222);
+  static Color skyBlue = const Color(0xFF6FA8DC);
 }

@@ -6,6 +6,7 @@ import 'package:outc/dashboard/visa/models/get_visas_model.dart';
 import 'package:outc/dashboard/visa/screens/visa_formpage.dart';
 import 'package:outc/dashboard/visa/widgets/colors.dart';
 
+import 'package:outc/widgets/colors/colors.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
 
 class VisaFullDetails extends StatefulWidget {
@@ -696,7 +697,7 @@ class _VisaFullDetailsState extends State<VisaFullDetails> {
                         gradient: LinearGradient(
                           colors: [
                             Visa_Colours.dardModerateBlue,
-                            Colors.lightBlue
+                            Colours.skyBlue
                           ],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,

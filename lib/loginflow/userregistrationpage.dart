@@ -82,7 +82,7 @@ class _UserRegistrationState extends State<UserRegistration> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Colors.lightBlue, Colours.grey],
+              colors: [Colours.dardModerateBlue, Colours.skyBlue],
             ),
           ),
           child: Container(

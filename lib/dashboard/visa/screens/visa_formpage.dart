@@ -12,6 +12,7 @@ import 'package:outc/dashboard/visa/screens/country_list.dart';
 import 'package:outc/dashboard/visa/widgets/colors.dart';
 import 'package:outc/loginflow/privacypolicypage.dart';
 import 'package:outc/loginflow/termsandconditionspage.dart';
+import 'package:outc/widgets/colors/colors.dart';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/widgets.dart' as flutter;
@@ -2098,7 +2099,7 @@ class _VisaFormPageState extends State<VisaFormPage> {
                         gradient: LinearGradient(
                           colors: [
                             Visa_Colours.dardModerateBlue,
-                            Colors.lightBlue
+                            Colours.skyBlue
                           ],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
