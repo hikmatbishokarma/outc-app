@@ -454,6 +454,7 @@ class APIService {
       // print(response.statusCode);
     } catch (e) {
       print(e.toString());
+      throw Exception('flightOnewayPrice failed: $e');
     }
     // return userloginfailureresponseFromJson(response.body);
 
