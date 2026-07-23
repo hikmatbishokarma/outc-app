@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:avatars/avatars.dart';
 import 'package:expandable/expandable.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -169,71 +168,35 @@ class _SideMenuState extends State<SideMenu> {
                       ),
                       Container(
                         margin: const EdgeInsets.only(left: 8.0, right: 8.0),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  height: 55,
-                                  width: 55,
-                                  child: Avatar(
-                                    backgroundColor: Colours.strongRed,
-                                    placeholderColors: [Colours.strongRed],
-                                    useCache: true,
-
-                                    onTap: () {},
-                                    name: (SharedPrefServices.getfirstname() ??
-                                            "Guest")
-                                        .toUpperCase(),
-                                    textStyle: const TextStyle(
-                                      fontSize: 15.0,
-                                      fontFamily: 'poppins',
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                    ),
-                                    // Fallback if no image source is available
-                                  ),
+                        child: GestureDetector(
+                          onTap: () {
+                            final isLoggedIn = SharedPrefServices.getislogged()
+                                    .toString() ==
+                                "true";
+                            if (!isLoggedIn) {
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const MultiLoginScreen(),
                                 ),
-                                const SizedBox(
-                                  width: 10.0,
-                                ),
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                        "${SharedPrefServices.getfirstname()} ${SharedPrefServices.getlastname()}",
-                                        style: const TextStyle(
-                                          fontSize: 12.0,
-                                          color: Colors.white,
-                                          fontFamily: 'poppins',
-                                        )),
-                                    const SizedBox(
-                                      height: 4.0,
-                                    ),
-                                    Text(
-                                        SharedPrefServices.getemail()
-                                            .toString(),
-                                        style: const TextStyle(
-                                          fontSize: 12.0,
-                                          color: Colors.white,
-                                          fontFamily: 'poppins',
-                                        )),
-                                    Text(
-                                        SharedPrefServices.getroleType()
-                                            .toString(),
-                                        style: const TextStyle(
-                                          fontSize: 12.0,
-                                          color: Colors.white,
-                                          fontFamily: 'poppins',
-                                        )),
-                                  ],
-                                ),
-                              ],
+                              );
+                            }
+                          },
+                          child: Text(
+                            SharedPrefServices.getislogged().toString() ==
+                                    "true"
+                                ? (SharedPrefServices.getemail() ??
+                                    SharedPrefServices.getphonenumber() ??
+                                    "")
+                                : "Login",
+                            style: const TextStyle(
+                              fontSize: 14.0,
+                              color: Colors.white,
+                              fontFamily: 'poppins',
+                              fontWeight: FontWeight.w600,
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ],
@@ -577,7 +540,7 @@ class _SideMenuState extends State<SideMenu> {
                     return AlertDialog(
                       backgroundColor: Colors.white,
                       content: SizedBox(
-                        height: 150,
+                        height: 165,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
@@ -596,25 +559,9 @@ class _SideMenuState extends State<SideMenu> {
                             const SizedBox(height: 10),
                             Padding(
                               padding: const EdgeInsets.all(8.0),
-                              child: RichText(
-                                text: const TextSpan(
-                                  text: 'Anj',
-                                  style: TextStyle(
-                                    fontSize: 22.0,
-                                    fontFamily: 'poppins',
-                                    color: Color(0xffbd0c21),
-                                  ),
-                                  children: <TextSpan>[
-                                    TextSpan(
-                                      text: "Mal",
-                                      style: TextStyle(
-                                        fontSize: 22.0,
-                                        fontFamily: 'poppins',
-                                        color: Color(0xff35459c),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                              child: Image.asset(
+                                'images/outc.png',
+                                height: 40,
                               ),
                             ),
                             const SizedBox(
@@ -1225,7 +1172,7 @@ class _SideMenuState extends State<SideMenu> {
                     return AlertDialog(
                       backgroundColor: Colors.white,
                       content: SizedBox(
-                        height: 150,
+                        height: 165,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
@@ -1244,25 +1191,9 @@ class _SideMenuState extends State<SideMenu> {
                             const SizedBox(height: 10),
                             Padding(
                               padding: const EdgeInsets.all(8.0),
-                              child: RichText(
-                                text: const TextSpan(
-                                  text: 'Anj',
-                                  style: TextStyle(
-                                    fontSize: 22.0,
-                                    fontFamily: 'poppins',
-                                    color: Color(0xffbd0c21),
-                                  ),
-                                  children: <TextSpan>[
-                                    TextSpan(
-                                      text: "Mal",
-                                      style: TextStyle(
-                                        fontSize: 22.0,
-                                        fontFamily: 'poppins',
-                                        color: Color(0xff35459c),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                              child: Image.asset(
+                                'images/outc.png',
+                                height: 40,
                               ),
                             ),
                             const SizedBox(

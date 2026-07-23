@@ -1,12 +1,19 @@
+import 'package:animated_segmented_tab_control/animated_segmented_tab_control.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:outc/core/module_registry.dart';
 import 'package:outc/loginflow/agentloginpage.dart';
 import 'package:outc/loginflow/userloginpage.dart';
 import 'package:outc/widgets/colors/colors.dart';
 
 class MultiLoginScreen extends StatefulWidget {
   final bool isGateMode;
-  const MultiLoginScreen({super.key, this.isGateMode = false});
+  final bool startOnAgent;
+  const MultiLoginScreen({
+    super.key,
+    this.isGateMode = false,
+    this.startOnAgent = false,
+  });
   @override
   State<MultiLoginScreen> createState() => _MultiLoginScreenState();
 }
@@ -14,6 +21,8 @@ class MultiLoginScreen extends StatefulWidget {
 class _MultiLoginScreenState extends State<MultiLoginScreen> {
   @override
   Widget build(BuildContext context) {
+    final showToggle = !widget.isGateMode && ModuleRegistry.agentEnabled;
+
     return Container(
       height: double.infinity,
       width: double.infinity,
@@ -21,7 +30,7 @@ class _MultiLoginScreenState extends State<MultiLoginScreen> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Colors.lightBlue, Colours.grey],
+          colors: [Colours.dardModerateBlue, Colours.skyBlue],
         ),
       ),
       child: Scaffold(
@@ -42,78 +51,58 @@ class _MultiLoginScreenState extends State<MultiLoginScreen> {
                 ),
                 const SizedBox(height: 20),
                 Expanded(
-                  child: UserLogin(isGateMode: widget.isGateMode),
-                ),
-                Center(
-                  child: TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              _AgentLoginScreen(isGateMode: widget.isGateMode),
-                        ),
-                      );
-                    },
-                    child: Text(
-                      'Partner / Agent Login',
-                      style: GoogleFonts.poppins(
-                        textStyle: const TextStyle(
-                          color: Colors.black87,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
+                  child: showToggle
+                      ? DefaultTabController(
+                          length: 2,
+                          initialIndex: widget.startOnAgent ? 1 : 0,
+                          child: Column(
+                            children: [
+                              Container(
+                                height: 45,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                child: SegmentedTabControl(
+                                  tabTextColor: Colors.black,
+                                  selectedTabTextColor: Colors.white,
+                                  textStyle: GoogleFonts.poppins(
+                                    textStyle: const TextStyle(
+                                      color: Colors.white,
+                                      fontFamily: 'poppins',
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  indicatorPadding: const EdgeInsets.all(3),
+                                  tabs: [
+                                    SegmentTab(
+                                      color: Colours.orangeOutC,
+                                      label: 'Personal Account',
+                                    ),
+                                    SegmentTab(
+                                      color: Colours.orangeOutC,
+                                      label: 'Partner/Agent Account',
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Expanded(
+                                child: TabBarView(
+                                  children: [
+                                    UserLogin(isGateMode: false),
+                                    AgentLogin(isGateMode: false),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : UserLogin(isGateMode: widget.isGateMode),
                 ),
                 const SizedBox(height: 10),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AgentLoginScreen extends StatelessWidget {
-  final bool isGateMode;
-  const _AgentLoginScreen({required this.isGateMode});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: double.infinity,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.lightBlue, Colours.grey],
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          iconTheme: const IconThemeData(color: Colors.black87),
-          title: Text(
-            'Partner / Agent Login',
-            style: GoogleFonts.poppins(
-              textStyle: const TextStyle(
-                color: Colors.black87,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-        body: SafeArea(
-          child: Container(
-            margin: const EdgeInsets.only(right: 10, left: 10),
-            child: AgentLogin(isGateMode: isGateMode),
           ),
         ),
       ),

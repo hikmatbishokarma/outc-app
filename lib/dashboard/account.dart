@@ -1,5 +1,6 @@
 import 'package:avatars/avatars.dart';
 import 'package:flutter/material.dart';
+import 'package:outc/loginflow/multiloginpage.dart';
 import 'package:outc/widgets/colors/colors.dart';
 import 'package:outc/widgets/components/components.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
@@ -14,6 +15,10 @@ class MyAccount extends StatefulWidget {
 class _MyAccountState extends State<MyAccount> {
   @override
   Widget build(BuildContext context) {
+    final isLoggedIn = SharedPrefServices.getislogged().toString() == "true";
+    if (!isLoggedIn) {
+      return const _GuestAccountView();
+    }
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
@@ -283,6 +288,64 @@ class _MyAccountState extends State<MyAccount> {
               )
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GuestAccountView extends StatelessWidget {
+  const _GuestAccountView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.account_circle_outlined,
+              size: 100.0,
+              color: Colours.strongRed,
+            ),
+            const SizedBox(height: 15.0),
+            const Text(
+              "You're not logged in",
+              style: TextStyle(
+                fontSize: 16.0,
+                fontFamily: 'poppins',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 20.0),
+            SizedBox(
+              width: 200,
+              height: 45,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colours.strongRed,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const MultiLoginScreen()),
+                ),
+                child: const Text(
+                  'LOGIN',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'poppins',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

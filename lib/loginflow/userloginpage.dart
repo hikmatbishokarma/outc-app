@@ -11,6 +11,7 @@ import 'package:outc/widgets/components/toast.dart';
 import 'package:outc/widgets/progressbar.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
 import 'package:page_transition/page_transition.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class UserLogin extends StatefulWidget {
   final bool isGateMode;
@@ -379,7 +380,56 @@ class _UserLoginState extends State<UserLogin> {
             ),
           ),
           const SizedBox(
-            height: 50,
+            height: 30,
+          ),
+          Row(
+            children: [
+              const Expanded(child: Divider(color: Colors.white70)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Text(
+                  "Or Login/Signup With",
+                  style: TextStyle(
+                    color: Colours.dardModerateBlue,
+                    fontSize: 12.0,
+                    fontFamily: 'poppins',
+                  ),
+                ),
+              ),
+              const Expanded(child: Divider(color: Colors.white70)),
+            ],
+          ),
+          const SizedBox(height: 15),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: () => showToast("Coming soon"),
+                child: const CircleAvatar(
+                  backgroundColor: Colors.white,
+                  child: FaIcon(
+                    FontAwesomeIcons.google,
+                    color: Colors.red,
+                    size: 18,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 20),
+              GestureDetector(
+                onTap: () => showToast("Coming soon"),
+                child: CircleAvatar(
+                  backgroundColor: Colors.white,
+                  child: Icon(
+                    Icons.email_outlined,
+                    color: Colours.strongRed,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(
+            height: 20,
           ),
           GestureDetector(
             onTap: () {

@@ -4,11 +4,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:outc/core/module_registry.dart';
 import 'package:outc/dashboard/account.dart';
 import 'package:outc/dashboard/flights/widgets/customText.dart';
 import 'package:outc/dashboard/homepage.dart';
 import 'package:outc/dashboard/hotels/screens/book_hotel_form_page.dart';
 import 'package:outc/dashboard/my_bookings.dart';
+import 'package:outc/loginflow/multiloginpage.dart';
 import 'package:outc/partnerSidemenu/reportlistpages/hotelreports.dart';
 import 'package:outc/sidemenu/sidemenu.dart';
 import 'package:outc/widgets/colors/colors.dart';
@@ -18,7 +20,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 // import 'package:persistent_bottom_nav_bar/persistent-tab-view.dart';
 
-import 'package:avatars/avatars.dart';
 // import 'package:persistent_bottom_nav_bar/persistent_tab_view.dart';
 
 class Dashboard extends StatefulWidget {
@@ -86,105 +87,97 @@ class _DashboardState extends State<Dashboard> {
         key: scaffoldKey,
         backgroundColor: Colors.white,
         appBar: AppBar(
-          centerTitle: true,
+          centerTitle: false,
           title: Image.asset(
             "images/outc.png",
-            height: 80,
-            width: 80,
+            height: 40,
+            width: 40,
           ),
-          // Text(
-          //   "OutC",
-          //   style: TextStyle(
-          //     fontSize: 22.0,
-          //     fontFamily: 'poppins',
-          //     color: Colours.strongRed,
-          //   ),
-          // ),
           backgroundColor: Colors.white,
           iconTheme: IconThemeData(
             color: Colours.borderGrey,
           ),
-          leading: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Avatar(
-              backgroundColor: Colours.orangeOutC,
-              placeholderColors: [Colours.orangeOutC],
-              useCache: true,
-
-              onTap: () {
-                scaffoldKey.currentState!.openDrawer();
-              },
-              name: (SharedPrefServices.getfirstname() ?? "Guest")
-                  .toUpperCase(),
-              textStyle: const TextStyle(
-                fontSize: 15.0,
-                fontFamily: 'poppins',
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-              // Fallback if no image source is available
+          leading: IconButton(
+            icon: Icon(
+              Icons.menu,
+              color: Colours.borderGrey,
             ),
+            onPressed: () {
+              scaffoldKey.currentState!.openDrawer();
+            },
           ),
           actions: <Widget>[
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: IconButton(
-                color: Colours.orangeOutC,
-                icon: FaIcon(FontAwesomeIcons.wallet),
-                // Icon(
-                //   Icons.wallet,
-                //   size: 28,
-                //   color: Colours.orangeOutC,
-                // ),
-                onPressed: () {
-                  showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          backgroundColor: Colors.white,
-                          content: Container(
-                            color: Colors.transparent,
-                            height: 80,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                const SizedBox(
-                                  height: 10,
-                                ),
-                                CustomText(
-                                  text: "My Wallet Balance",
-                                  textcolor: Colours.textBlack,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                                const SizedBox(height: 10),
-                                CustomText(
-                                  text:
-                                      "INR ${SharedPrefServices.getwalletblc()}",
-                                  textcolor: Colours.orangeOutC,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                // Text(
-                                //   "INR ${SharedPrefServices.getwalletblc()}",
-                                //   style: TextStyle(
-                                //     fontSize: 20.0,
-                                //     color: Colours.strongRed,
-                                //     fontFamily: 'Poppins',
-                                //     // fontWeight: FontWeight.w700,
-                                //   ),
-                                // ),
-                                const SizedBox(
-                                  height: 10,
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      });
-                },
+            if (ModuleRegistry.agentEnabled &&
+                SharedPrefServices.getroleType().toString() != "agent")
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const MultiLoginScreen(startOnAgent: true),
+                      ),
+                    );
+                  },
+                  child: Text(
+                    'Partner Login',
+                    style: TextStyle(
+                      color: Colours.orangeOutC,
+                      fontFamily: 'poppins',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
               ),
-            ),
+            if (SharedPrefServices.getroleType().toString() == "agent")
+              Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: IconButton(
+                  color: Colours.orangeOutC,
+                  icon: FaIcon(FontAwesomeIcons.wallet),
+                  onPressed: () {
+                    showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            backgroundColor: Colors.white,
+                            content: Container(
+                              color: Colors.transparent,
+                              height: 80,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  const SizedBox(
+                                    height: 10,
+                                  ),
+                                  CustomText(
+                                    text: "My Wallet Balance",
+                                    textcolor: Colours.textBlack,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  CustomText(
+                                    text:
+                                        "INR ${SharedPrefServices.getwalletblc()}",
+                                    textcolor: Colours.orangeOutC,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  const SizedBox(
+                                    height: 10,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        });
+                  },
+                ),
+              ),
             IconButton(
               color: Colours.orangeOutC,
               icon: FaIcon(FontAwesomeIcons.bell),
@@ -275,7 +268,7 @@ class _DashboardState extends State<Dashboard> {
         builder: (BuildContext context) {
           return AlertDialog(
             content: SizedBox(
-              height: 150,
+              height: 165,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -294,25 +287,9 @@ class _DashboardState extends State<Dashboard> {
                   const SizedBox(height: 10),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: RichText(
-                      text: const TextSpan(
-                        text: 'Anj',
-                        style: TextStyle(
-                          fontSize: 22.0,
-                          fontFamily: 'poppins',
-                          color: Color(0xffbd0c21),
-                        ),
-                        children: <TextSpan>[
-                          TextSpan(
-                            text: "Mal",
-                            style: TextStyle(
-                              fontSize: 22.0,
-                              fontFamily: 'poppins',
-                              color: Color(0xff35459c),
-                            ),
-                          ),
-                        ],
-                      ),
+                    child: Image.asset(
+                      'images/outc.png',
+                      height: 40,
                     ),
                   ),
                   const SizedBox(
