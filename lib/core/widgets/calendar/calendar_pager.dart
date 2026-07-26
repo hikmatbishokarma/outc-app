@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 
-import 'package:outc/dashboard/flights/widgets/calendar/flight_calendar_month.dart';
-import 'package:outc/dashboard/flights/widgets/colors.dart';
+import 'package:outc/core/widgets/calendar/calendar_month.dart';
+import 'package:outc/widgets/colors/colors.dart';
 
 /// Swipeable month-by-month calendar body: a fixed month/year title with
 /// prev/next chevrons, a fixed Mon–Sun week header, and a `PageView` of
-/// [FlightCalendarMonth] grids beneath. Shared by both the departure+return
-/// and single-date flight calendar screens.
-class FlightCalendarPager extends StatefulWidget {
-  const FlightCalendarPager({
+/// [CalendarMonth] grids beneath. Promoted from the flights module so other
+/// modules (e.g. bus) can reuse the same date-picking UI without a
+/// cross-module import — shared by flights' departure+return and
+/// single-date screens, and bus's single-date screen.
+class CalendarPager extends StatefulWidget {
+  const CalendarPager({
     super.key,
     required this.baseMonth,
     required this.minDate,
@@ -28,10 +30,10 @@ class FlightCalendarPager extends StatefulWidget {
   final int monthCount;
 
   @override
-  State<FlightCalendarPager> createState() => _FlightCalendarPagerState();
+  State<CalendarPager> createState() => _CalendarPagerState();
 }
 
-class _FlightCalendarPagerState extends State<FlightCalendarPager> {
+class _CalendarPagerState extends State<CalendarPager> {
   late final PageController _controller = PageController(initialPage: widget.initialPage);
   late int _currentPage = widget.initialPage;
 
@@ -62,13 +64,13 @@ class _FlightCalendarPagerState extends State<FlightCalendarPager> {
             children: [
               IconButton(
                 icon: const Icon(Icons.chevron_left),
-                color: Flights_Colours.strongRed,
+                color: Colours.strongRed,
                 onPressed: _currentPage > 0 ? () => _goTo(_currentPage - 1) : null,
               ),
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: Text(
-                  FlightCalendarMonth.monthLabel(_monthAt(_currentPage)),
+                  CalendarMonth.monthLabel(_monthAt(_currentPage)),
                   key: ValueKey(_currentPage),
                   style: const TextStyle(
                     fontSize: 17,
@@ -80,7 +82,7 @@ class _FlightCalendarPagerState extends State<FlightCalendarPager> {
               ),
               IconButton(
                 icon: const Icon(Icons.chevron_right),
-                color: Flights_Colours.strongRed,
+                color: Colours.strongRed,
                 onPressed:
                     _currentPage < widget.monthCount - 1 ? () => _goTo(_currentPage + 1) : null,
               ),
@@ -89,7 +91,7 @@ class _FlightCalendarPagerState extends State<FlightCalendarPager> {
         ),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 4),
-          child: FlightCalendarWeekHeader(),
+          child: CalendarWeekHeader(),
         ),
         const SizedBox(height: 4),
         Expanded(
@@ -100,7 +102,7 @@ class _FlightCalendarPagerState extends State<FlightCalendarPager> {
             itemBuilder: (context, page) {
               return SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: FlightCalendarMonth(
+                child: CalendarMonth(
                   month: _monthAt(page),
                   minDate: widget.minDate,
                   start: widget.start,

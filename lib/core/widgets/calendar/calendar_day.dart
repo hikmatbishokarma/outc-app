@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 
-import 'package:outc/dashboard/flights/widgets/colors.dart';
+import 'package:outc/widgets/colors/colors.dart';
 
-/// One day cell in the flight calendar grid.
+/// One day cell in a month calendar grid. Promoted from the flights module
+/// (`flight_calendar_day.dart`) to `core` so other modules (e.g. bus) can
+/// reuse the same date-picking UI without a cross-module import.
 ///
 /// Deliberately carries a couple of optional, unused-for-now slots
 /// ([priceLabel], [isHoliday]) so a future pass can light up fare/holiday
 /// layers by passing data through, without touching this widget's layout
-/// again (specs/0005 — "Future extensibility"). Neither renders anything
-/// today; both default to null/false.
-class FlightCalendarDay extends StatelessWidget {
-  const FlightCalendarDay({
+/// again. Neither renders anything today; both default to null/false.
+class CalendarDay extends StatelessWidget {
+  const CalendarDay({
     super.key,
     required this.date,
     required this.isDisabled,
@@ -61,7 +62,7 @@ class FlightCalendarDay extends StatelessWidget {
                   right: isSelectedEnd ? 20 : 0,
                 ),
                 decoration: BoxDecoration(
-                  color: Flights_Colours.strongRed.withValues(alpha: 0.10),
+                  color: Colours.strongRed.withValues(alpha: 0.10),
                 ),
               ),
             AnimatedContainer(
@@ -70,9 +71,9 @@ class FlightCalendarDay extends StatelessWidget {
               height: 40,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _isSelected ? Flights_Colours.strongRed : Colors.transparent,
+                color: _isSelected ? Colours.strongRed : Colors.transparent,
                 border: isToday && !_isSelected
-                    ? Border.all(color: Flights_Colours.strongRed, width: 1.2)
+                    ? Border.all(color: Colours.strongRed, width: 1.2)
                     : null,
               ),
               alignment: Alignment.center,

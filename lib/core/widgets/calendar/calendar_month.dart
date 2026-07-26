@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
-import 'package:outc/dashboard/flights/widgets/calendar/flight_calendar_day.dart';
+import 'package:outc/core/widgets/calendar/calendar_day.dart';
 
 const _weekDayLabels = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
-/// Mon–Sun header row, shared above every month grid.
-class FlightCalendarWeekHeader extends StatelessWidget {
-  const FlightCalendarWeekHeader({super.key});
+/// Mon–Sun header row, shared above every month grid. Promoted from the
+/// flights module so other modules can reuse the same calendar UI.
+class CalendarWeekHeader extends StatelessWidget {
+  const CalendarWeekHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -36,9 +37,9 @@ class FlightCalendarWeekHeader extends StatelessWidget {
 /// row has exactly 7 cells). [minDate] disables/dims anything earlier.
 /// Selection is expressed generically as an optional [start]/[end] pair so
 /// the same widget serves both single-date (start==end) and range
-/// selection (One Way/Round Trip vs Multi City).
-class FlightCalendarMonth extends StatelessWidget {
-  const FlightCalendarMonth({
+/// selection (One Way/Round Trip vs Multi City, or bus's single date).
+class CalendarMonth extends StatelessWidget {
+  const CalendarMonth({
     super.key,
     required this.month,
     required this.minDate,
@@ -111,7 +112,7 @@ class FlightCalendarMonth extends StatelessWidget {
                         endDate != null &&
                         normalized.isAfter(startDate) &&
                         normalized.isBefore(endDate);
-                    return FlightCalendarDay(
+                    return CalendarDay(
                       date: date,
                       isDisabled: isDisabled,
                       isToday: normalized == today,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:outc/dashboard/flights/widgets/calendar/flight_calendar_pager.dart';
+import 'package:outc/core/widgets/calendar/calendar_pager.dart';
 import 'package:outc/dashboard/flights/widgets/calendar/flight_date_card.dart';
 import 'package:outc/dashboard/flights/widgets/colors.dart';
 import 'package:outc/dashboard/flights/widgets/search_button.dart';
@@ -142,7 +142,7 @@ class _FlightCalendarScreenState extends State<FlightCalendarScreen> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: FlightCalendarPager(
+              child: CalendarPager(
                 key: ValueKey(_activeField),
                 baseMonth: baseMonth,
                 minDate: _minDate,
