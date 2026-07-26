@@ -1,0 +1,58 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+import 'package:outc/dashboard/bus/models/bus_city_model.dart';
+import 'package:outc/dashboard/bus/models/bus_search_models.dart';
+import 'package:outc/dashboard/bus/models/bus_seat_model.dart';
+import 'package:outc/services/app_constants.dart';
+import 'package:outc/widgets/sharedprefservices.dart';
+
+/// The only place in the bus module that talks to the network
+/// (`docs/architecture.md` §1/§2). Both endpoints live on
+/// `AppConstant.busBaseUrl` (`outc.in`), a different host than the app's
+/// existing `AppConstant.baseUrl` (`b2c.outc.in`) used by other modules.
+class BusService {
+  Future<List<BusCity>> searchCities(String query) async {
+    final url = Uri.parse('${AppConstant.busBaseUrl}api/v1/buses/searchBusCities/$query');
+    final response = await http.get(url);
+    if (response.statusCode != 200) return [];
+    final parsed = BusCitySearchResponse.fromJson(json.decode(response.body));
+    return parsed.data;
+  }
+
+  Future<BusSearchResponse> searchBuses(BusSearchRequest request) async {
+    final url = Uri.parse('${AppConstant.busBaseUrl}api/v1/buses/availability/price');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${SharedPrefServices.getjwtVerifiertoken()}',
+      },
+      body: json.encode(request.toJson()),
+    );
+    return BusSearchResponse.fromJson(json.decode(response.body));
+  }
+
+  Future<BusSeatAvailabilityResponse> getTripAvailability({
+    required String searchId,
+    required String tripId,
+  }) async {
+    final url = Uri.parse('${AppConstant.busBaseUrl}api/v1/buses/tripAvailability');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${SharedPrefServices.getjwtVerifiertoken()}',
+      },
+      body: json.encode({
+        'searchId': searchId,
+        'tripId': tripId,
+        'userId': 1,
+        'roleType': 4,
+        'membership': 1,
+      }),
+    );
+    return BusSeatAvailabilityResponse.fromJson(json.decode(response.body));
+  }
+}

@@ -23,6 +23,8 @@ class BottomSheetShell extends StatelessWidget {
     required this.onPrimaryAction,
     this.primaryActionColor,
     this.maxHeightFraction = 0.85,
+    this.secondaryActionLabel,
+    this.onSecondaryAction,
   });
 
   final String title;
@@ -31,6 +33,12 @@ class BottomSheetShell extends StatelessWidget {
   final VoidCallback onPrimaryAction;
   final Color? primaryActionColor;
   final double maxHeightFraction;
+
+  /// Optional second (e.g. "Clear") action. Only rendered when both this and
+  /// [onSecondaryAction] are supplied — otherwise the primary button keeps
+  /// its original full-width layout, so existing callers are unaffected.
+  final String? secondaryActionLabel;
+  final VoidCallback? onSecondaryAction;
 
   @override
   Widget build(BuildContext context) {
@@ -89,28 +97,69 @@ class BottomSheetShell extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-              child: SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: onPrimaryAction,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: actionColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              child: (secondaryActionLabel != null && onSecondaryAction != null)
+                  ? Row(
+                      children: [
+                        TextButton(
+                          onPressed: onSecondaryAction,
+                          child: Text(
+                            secondaryActionLabel!,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w700,
+                              color: actionColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: SizedBox(
+                            height: 52,
+                            child: ElevatedButton(
+                              onPressed: onPrimaryAction,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: actionColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                primaryActionLabel,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontFamily: 'Poppins',
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: onPrimaryAction,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: actionColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          primaryActionLabel,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    primaryActionLabel,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
             ),
           ],
         ),

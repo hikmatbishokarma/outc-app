@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:outc/dashboard/bus/screens/BusDashboard.dart';
+import 'package:outc/dashboard/bus/screens/bus_search_screen.dart';
 import 'package:outc/dashboard/cars/screens/search_cars.dart';
 import 'package:outc/dashboard/flights/screens/search_flights.dart';
 import 'package:outc/dashboard/flights/widgets/customText.dart';
@@ -123,7 +123,7 @@ class _HomePageState extends State<HomePage> {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (BuildContext context) {
-                  return const Bus_Dashboard();
+                  return const BusSearchScreen();
                 },
               ),
             );
