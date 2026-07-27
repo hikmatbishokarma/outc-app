@@ -10,7 +10,6 @@ import 'package:outc/dashboard/flights/widgets/ticketdesign.dart';
 import 'package:outc/widgets/components/components.dart';
 import 'package:outc/widgets/components/dialogtabsview.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
-import 'package:outc/loginflow/auth_gate.dart';
 
 class FetchedDomesticMulticityFlights extends StatefulWidget {
   // List<FlightDomesticRoundtripModel>? fulldata;
@@ -2717,10 +2716,6 @@ class _FetchedDomesticMulticityFlightsState
                                                   ),
                                                   ElevatedButton(
                                                       onPressed: () async {
-                                                        final loggedIn =
-                                                            await ensureLoggedIn(
-                                                                context);
-                                                        if (!loggedIn) return;
                                                         setState(() {
                                                           returnAdultFare =
                                                               returnDataFlightDetails![

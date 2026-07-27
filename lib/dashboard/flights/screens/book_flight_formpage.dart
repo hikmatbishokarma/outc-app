@@ -14,6 +14,7 @@ import 'package:outc/dashboard/flights/widgets/progressbar.dart';
 import 'package:outc/services/api_services_list.dart';
 import 'package:outc/core/booking_context.dart';
 import 'package:outc/core/payment_gateway.dart';
+import 'package:outc/loginflow/auth_gate.dart';
 
 import 'package:outc/widgets/sharedprefservices.dart';
 
@@ -1749,6 +1750,16 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                           });
                                         } else if (value.statusCode == 200 ||
                                             value.statusCode == 201) {
+                                          setState(() {
+                                            isApiCallProcess = false;
+                                          });
+                                          final loggedIn =
+                                              await ensureLoggedIn(context);
+                                          if (!mounted) return;
+                                          if (!loggedIn) return;
+                                          setState(() {
+                                            isApiCallProcess = true;
+                                          });
                                           apiService
                                               .flightOnewayBlock(
                                                   flightFormModel)

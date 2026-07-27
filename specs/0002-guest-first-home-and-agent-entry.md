@@ -30,16 +30,24 @@ business is going to market.
 - [ ] `Splashscreen` routes every user (logged in or not) to `Dashboard` (home). It no longer redirects
       guests to `MultiLoginScreen`. Search (flights/hotels/cars/visa/bus) works fully as a guest —
       no login prompt anywhere in search or fare-viewing.
-- [ ] **Checkout gate, confirmed by the client**: a guest is prompted to log in at the point they try
-      to move from fare selection into actual booking — i.e. when they tap the "Book"-equivalent
-      action on a selected fare in `oneway_flight_list.dart` (and the round-trip/domestic equivalent),
-      *before* `book_flight_formpage.dart`/`book_domestic_flight.dart` (the passenger-details form)
-      opens. If already logged in, this is a no-op passthrough. Flights is the reference
-      implementation (matching spec 0001's precedent); Hotel/Bus/Visa booking completion is out of
-      scope regardless (per spec 0001).
-- [ ] After successful login at the gate, the user continues into the passenger-details form for the
-      **exact fare they were trying to book** — confirmed by the client: never drop back to search
-      results or Home after a successful gate login.
+- [x] ~~Checkout gate at Book Now, before the passenger-details form opens~~ — **superseded
+      2026-07-27**: the gate blocked guests with a login screen that had no back/close affordance
+      (`MultiLoginScreen`/`UserLogin` in gate mode had no `AppBar`, no pop control), so a guest who
+      declined to log in was stuck with no way back to the flight results. Revised placement below.
+- [ ] **Checkout gate, revised 2026-07-27**: a guest may browse fares and fill in the passenger-details
+      form (`book_flight_formpage.dart`/`book_domestic_flight.dart`) without being prompted to log in.
+      The login prompt now fires **after fare price confirmation succeeds and immediately before the
+      block call** (`flightOnewayBlock`/`flightRoundTripBlock`), i.e. the guest sees the confirmed
+      price before any login is required. If already logged in, this is a no-op passthrough. Flights is
+      the reference implementation (matching spec 0001's precedent); Hotel/Bus/Visa booking completion
+      is out of scope regardless (per spec 0001).
+- [ ] The gate-mode login screen (`MultiLoginScreen`/`UserLogin` with `isGateMode: true`) must present a
+      visible back/close control that pops the route (returning "not logged in" to the caller) whenever
+      it was pushed onto an existing stack, so a guest who backs out of login is returned to what they
+      were doing, never stuck on the login screen.
+- [ ] After successful login at the gate, the flow resumes exactly where it left off — the already
+      price-confirmed booking proceeds straight into the block call — confirmed by the client: never
+      drop back to search results, Home, or the passenger-details form after a successful gate login.
 - [ ] The login screen's identifier field is **cosmetically** relabeled/widened to accept "Email or
       Phone Number" (matching MMT's first-screen look). The underlying flow is unchanged: still a
       single screen, still requires a password, still posts to the existing `Loginrequestauth`

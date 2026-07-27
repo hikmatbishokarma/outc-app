@@ -41,7 +41,12 @@ class _MultiLoginScreenState extends State<MultiLoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 10),
+                if (Navigator.canPop(context))
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    icon: const Icon(Icons.arrow_back_ios_new_outlined,
+                        color: Colors.white),
+                  ),
                 Center(
                   child: Container(
                     height: 150.0,
