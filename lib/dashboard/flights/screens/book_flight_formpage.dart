@@ -621,7 +621,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                     borderRadius: BorderRadius.circular(5),
                                     gradient: const LinearGradient(
                                       colors: [
-                                        Color(0xffbd0c21),
+                                        Color(0xFF1B2A6B),
                                         Color(0xff35459c)
                                       ],
                                       begin: Alignment.topLeft,
@@ -946,7 +946,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                     borderRadius: BorderRadius.circular(5),
                                     gradient: const LinearGradient(
                                       colors: [
-                                        Color(0xffbd0c21),
+                                        Color(0xFF1B2A6B),
                                         Color(0xff35459c)
                                       ],
                                       begin: Alignment.topLeft,
@@ -1133,7 +1133,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                         borderRadius: BorderRadius.circular(5),
                                         gradient: const LinearGradient(
                                           colors: [
-                                            Color(0xffbd0c21),
+                                            Color(0xFF1B2A6B),
                                             Color(0xff35459c)
                                           ],
                                           begin: Alignment.topLeft,
@@ -1215,7 +1215,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                         borderRadius: BorderRadius.circular(5),
                                         gradient: const LinearGradient(
                                           colors: [
-                                            Color(0xffbd0c21),
+                                            Color(0xFF1B2A6B),
                                             Color(0xff35459c)
                                           ],
                                           begin: Alignment.topLeft,
@@ -1346,7 +1346,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                         borderRadius: BorderRadius.circular(5),
                                         gradient: const LinearGradient(
                                           colors: [
-                                            Color(0xffbd0c21),
+                                            Color(0xFF1B2A6B),
                                             Color(0xff35459c)
                                           ],
                                           begin: Alignment.topLeft,
@@ -1390,7 +1390,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                   Checkbox(
                                       side: BorderSide(
                                           color: Colors.grey.shade400),
-                                      activeColor: Colors.blue,
+                                      activeColor: Flights_Colours.dardModerateBlue,
                                       value: firstValue,
                                       onChanged: (value) {
                                         setState(() {
@@ -1408,28 +1408,32 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                             TextSpan(
                                                 text: 'I Agree To All The',
                                                 style: GoogleFonts.poppins(
-                                                    color: Colors.red,
+                                                    color: Flights_Colours
+                                                        .veryDarkGrey,
                                                     fontSize: 14,
                                                     fontWeight:
                                                         FontWeight.w500)),
                                             TextSpan(
                                                 text: ' Terms & Conditions ',
                                                 style: GoogleFonts.poppins(
-                                                    color: Colors.blue,
+                                                    color: Flights_Colours
+                                                        .dardModerateBlue,
                                                     fontSize: 14,
                                                     fontWeight:
                                                         FontWeight.w500)),
                                             TextSpan(
                                                 text: 'and ',
                                                 style: GoogleFonts.poppins(
-                                                    color: Colors.red,
+                                                    color: Flights_Colours
+                                                        .veryDarkGrey,
                                                     fontSize: 14,
                                                     fontWeight:
                                                         FontWeight.w500)),
                                             TextSpan(
                                                 text: ' Privacy Policy. ',
                                                 style: GoogleFonts.poppins(
-                                                    color: Colors.blue,
+                                                    color: Flights_Colours
+                                                        .dardModerateBlue,
                                                     fontSize: 14,
                                                     fontWeight:
                                                         FontWeight.w500)),
@@ -1964,7 +1968,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                       });
                                     },
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red.shade800,
+                                      backgroundColor: Flights_Colours.buttonColor,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(5),
                                       ),
@@ -2105,7 +2109,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                     children: [
                       Text("Adult",
                           style: GoogleFonts.poppins(
-                              color: Colors.orangeAccent.shade400,
+                              color: Flights_Colours.strongRed,
                               fontSize: 14,
                               fontWeight: FontWeight.w600)),
                       Container(
@@ -2427,7 +2431,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                   children: [
                     Text("Child",
                         style: GoogleFonts.poppins(
-                            color: Colors.orangeAccent.shade400,
+                            color: Flights_Colours.strongRed,
                             fontSize: 14,
                             fontWeight: FontWeight.w600)),
                     Container(
@@ -2747,7 +2751,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                     children: [
                       Text("Infant",
                           style: GoogleFonts.poppins(
-                              color: Colors.orangeAccent.shade400,
+                              color: Flights_Colours.strongRed,
                               fontSize: 14,
                               fontWeight: FontWeight.w600)),
                       Container(
