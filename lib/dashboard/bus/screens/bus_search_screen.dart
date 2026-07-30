@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import 'package:outc/core/theme/design_tokens.dart';
+import 'package:outc/core/widgets/app_top_bar.dart';
 import 'package:outc/core/widgets/stepper_control.dart';
 import 'package:outc/dashboard/bus/models/bus_city_model.dart';
 import 'package:outc/dashboard/bus/providers/bus_search_provider.dart';
@@ -32,18 +34,15 @@ class _BusSearchView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<BusSearchProvider>(
       builder: (context, form, _) => Scaffold(
-        appBar: AppBar(
-          title: const Text('Bus Booking'),
-          centerTitle: true,
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: Colors.white,
-        ),
+        backgroundColor: AppColors.panelBackground,
+        appBar: const AppTopBar(title: 'Bus'),
         body: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Card(
               elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -58,14 +57,16 @@ class _BusSearchView extends StatelessWidget {
                               icon: Icons.location_on,
                               label: 'From',
                               city: form.originCity,
-                              onTap: () => _pickCities(context, form, BusCitySearchField.origin),
+                              onTap: () => _pickCities(
+                                  context, form, BusCitySearchField.origin),
                             ),
                             const SizedBox(height: 10),
                             _CityField(
                               icon: Icons.directions_bus,
                               label: 'To',
                               city: form.destinationCity,
-                              onTap: () => _pickCities(context, form, BusCitySearchField.destination),
+                              onTap: () => _pickCities(context, form,
+                                  BusCitySearchField.destination),
                             ),
                           ],
                         ),
@@ -93,20 +94,25 @@ class _BusSearchView extends StatelessWidget {
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Theme.of(context).colorScheme.primary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      onPressed: form.isSearching ? null : () => _onSearch(context, form),
+                      onPressed: form.isSearching
+                          ? null
+                          : () => _onSearch(context, form),
                       icon: form.isSearching
                           ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
                             )
                           : const Icon(Icons.search, color: Colors.white),
                       label: Text(
                         form.isSearching ? 'Searching...' : 'Search Buses',
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 16),
                       ),
                     ),
                   ],
@@ -164,7 +170,9 @@ class _BusSearchView extends StatelessWidget {
 
     if (response == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(form.errorMessage ?? 'Could not fetch buses. Please try again.')),
+        SnackBar(
+            content: Text(form.errorMessage ??
+                'Could not fetch buses. Please try again.')),
       );
       return;
     }
@@ -205,7 +213,9 @@ class _SwapCitiesButtonState extends State<_SwapCitiesButton> {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      shape: CircleBorder(side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.2)),
+      shape: CircleBorder(
+          side: BorderSide(
+              color: Theme.of(context).colorScheme.primary, width: 1.2)),
       elevation: 1.5,
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -219,7 +229,8 @@ class _SwapCitiesButtonState extends State<_SwapCitiesButton> {
             turns: _turns,
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOutCubic,
-            child: Icon(Icons.swap_vert, size: 18, color: Theme.of(context).colorScheme.primary),
+            child: Icon(Icons.swap_vert,
+                size: 18, color: Theme.of(context).colorScheme.primary),
           ),
         ),
       ),
@@ -274,7 +285,8 @@ class _DateField extends StatelessWidget {
       onTap: onTap,
       child: InputDecorator(
         decoration: InputDecoration(
-          prefixIcon: Icon(Icons.date_range, color: Theme.of(context).colorScheme.primary),
+          prefixIcon: Icon(Icons.date_range,
+              color: Theme.of(context).colorScheme.primary),
           labelText: 'Journey Date',
           labelStyle: TextStyle(color: Theme.of(context).colorScheme.primary),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),

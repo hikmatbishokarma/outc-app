@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import 'package:outc/core/theme/design_tokens.dart';
+import 'package:outc/core/widgets/app_top_bar.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/providers/bus_results_provider.dart';
 import 'package:outc/dashboard/bus/screens/bus_seat_selection_screen.dart';
@@ -66,42 +68,34 @@ class _BusResultsView extends StatelessWidget {
       builder: (context, provider, _) {
         final visible = provider.visibleTrips;
         return Scaffold(
-          appBar: AppBar(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Colors.white,
-            titleSpacing: 0,
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '$originName → $destinationName',
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                ),
-                Text(
-                  '${DateFormat('dd MMM yyyy, EEE').format(journeyDate)} | $passengerCount ${passengerCount == 1 ? 'Adult' : 'Adults'}',
-                  style: const TextStyle(fontSize: 12, color: Colors.white70),
-                ),
-              ],
-            ),
+          backgroundColor: AppColors.panelBackground,
+          appBar: AppTopBar(
+            title: '$originName → $destinationName',
+            subtitle:
+                '${DateFormat('dd MMM yyyy, EEE').format(journeyDate)} | $passengerCount ${passengerCount == 1 ? 'Adult' : 'Adults'}',
           ),
           body: Column(
             children: [
               InkWell(
                 onTap: () => BusFilterSheets.showAllFilters(context, provider),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   color: Colors.grey.shade100,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.filter_list, size: 18, color: Theme.of(context).colorScheme.primary),
+                          Icon(Icons.filter_list,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.primary),
                           const SizedBox(width: 6),
                           Text(
                             'Sort & Filter',
-                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600),
+                            style: TextStyle(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),
@@ -115,9 +109,11 @@ class _BusResultsView extends StatelessWidget {
               ),
               Expanded(
                 child: visible.isEmpty
-                    ? const Center(child: Text('No buses match the selected filters.'))
+                    ? const Center(
+                        child: Text('No buses match the selected filters.'))
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         itemCount: visible.length,
                         itemBuilder: (context, index) => _TripCard(
                           trip: visible[index],
@@ -184,7 +180,8 @@ class _QuickFilterBar extends StatelessWidget {
 }
 
 class _QuickFilterButton extends StatelessWidget {
-  const _QuickFilterButton({required this.label, required this.icon, required this.onTap});
+  const _QuickFilterButton(
+      {required this.label, required this.icon, required this.onTap});
   final String label;
   final IconData icon;
   final VoidCallback onTap;
@@ -201,7 +198,8 @@ class _QuickFilterButton extends StatelessWidget {
           children: [
             Icon(icon, size: 20, color: Colors.white),
             const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 11, color: Colors.white)),
+            Text(label,
+                style: const TextStyle(fontSize: 11, color: Colors.white)),
           ],
         ),
       ),
@@ -210,7 +208,10 @@ class _QuickFilterButton extends StatelessWidget {
 }
 
 class _TripCard extends StatelessWidget {
-  const _TripCard({required this.trip, required this.searchId, required this.passengerCount});
+  const _TripCard(
+      {required this.trip,
+      required this.searchId,
+      required this.passengerCount});
   final BusTrip trip;
   final String? searchId;
   final int passengerCount;
@@ -233,14 +234,19 @@ class _TripCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(trip.displayName,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text(trip.busType, style: TextStyle(color: Colors.grey.shade600)),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text(trip.busType,
+                          style: TextStyle(color: Colors.grey.shade600)),
                     ],
                   ),
                 ),
                 Text(
                   '₹${trip.fare.toStringAsFixed(0)}',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.primary),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Theme.of(context).colorScheme.primary),
                 ),
               ],
             ),
@@ -248,9 +254,12 @@ class _TripCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(trip.departureTime, style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text(trip.duration, style: TextStyle(color: Colors.grey.shade600)),
-                Text(trip.arrivalTime, style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(trip.departureTime,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(trip.duration,
+                    style: TextStyle(color: Colors.grey.shade600)),
+                Text(trip.arrivalTime,
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
               ],
             ),
             const SizedBox(height: 6),
@@ -264,7 +273,9 @@ class _TripCard extends StatelessWidget {
                     final id = searchId;
                     if (id == null || id.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Search session expired. Please search again.')),
+                        const SnackBar(
+                            content: Text(
+                                'Search session expired. Please search again.')),
                       );
                       return;
                     }
@@ -279,7 +290,9 @@ class _TripCard extends StatelessWidget {
                       ),
                     );
                   },
-                  child: Text('Show Seats', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+                  child: Text('Show Seats',
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary)),
                 ),
               ],
             ),

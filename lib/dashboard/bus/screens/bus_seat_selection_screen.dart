@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:outc/core/theme/design_tokens.dart';
+import 'package:outc/core/widgets/app_top_bar.dart';
 import 'package:outc/core/widgets/bottom_sheet_shell.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/providers/bus_seat_selection_provider.dart';
@@ -51,23 +53,14 @@ class _BusSeatSelectionView extends StatelessWidget {
     return Consumer<BusSeatSelectionProvider>(
       builder: (context, provider, _) {
         return Scaffold(
-          appBar: AppBar(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Colors.white,
-            titleSpacing: 0,
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(trip.displayName,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-                Text(trip.busType, style: const TextStyle(fontSize: 12, color: Colors.white70)),
-              ],
-            ),
+          backgroundColor: AppColors.panelBackground,
+          appBar: AppTopBar(
+            title: trip.displayName,
+            subtitle: trip.busType,
             actions: [
               IconButton(
                 onPressed: () => _showLegendSheet(context),
-                icon: const Icon(Icons.info_outline, color: Colors.white),
+                icon: const Icon(Icons.info_outline),
                 tooltip: 'Seat info',
               ),
             ],
@@ -90,7 +83,8 @@ class _BusSeatSelectionView extends StatelessWidget {
           children: [
             Text(provider.errorMessage!),
             const SizedBox(height: 12),
-            ElevatedButton(onPressed: provider.load, child: const Text('Retry')),
+            ElevatedButton(
+                onPressed: provider.load, child: const Text('Retry')),
           ],
         ),
       );
@@ -165,7 +159,8 @@ class _LegendSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Important info about your seats', style: TextStyle(color: Colors.grey.shade600)),
+          Text('Important info about your seats',
+              style: TextStyle(color: Colors.grey.shade600)),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(12),
@@ -256,13 +251,15 @@ class _LegendSheet extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.info_outline, color: Colors.amber.shade800, size: 20),
+                Icon(Icons.info_outline,
+                    color: Colors.amber.shade800, size: 20),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'We recommend users to book the seats as per the gender specified on the '
                     'seat by the bus operator for the best experience.',
-                    style: TextStyle(color: Colors.amber.shade900, fontSize: 12.5),
+                    style:
+                        TextStyle(color: Colors.amber.shade900, fontSize: 12.5),
                   ),
                 ),
               ],
@@ -304,12 +301,16 @@ class _LegendItem extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 6),
-        Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12)),
+        Text(label,
+            textAlign: TextAlign.center, style: const TextStyle(fontSize: 12)),
         if (highlight != null)
           Text(
             highlight!,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: highlightColor),
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: highlightColor),
           ),
       ],
     );
@@ -325,7 +326,7 @@ class _DeckPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade300),
       ),
@@ -334,7 +335,10 @@ class _DeckPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary)),
+          Text(title,
+              style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.primary)),
           const SizedBox(height: 8),
           Flexible(child: child),
         ],
@@ -356,7 +360,12 @@ class _BottomBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.white,
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6, offset: const Offset(0, -2))],
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 6,
+                offset: const Offset(0, -2))
+          ],
         ),
         child: Row(
           children: [
@@ -371,7 +380,10 @@ class _BottomBar extends StatelessWidget {
                   ),
                   Text(
                     '₹${provider.totalFare.toStringAsFixed(0)}',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Theme.of(context).colorScheme.primary),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Theme.of(context).colorScheme.primary),
                   ),
                 ],
               ),
@@ -379,17 +391,22 @@ class _BottomBar extends StatelessWidget {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               ),
               onPressed: provider.canContinue
                   ? () {
                       final selectedSeats = provider.seats
-                          .where((s) => provider.selectedSeatCodes.contains(s.seatCode))
+                          .where((s) =>
+                              provider.selectedSeatCodes.contains(s.seatCode))
                           .toList();
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => BusPickupDropScreen(
+                            searchId: provider.searchId,
+                            tripId: provider.tripId,
                             trip: trip,
                             selectedSeats: selectedSeats,
                           ),
@@ -397,7 +414,8 @@ class _BottomBar extends StatelessWidget {
                       );
                     }
                   : null,
-              child: const Text('Continue', style: TextStyle(color: Colors.white)),
+              child:
+                  const Text('Continue', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),

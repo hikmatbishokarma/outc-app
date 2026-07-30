@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:outc/core/widgets/app_top_bar.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/models/bus_seat_model.dart';
 import 'package:outc/dashboard/bus/screens/bus_checkout_screen.dart';
@@ -15,10 +16,14 @@ import 'package:outc/dashboard/bus/screens/bus_checkout_screen.dart';
 class BusPickupDropScreen extends StatefulWidget {
   const BusPickupDropScreen({
     super.key,
+    required this.searchId,
+    required this.tripId,
     required this.trip,
     required this.selectedSeats,
   });
 
+  final String searchId;
+  final String tripId;
   final BusTrip trip;
   final List<BusSeat> selectedSeats;
 
@@ -42,11 +47,7 @@ class _BusPickupDropScreenState extends State<BusPickupDropScreen> {
     final selected = _activeTab == _PickupDropTab.pickup ? _boarding : _dropping;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Select Pickup & Drop Points'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-      ),
+      appBar: const AppTopBar(title: 'Select Pickup & Drop Points'),
       body: Column(
         children: [
           _TabHeader(
@@ -151,6 +152,8 @@ class _BusPickupDropScreenState extends State<BusPickupDropScreen> {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => BusCheckoutScreen(
+                              searchId: widget.searchId,
+                              tripId: widget.tripId,
                               trip: widget.trip,
                               selectedSeats: widget.selectedSeats,
                               boardingPoint: _boarding!,
