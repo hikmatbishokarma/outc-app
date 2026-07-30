@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:outc/core/widgets/bottom_sheet_shell.dart';
 import 'package:outc/dashboard/bus/providers/bus_results_provider.dart';
-import 'package:outc/widgets/colors/colors.dart';
 
 /// The seven filter/sort bottom sheets for the bus results screen (spec
 /// 0007). Each takes the screen's `BusResultsProvider` directly rather than
@@ -162,7 +161,7 @@ class BusFilterSheets {
           provider.clearAll();
           Navigator.of(sheetContext).pop();
         },
-        primaryActionColor: Colours.strongRed,
+        primaryActionColor: Theme.of(context).colorScheme.primary,
         body: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -270,7 +269,7 @@ class _CheckboxSheetContentState extends State<_CheckboxSheetContent> {
     return BottomSheetShell(
       title: widget.title,
       primaryActionLabel: 'Apply',
-      primaryActionColor: Colours.strongRed,
+      primaryActionColor: Theme.of(context).colorScheme.primary,
       onPrimaryAction: () {
         widget.onApply(_selected);
         Navigator.of(context).pop();
@@ -299,10 +298,10 @@ class _CheckboxSheetContentState extends State<_CheckboxSheetContent> {
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               value: _selected.contains(option.label),
-              secondary: option.icon != null ? Icon(option.icon, color: Colours.strongRed) : null,
+              secondary: option.icon != null ? Icon(option.icon, color: Theme.of(context).colorScheme.primary) : null,
               title: Text(option.label),
               subtitle: option.count != null ? Text('${option.count} buses') : null,
-              activeColor: Colours.strongRed,
+              activeColor: Theme.of(context).colorScheme.primary,
               onChanged: (checked) {
                 setState(() {
                   if (checked ?? false) {
@@ -340,7 +339,7 @@ class _SortBySheetContentState extends State<_SortBySheetContent> {
     return BottomSheetShell(
       title: 'Sort By',
       primaryActionLabel: 'Apply',
-      primaryActionColor: Colours.strongRed,
+      primaryActionColor: Theme.of(context).colorScheme.primary,
       onPrimaryAction: () {
         widget.provider.setSort(_selected);
         Navigator.of(context).pop();
@@ -353,8 +352,8 @@ class _SortBySheetContentState extends State<_SortBySheetContent> {
               contentPadding: EdgeInsets.zero,
               value: option,
               groupValue: _selected,
-              activeColor: Colours.strongRed,
-              secondary: Icon(_sortIcon(option), color: Colours.strongRed),
+              activeColor: Theme.of(context).colorScheme.primary,
+              secondary: Icon(_sortIcon(option), color: Theme.of(context).colorScheme.primary),
               title: Text(option.label),
               onChanged: (value) => setState(() => _selected = value!),
             ),
@@ -397,7 +396,7 @@ class _PriceRangeSheetContentState extends State<_PriceRangeSheetContent> {
     return BottomSheetShell(
       title: 'Price Range',
       primaryActionLabel: 'Apply',
-      primaryActionColor: Colours.strongRed,
+      primaryActionColor: Theme.of(context).colorScheme.primary,
       onPrimaryAction: () {
         widget.provider.setPriceRange(_range);
         Navigator.of(context).pop();
@@ -416,7 +415,7 @@ class _PriceRangeSheetContentState extends State<_PriceRangeSheetContent> {
             values: _range,
             min: min,
             max: safeMax,
-            activeColor: Colours.strongRed,
+            activeColor: Theme.of(context).colorScheme.primary,
             labels: RangeLabels(
               '₹${_range.start.toStringAsFixed(0)}',
               '₹${_range.end.toStringAsFixed(0)}',

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:outc/core/widgets/calendar/calendar_pager.dart';
 import 'package:outc/dashboard/flights/widgets/calendar/flight_date_card.dart';
-import 'package:outc/dashboard/flights/widgets/colors.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 import 'package:outc/dashboard/flights/widgets/search_button.dart';
 
 enum FlightCalendarField { departure, returnDate }
@@ -106,7 +106,7 @@ class _FlightCalendarScreenState extends State<FlightCalendarScreen> {
                           text: _activeField == FlightCalendarField.departure
                               ? 'Departure'
                               : 'Return',
-                          style: TextStyle(color: Flights_Colours.strongRed),
+                          style: TextStyle(color: AppColors.primary),
                         ),
                         const TextSpan(text: ' Date'),
                       ],

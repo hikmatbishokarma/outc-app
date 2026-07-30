@@ -6,7 +6,6 @@ import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/providers/bus_results_provider.dart';
 import 'package:outc/dashboard/bus/screens/bus_seat_selection_screen.dart';
 import 'package:outc/dashboard/bus/widgets/bus_filter_sheets.dart';
-import 'package:outc/widgets/colors/colors.dart';
 
 /// Real bus results/filters screen (spec 0007) — replaces the spec-0006
 /// placeholder wholesale. Filtering/sorting is client-side against the
@@ -68,7 +67,7 @@ class _BusResultsView extends StatelessWidget {
         final visible = provider.visibleTrips;
         return Scaffold(
           appBar: AppBar(
-            backgroundColor: Colours.strongRed,
+            backgroundColor: Theme.of(context).colorScheme.primary,
             foregroundColor: Colors.white,
             titleSpacing: 0,
             title: Column(
@@ -98,11 +97,11 @@ class _BusResultsView extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.filter_list, size: 18, color: Colours.strongRed),
+                          Icon(Icons.filter_list, size: 18, color: Theme.of(context).colorScheme.primary),
                           const SizedBox(width: 6),
                           Text(
                             'Sort & Filter',
-                            style: TextStyle(color: Colours.strongRed, fontWeight: FontWeight.w600),
+                            style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),
@@ -143,7 +142,7 @@ class _QuickFilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colours.strongRed,
+      color: Theme.of(context).colorScheme.primary,
       child: SafeArea(
         top: false,
         child: Padding(
@@ -241,7 +240,7 @@ class _TripCard extends StatelessWidget {
                 ),
                 Text(
                   '₹${trip.fare.toStringAsFixed(0)}',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colours.strongRed),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.primary),
                 ),
               ],
             ),
@@ -280,7 +279,7 @@ class _TripCard extends StatelessWidget {
                       ),
                     );
                   },
-                  child: Text('Show Seats', style: TextStyle(color: Colours.strongRed)),
+                  child: Text('Show Seats', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
                 ),
               ],
             ),

@@ -4,7 +4,7 @@ import 'package:outc/core/widgets/bottom_sheet_shell.dart';
 import 'package:outc/core/widgets/stepper_control.dart';
 import 'package:outc/dashboard/flights/providers/flight_search_form_provider.dart';
 import 'package:outc/dashboard/flights/widgets/cabin_selector.dart';
-import 'package:outc/dashboard/flights/widgets/colors.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 import 'package:outc/dashboard/flights/widgets/flight_field_card.dart';
 
 class TravellerSelection {
@@ -137,7 +137,7 @@ class _SummaryFieldTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 22, color: Flights_Colours.strongRed),
+          Icon(icon, size: 22, color: AppColors.primary),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -152,7 +152,7 @@ class _SummaryFieldTile extends StatelessWidget {
                     fontFamily: 'Poppins',
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.5,
-                    color: Flights_Colours.strongRed,
+                    color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -201,7 +201,7 @@ class _TravellersSheetContentState extends State<_TravellersSheetContent> {
     return BottomSheetShell(
       title: 'Select Travellers & Class',
       primaryActionLabel: 'DONE',
-      primaryActionColor: Flights_Colours.strongRed,
+      primaryActionColor: AppColors.primary,
       onPrimaryAction: () {
         Navigator.of(context).pop(
           TravellerCounts(adults: adults, children: children, infants: infants),
@@ -216,7 +216,7 @@ class _TravellersSheetContentState extends State<_TravellersSheetContent> {
             value: adults,
             min: 1,
             max: 9,
-            accentColor: Flights_Colours.strongRed,
+            accentColor: AppColors.primary,
             onChanged: (v) => setState(() => adults = v),
           ),
           const SizedBox(height: 18),
@@ -226,7 +226,7 @@ class _TravellersSheetContentState extends State<_TravellersSheetContent> {
             value: children,
             min: 0,
             max: 9,
-            accentColor: Flights_Colours.strongRed,
+            accentColor: AppColors.primary,
             onChanged: (v) => setState(() => children = v),
           ),
           const SizedBox(height: 18),
@@ -236,7 +236,7 @@ class _TravellersSheetContentState extends State<_TravellersSheetContent> {
             value: infants,
             min: 0,
             max: 9,
-            accentColor: Flights_Colours.strongRed,
+            accentColor: AppColors.primary,
             onChanged: (v) => setState(() => infants = v),
           ),
           const SizedBox(height: 8),
@@ -263,7 +263,7 @@ class _CabinClassSheetContentState extends State<_CabinClassSheetContent> {
     return BottomSheetShell(
       title: 'Select Cabin Class',
       primaryActionLabel: 'DONE',
-      primaryActionColor: Flights_Colours.strongRed,
+      primaryActionColor: AppColors.primary,
       onPrimaryAction: () => Navigator.of(context).pop(cabinClass),
       body: CabinSelector(
         selected: cabinClass,

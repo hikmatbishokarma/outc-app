@@ -9,7 +9,7 @@ import 'package:outc/dashboard/flights/models/flight_price_model.dart'
     as flightPrice;
 import 'package:outc/dashboard/flights/models/flightbalaji.dart';
 import 'package:outc/dashboard/flights/screens/ticketView.dart';
-import 'package:outc/dashboard/flights/widgets/colors.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 import 'package:outc/dashboard/flights/widgets/progressbar.dart';
 import 'package:outc/services/api_services_list.dart';
 import 'package:outc/core/booking_context.dart';
@@ -413,7 +413,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                           padding: const EdgeInsets.all(8.0),
                           child: Icon(
                             Icons.arrow_back_ios_new_outlined,
-                            color: Flights_Colours.veryDarkGrey,
+                            color: AppColors.textSecondary,
                             // color: Colors.transparent,
                             size: 20,
                           ),
@@ -428,7 +428,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                         style: TextStyle(
                             fontFamily: 'poppins',
                             fontSize: 16.0,
-                            color: Flights_Colours.strongRed,
+                            color: AppColors.primary,
                             fontWeight: FontWeight.w700),
                       ),
                       const Padding(
@@ -464,7 +464,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(10),
                                 border:
-                                    Border.all(color: const Color(0xff35459c))),
+                                    Border.all(color: AppColors.secondary)),
                             child: Column(
                               children: [
                                 Container(
@@ -494,7 +494,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                             widget.airlineName,
                                             style: TextStyle(
                                               fontSize: 14.0,
-                                              color: Flights_Colours.strongRed,
+                                              color: AppColors.primary,
                                               fontFamily: 'Poppins',
                                             ),
                                           ),
@@ -531,7 +531,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                   widget.airlineRefund,
                                   style: TextStyle(
                                     fontSize: 12.0,
-                                    color: Flights_Colours.veryDarkGrey,
+                                    color: AppColors.textSecondary,
                                     fontWeight: FontWeight.bold,
                                     fontFamily: 'Poppins',
                                   ),
@@ -553,7 +553,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                       SizedBox(
                                         width: 150,
                                         child: Divider(
-                                          color: Flights_Colours.strongRed,
+                                          color: AppColors.primary,
                                           thickness: 3,
                                         ),
                                       ),
@@ -621,8 +621,8 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                     borderRadius: BorderRadius.circular(5),
                                     gradient: const LinearGradient(
                                       colors: [
-                                        Color(0xFF1B2A6B),
-                                        Color(0xff35459c)
+                                        AppColors.primary,
+                                        AppColors.secondary
                                       ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
@@ -656,7 +656,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                               decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
                                   border: Border.all(
-                                      color: const Color(0xff35459c))),
+                                      color: AppColors.secondary)),
                               child: Container(
                                 margin: const EdgeInsets.only(
                                     right: 10, left: 10, top: 10),
@@ -710,26 +710,25 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                                 borderRadius:
                                                     BorderRadius.circular(5),
                                                 borderSide: const BorderSide(
-                                                    color: Color(0xffC2C2C2))),
+                                                    color: AppColors.fieldBorder)),
                                             enabledBorder: OutlineInputBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(5),
                                                 borderSide: const BorderSide(
-                                                    color: Color(0xffC2C2C2))),
+                                                    color: AppColors.fieldBorder)),
                                             focusedBorder: OutlineInputBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(5),
                                                 borderSide: const BorderSide(
-                                                    color: Color(0xffC2C2C2))),
+                                                    color: AppColors.fieldBorder)),
                                             errorBorder: OutlineInputBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(5),
                                                 borderSide: const BorderSide(
-                                                    color: Color(0xffC2C2C2))),
+                                                    color: AppColors.fieldBorder)),
                                             hintText: 'Enter Mobile Number',
                                             hintStyle: GoogleFonts.poppins(
-                                                color: Flights_Colours
-                                                    .veryDarkGrey,
+                                                color: AppColors.textSecondary,
                                                 fontSize: 15,
                                                 fontWeight: FontWeight.w500),
                                             prefixIcon: Padding(
@@ -795,7 +794,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                           borderRadius:
                                               BorderRadius.circular(5),
                                           border: Border.all(
-                                              color: const Color(0xffC2C2C2))),
+                                              color: AppColors.fieldBorder)),
                                       child: Padding(
                                         padding: const EdgeInsets.only(
                                             left: 10, bottom: 3),
@@ -823,7 +822,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                                 "Enter your email address",
                                             hintStyle: const TextStyle(
                                               fontSize: 15.0,
-                                              color: Color(0xB3979797),
+                                              color: AppColors.hintText,
                                               // fontFamily: 'Poppins',
                                               fontWeight: FontWeight.w400,
                                             ),
@@ -876,7 +875,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                           borderRadius:
                                               BorderRadius.circular(5),
                                           border: Border.all(
-                                              color: const Color(0xffC2C2C2))),
+                                              color: AppColors.fieldBorder)),
                                       child: Padding(
                                         padding: const EdgeInsets.only(
                                             left: 10, bottom: 3),
@@ -904,7 +903,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                             hintText: "Enter your Address",
                                             hintStyle: const TextStyle(
                                               fontSize: 15.0,
-                                              color: Color(0xB3979797),
+                                              color: AppColors.hintText,
                                               // fontFamily: 'Poppins',
                                               fontWeight: FontWeight.w400,
                                             ),
@@ -946,8 +945,8 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                     borderRadius: BorderRadius.circular(5),
                                     gradient: const LinearGradient(
                                       colors: [
-                                        Color(0xFF1B2A6B),
-                                        Color(0xff35459c)
+                                        AppColors.primary,
+                                        AppColors.secondary
                                       ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
@@ -1025,7 +1024,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
                                 border:
-                                    Border.all(color: const Color(0xff35459c))),
+                                    Border.all(color: AppColors.secondary)),
                             child: Container(
                               margin:
                                   const EdgeInsets.only(right: 15, left: 15),
@@ -1133,8 +1132,8 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                         borderRadius: BorderRadius.circular(5),
                                         gradient: const LinearGradient(
                                           colors: [
-                                            Color(0xFF1B2A6B),
-                                            Color(0xff35459c)
+                                            AppColors.primary,
+                                            AppColors.secondary
                                           ],
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
@@ -1157,7 +1156,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
                                 border:
-                                    Border.all(color: const Color(0xff35459c))),
+                                    Border.all(color: AppColors.secondary)),
                             child: Container(
                               margin:
                                   const EdgeInsets.only(right: 10, left: 10),
@@ -1215,8 +1214,8 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                         borderRadius: BorderRadius.circular(5),
                                         gradient: const LinearGradient(
                                           colors: [
-                                            Color(0xFF1B2A6B),
-                                            Color(0xff35459c)
+                                            AppColors.primary,
+                                            AppColors.secondary
                                           ],
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
@@ -1242,7 +1241,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
                                 border:
-                                    Border.all(color: const Color(0xff35459c))),
+                                    Border.all(color: AppColors.secondary)),
                             child: Container(
                               margin:
                                   const EdgeInsets.only(right: 10, left: 10),
@@ -1278,17 +1277,17 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                                 borderRadius:
                                                     BorderRadius.circular(3),
                                                 borderSide: const BorderSide(
-                                                    color: Color(0xffC2C2C2))),
+                                                    color: AppColors.fieldBorder)),
                                             enabledBorder: OutlineInputBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(3),
                                                 borderSide: const BorderSide(
-                                                    color: Color(0xffC2C2C2))),
+                                                    color: AppColors.fieldBorder)),
                                             focusedBorder: OutlineInputBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(3),
                                                 borderSide: const BorderSide(
-                                                    color: Color(0xffC2C2C2))),
+                                                    color: AppColors.fieldBorder)),
                                           ),
                                         ),
                                       ),
@@ -1346,8 +1345,8 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                         borderRadius: BorderRadius.circular(5),
                                         gradient: const LinearGradient(
                                           colors: [
-                                            Color(0xFF1B2A6B),
-                                            Color(0xff35459c)
+                                            AppColors.primary,
+                                            AppColors.secondary
                                           ],
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
@@ -1390,7 +1389,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                   Checkbox(
                                       side: BorderSide(
                                           color: Colors.grey.shade400),
-                                      activeColor: Flights_Colours.dardModerateBlue,
+                                      activeColor: AppColors.secondary,
                                       value: firstValue,
                                       onChanged: (value) {
                                         setState(() {
@@ -1408,32 +1407,28 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                             TextSpan(
                                                 text: 'I Agree To All The',
                                                 style: GoogleFonts.poppins(
-                                                    color: Flights_Colours
-                                                        .veryDarkGrey,
+                                                    color: AppColors.textSecondary,
                                                     fontSize: 14,
                                                     fontWeight:
                                                         FontWeight.w500)),
                                             TextSpan(
                                                 text: ' Terms & Conditions ',
                                                 style: GoogleFonts.poppins(
-                                                    color: Flights_Colours
-                                                        .dardModerateBlue,
+                                                    color: AppColors.secondary,
                                                     fontSize: 14,
                                                     fontWeight:
                                                         FontWeight.w500)),
                                             TextSpan(
                                                 text: 'and ',
                                                 style: GoogleFonts.poppins(
-                                                    color: Flights_Colours
-                                                        .veryDarkGrey,
+                                                    color: AppColors.textSecondary,
                                                     fontSize: 14,
                                                     fontWeight:
                                                         FontWeight.w500)),
                                             TextSpan(
                                                 text: ' Privacy Policy. ',
                                                 style: GoogleFonts.poppins(
-                                                    color: Flights_Colours
-                                                        .dardModerateBlue,
+                                                    color: AppColors.secondary,
                                                     fontSize: 14,
                                                     fontWeight:
                                                         FontWeight.w500)),
@@ -1968,7 +1963,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                       });
                                     },
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Flights_Colours.buttonColor,
+                                      backgroundColor: AppColors.primary,
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(5),
                                       ),
@@ -2109,7 +2104,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                     children: [
                       Text("Adult",
                           style: GoogleFonts.poppins(
-                              color: Flights_Colours.strongRed,
+                              color: AppColors.primary,
                               fontSize: 14,
                               fontWeight: FontWeight.w600)),
                       Container(
@@ -2148,7 +2143,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(5),
                                     border: Border.all(
-                                        color: const Color(0xffC2C2C2)),
+                                        color: AppColors.fieldBorder),
                                   ),
                                   child: DropdownButtonHideUnderline(
                                       child: DropdownButton<String>(
@@ -2212,7 +2207,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                 decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(5),
                                     border: Border.all(
-                                        color: const Color(0xffC2C2C2))),
+                                        color: AppColors.fieldBorder)),
                                 child: Padding(
                                   padding: const EdgeInsets.only(
                                       left: 10, bottom: 14),
@@ -2260,7 +2255,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                 decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(5),
                                     border: Border.all(
-                                        color: const Color(0xffC2C2C2))),
+                                        color: AppColors.fieldBorder)),
                                 child: Padding(
                                     padding: const EdgeInsets.only(
                                         left: 10, bottom: 14),
@@ -2306,7 +2301,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                 decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(5),
                                     border: Border.all(
-                                        color: const Color(0xffC2C2C2))),
+                                        color: AppColors.fieldBorder)),
                                 child: Padding(
                                     padding: const EdgeInsets.only(
                                         left: 10, bottom: 14),
@@ -2373,7 +2368,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                 decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(5),
                                     border: Border.all(
-                                        color: const Color(0xffC2C2C2))),
+                                        color: AppColors.fieldBorder)),
                                 child: Padding(
                                     padding: const EdgeInsets.only(
                                         left: 10, bottom: 14),
@@ -2431,7 +2426,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                   children: [
                     Text("Child",
                         style: GoogleFonts.poppins(
-                            color: Flights_Colours.strongRed,
+                            color: AppColors.primary,
                             fontSize: 14,
                             fontWeight: FontWeight.w600)),
                     Container(
@@ -2470,7 +2465,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
                                   border: Border.all(
-                                      color: const Color(0xffC2C2C2)),
+                                      color: AppColors.fieldBorder),
                                 ),
                                 child: DropdownButtonHideUnderline(
                                     child: DropdownButton<String>(
@@ -2533,7 +2528,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                               decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
                                   border: Border.all(
-                                      color: const Color(0xffC2C2C2))),
+                                      color: AppColors.fieldBorder)),
                               child: Padding(
                                   padding: const EdgeInsets.only(
                                       left: 10, bottom: 14),
@@ -2579,7 +2574,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                               decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
                                   border: Border.all(
-                                      color: const Color(0xffC2C2C2))),
+                                      color: AppColors.fieldBorder)),
                               child: Padding(
                                   padding: const EdgeInsets.only(
                                       left: 10, bottom: 14),
@@ -2625,7 +2620,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                               decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
                                   border: Border.all(
-                                      color: const Color(0xffC2C2C2))),
+                                      color: AppColors.fieldBorder)),
                               child: Padding(
                                   padding: const EdgeInsets.only(
                                       left: 10, bottom: 14),
@@ -2692,7 +2687,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                               decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
                                   border: Border.all(
-                                      color: const Color(0xffC2C2C2))),
+                                      color: AppColors.fieldBorder)),
                               child: Padding(
                                   padding: const EdgeInsets.only(
                                       left: 10, bottom: 14),
@@ -2751,7 +2746,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                     children: [
                       Text("Infant",
                           style: GoogleFonts.poppins(
-                              color: Flights_Colours.strongRed,
+                              color: AppColors.primary,
                               fontSize: 14,
                               fontWeight: FontWeight.w600)),
                       Container(
@@ -2790,7 +2785,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(5),
                                     border: Border.all(
-                                        color: const Color(0xffC2C2C2)),
+                                        color: AppColors.fieldBorder),
                                   ),
                                   child: DropdownButtonHideUnderline(
                                       child: DropdownButton<String>(
@@ -2853,7 +2848,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                 decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(5),
                                     border: Border.all(
-                                        color: const Color(0xffC2C2C2))),
+                                        color: AppColors.fieldBorder)),
                                 child: Padding(
                                     padding: const EdgeInsets.only(
                                         left: 10, bottom: 14),
@@ -2899,7 +2894,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                 decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(5),
                                     border: Border.all(
-                                        color: const Color(0xffC2C2C2))),
+                                        color: AppColors.fieldBorder)),
                                 child: Padding(
                                     padding: const EdgeInsets.only(
                                         left: 10, bottom: 14),
@@ -2945,7 +2940,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                 decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(5),
                                     border: Border.all(
-                                        color: const Color(0xffC2C2C2))),
+                                        color: AppColors.fieldBorder)),
                                 child: Padding(
                                     padding: const EdgeInsets.only(
                                         left: 10, bottom: 14),
@@ -3012,7 +3007,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                 decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(5),
                                     border: Border.all(
-                                        color: const Color(0xffC2C2C2))),
+                                        color: AppColors.fieldBorder)),
                                 child: Padding(
                                     padding: const EdgeInsets.only(
                                         left: 10, bottom: 14),

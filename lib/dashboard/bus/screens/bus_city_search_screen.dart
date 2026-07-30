@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:outc/dashboard/bus/models/bus_city_model.dart';
 import 'package:outc/dashboard/bus/services/bus_service.dart';
-import 'package:outc/widgets/colors/colors.dart';
 
 enum BusCitySearchField { origin, destination }
 
@@ -199,7 +198,7 @@ class _BusCityFieldBox extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isActive ? Colours.strongRed : Colors.grey.shade300,
+            color: isActive ? Theme.of(context).colorScheme.primary : Colors.grey.shade300,
             width: isActive ? 1.4 : 1,
           ),
         ),
@@ -213,7 +212,7 @@ class _BusCityFieldBox extends StatelessWidget {
                 child: Icon(
                   leadingIcon,
                   size: 22,
-                  color: isActive ? Colours.strongRed : Colors.grey.shade500,
+                  color: isActive ? Theme.of(context).colorScheme.primary : Colors.grey.shade500,
                 ),
               ),
             ),
@@ -224,7 +223,7 @@ class _BusCityFieldBox extends StatelessWidget {
                       controller: controller,
                       focusNode: focusNode,
                       onChanged: onChanged,
-                      cursorColor: Colours.strongRed,
+                      cursorColor: Theme.of(context).colorScheme.primary,
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
                         border: InputBorder.none,
@@ -291,7 +290,7 @@ class _CityResultsList extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Row(
               children: [
-                Icon(Icons.location_on_outlined, size: 22, color: Colours.strongRed),
+                Icon(Icons.location_on_outlined, size: 22, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(

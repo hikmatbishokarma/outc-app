@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:outc/dashboard/flights/providers/flight_search_form_provider.dart';
 import 'package:outc/dashboard/flights/widgets/airport_selector.dart';
-import 'package:outc/dashboard/flights/widgets/colors.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 import 'package:outc/dashboard/flights/widgets/flight_date_field.dart';
 import 'package:outc/dashboard/flights/widgets/flight_field_card.dart';
 import 'package:outc/dashboard/flights/widgets/search_button.dart';
@@ -198,7 +198,7 @@ class _SwapCitiesButtonState extends State<_SwapCitiesButton> {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      shape: CircleBorder(side: BorderSide(color: Flights_Colours.strongRed, width: 1.2)),
+      shape: CircleBorder(side: BorderSide(color: AppColors.primary, width: 1.2)),
       elevation: 1.5,
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -212,7 +212,7 @@ class _SwapCitiesButtonState extends State<_SwapCitiesButton> {
             turns: _turns,
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOutCubic,
-            child: Icon(Icons.swap_horiz, size: 18, color: Flights_Colours.strongRed),
+            child: Icon(Icons.swap_horiz, size: 18, color: AppColors.primary),
           ),
         ),
       ),

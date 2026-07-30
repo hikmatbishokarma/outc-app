@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/models/bus_seat_model.dart';
 import 'package:outc/dashboard/bus/screens/bus_checkout_screen.dart';
-import 'package:outc/widgets/colors/colors.dart';
 
 /// Boarding/dropping-point selection — the step after seat selection (spec
 /// 0008), matching how real bus-booking apps sequence the flow rather than
@@ -45,7 +44,7 @@ class _BusPickupDropScreenState extends State<BusPickupDropScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Select Pickup & Drop Points'),
-        backgroundColor: Colours.strongRed,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
       body: Column(
@@ -71,7 +70,7 @@ class _BusPickupDropScreenState extends State<BusPickupDropScreen> {
                       return RadioListTile<String>(
                         value: point.pointId,
                         groupValue: selected?.pointId,
-                        activeColor: Colours.strongRed,
+                        activeColor: Theme.of(context).colorScheme.primary,
                         title: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -136,14 +135,14 @@ class _BusPickupDropScreenState extends State<BusPickupDropScreen> {
                     ),
                     Text(
                       '₹${widget.selectedSeats.fold(0.0, (sum, s) => sum + s.fare).toStringAsFixed(0)}',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colours.strongRed),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Theme.of(context).colorScheme.primary),
                     ),
                   ],
                 ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colours.strongRed,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
                 ),
@@ -237,7 +236,7 @@ class _TabButton extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: isActive ? Colours.strongRed : Colors.transparent,
+              color: isActive ? Theme.of(context).colorScheme.primary : Colors.transparent,
               width: 3,
             ),
           ),
@@ -249,7 +248,7 @@ class _TabButton extends StatelessWidget {
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
-                color: isActive ? Colours.strongRed : Colors.black87,
+                color: isActive ? Theme.of(context).colorScheme.primary : Colors.black87,
               ),
             ),
             const SizedBox(height: 2),

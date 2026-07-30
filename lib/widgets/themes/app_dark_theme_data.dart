@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 
 import 'app_text_theme.dart';
 
+/// `main.dart` forces `ThemeMode.light`, so this theme is unreachable at
+/// runtime today — it's kept token-sourced (via [AppDarkColors]) rather than
+/// hand-typed `Color.fromRGBO(...)` so it doesn't silently drift out of sync
+/// with the token system, not because its look changed in this migration.
 ThemeData appDarkThemeData() {
   return ThemeData(
     colorScheme: const ColorScheme(
-      primary: Color.fromRGBO(50, 45, 120, 1),
-      secondary: Color.fromRGBO(34, 193, 224, 1),
+      primary: AppDarkColors.primary,
+      secondary: AppDarkColors.secondary,
       surface: Colors.white54,
-      error: Color.fromRGBO(241, 95, 109, 1),
-      // error: Colors.green,
+      error: AppDarkColors.error,
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: Colors.white,
@@ -18,7 +22,7 @@ ThemeData appDarkThemeData() {
     ),
     brightness: Brightness.dark,
 
-    scaffoldBackgroundColor: const Color.fromRGBO(9, 35, 55, 1),
+    scaffoldBackgroundColor: AppDarkColors.background,
 
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       color: Colors.white,
@@ -27,27 +31,23 @@ ThemeData appDarkThemeData() {
     /// AppBar theme
     appBarTheme: AppBarTheme(
       centerTitle: true,
-      color: const Color.fromRGBO(9, 35, 55, 1),
+      backgroundColor: AppDarkColors.background,
       elevation: 0,
       titleTextStyle: appTextTheme.headlineSmall?.copyWith(
-        color: const Color.fromRGBO(34, 193, 224, 1),
+        color: AppDarkColors.secondary,
         fontWeight: FontWeight.w700,
       ),
     ),
 
-    // tabBarTheme: const TabBarTheme(
-    //   labelColor: Color.fromRGBO(34, 193, 224, 1),
-    //   unselectedLabelColor: Colors.white,
-    // ),
     tabBarTheme: const TabBarThemeData(
-      labelStyle: TextStyle(color: Color.fromRGBO(34, 193, 224, 1)),
+      labelStyle: TextStyle(color: AppDarkColors.secondary),
       unselectedLabelStyle: TextStyle(color: Colors.white),
-      indicatorColor: Color.fromRGBO(34, 193, 224, 1),
+      indicatorColor: AppDarkColors.secondary,
     ),
 
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      backgroundColor: Color.fromRGBO(9, 35, 55, 1),
-      selectedItemColor: Color.fromRGBO(34, 193, 224, 1),
+      backgroundColor: AppDarkColors.background,
+      selectedItemColor: AppDarkColors.secondary,
       unselectedItemColor: Colors.white,
     ),
 
@@ -55,16 +55,16 @@ ThemeData appDarkThemeData() {
     buttonTheme: const ButtonThemeData(
       shape: RoundedRectangleBorder(),
       disabledColor: Color.fromRGBO(34, 193, 224, 0.1),
-      buttonColor: Color.fromRGBO(34, 193, 224, 1),
+      buttonColor: AppDarkColors.secondary,
     ),
 
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         fixedSize: const Size(double.maxFinite, 48),
         foregroundColor: Colors.white,
-        backgroundColor: const Color.fromRGBO(50, 45, 120, 1),
+        backgroundColor: AppDarkColors.primary,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
         ),
         elevation: 0,
       ),
@@ -72,7 +72,7 @@ ThemeData appDarkThemeData() {
 
     popupMenuTheme: PopupMenuThemeData(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       textStyle: appTextTheme.titleSmall?.copyWith(
         color: Colors.white,
@@ -84,9 +84,9 @@ ThemeData appDarkThemeData() {
 
     inputDecorationTheme: InputDecorationTheme(
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
         borderSide: const BorderSide(
-          color: Color.fromRGBO(241, 95, 109, 1),
+          color: AppDarkColors.error,
           width: 1,
         ),
       ),
@@ -97,22 +97,24 @@ ThemeData appDarkThemeData() {
         color: Colors.white,
       ),
       isDense: true,
-      iconColor: const Color.fromRGBO(34, 193, 224, 1),
+      iconColor: AppDarkColors.secondary,
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
         borderSide: const BorderSide(
-          color: Color.fromRGBO(34, 193, 224, 1),
+          color: AppDarkColors.secondary,
           width: 2,
         ),
       ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
         borderSide: const BorderSide(
-          color: Color.fromRGBO(50, 45, 120, 1),
+          color: AppDarkColors.primary,
         ),
       ),
     ),
-    // bottomAppBarTheme:
-    //     const BottomAppBarTheme(color: Color.fromRGBO(9, 35, 55, 1)),
+
+    extensions: const <ThemeExtension<dynamic>>[
+      GlassThemeExtension.light,
+    ],
   );
 }

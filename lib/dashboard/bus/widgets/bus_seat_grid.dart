@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:outc/dashboard/bus/models/bus_seat_model.dart';
-import 'package:outc/widgets/colors/colors.dart';
 
 /// Positions one deck's seats in a real 2D grid derived from each seat's own
 /// `row`/`column`/`length`/`width` (spec 0008) — the legacy mock's flat
@@ -127,8 +126,8 @@ class _SeatTile extends StatelessWidget {
       borderColor = Colors.grey.shade400;
       textColor = Colors.grey.shade600;
     } else if (isSelected) {
-      fillColor = Colours.strongRed;
-      borderColor = Colours.strongRed;
+      fillColor = Theme.of(context).colorScheme.primary;
+      borderColor = Theme.of(context).colorScheme.primary;
       textColor = Colors.white;
     } else if (seat.isLadiesSeat) {
       fillColor = Colors.pink.shade50;

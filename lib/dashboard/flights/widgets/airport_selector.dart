@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:outc/dashboard/flights/widgets/colors.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 
 /// One FROM or TO field: small caps label, city + airport-code line, and a
 /// country subtitle. Tapping opens the caller-supplied picker.
@@ -49,7 +49,7 @@ class AirportSelector extends StatelessWidget {
               fontFamily: 'Poppins',
               fontWeight: FontWeight.w700,
               letterSpacing: 0.5,
-              color: Flights_Colours.strongRed,
+              color: AppColors.primary,
             ),
           ),
           const SizedBox(height: 2),

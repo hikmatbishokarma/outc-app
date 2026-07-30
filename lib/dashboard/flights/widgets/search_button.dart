@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:outc/dashboard/flights/widgets/colors.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 
 /// Full-width gradient SEARCH call-to-action with a subtle press-scale.
 class SearchButton extends StatefulWidget {
@@ -45,8 +45,8 @@ class _SearchButtonState extends State<SearchButton> {
               borderRadius: BorderRadius.circular(14),
               gradient: LinearGradient(
                 colors: [
-                  Flights_Colours.dardModerateBlue,
-                  Flights_Colours.strongRed,
+                  AppColors.secondary,
+                  AppColors.primary,
                 ],
               ),
             ),

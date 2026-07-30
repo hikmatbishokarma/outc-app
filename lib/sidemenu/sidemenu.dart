@@ -11,7 +11,7 @@ import 'package:outc/partnerSidemenu/reportfilterpages/flightfliterpage.dart';
 import 'package:outc/partnerSidemenu/reportfilterpages/hotelfilterpage.dart';
 import 'package:outc/partnerSidemenu/reportfilterpages/statementsfilterpage.dart';
 import 'package:outc/partnerSidemenu/reportfilterpages/visafilterpage.dart';
-import 'package:outc/widgets/colors/colors.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
 import 'package:page_transition/page_transition.dart';
 import 'package:outc/core/module_registry.dart';
@@ -52,7 +52,7 @@ class _SideMenuState extends State<SideMenu> {
                 Text(label,
                     style: const TextStyle(
                       fontSize: 14.0,
-                      color: Color(0xff626365),
+                      color: AppColors.rowLabel,
                       fontWeight: FontWeight.w700,
                       fontFamily: 'poppins',
                     )),
@@ -63,7 +63,7 @@ class _SideMenuState extends State<SideMenu> {
                 ImageIcon(
                   AssetImage("images/rightarrow.png"),
                   size: 20,
-                  color: Color(0xff626365),
+                  color: AppColors.rowLabel,
                 ),
                 SizedBox(
                   width: 10,
@@ -145,8 +145,8 @@ class _SideMenuState extends State<SideMenu> {
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                   colors: [
-                    Colours.strongRed,
-                    Colours.dardModerateBlue,
+                    Theme.of(context).colorScheme.primary,
+                    Theme.of(context).colorScheme.secondary,
                   ],
                 )),
                 child: Center(
@@ -213,7 +213,7 @@ class _SideMenuState extends State<SideMenu> {
 
   userOptions() {
     return Container(
-      color: const Color(0xffF7F7F7),
+      color: AppColors.panelBackground,
       child: Column(
         children: [
           GestureDetector(
@@ -232,7 +232,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/account.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10.0,
@@ -240,7 +240,7 @@ class _SideMenuState extends State<SideMenu> {
                       Text("BOOK VISA SLOT",
                           style: TextStyle(
                             fontSize: 14.0,
-                            color: Color(0xff626365),
+                            color: AppColors.rowLabel,
                             fontWeight: FontWeight.w700,
                             fontFamily: 'poppins',
                           )),
@@ -251,7 +251,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/rightarrow.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10,
@@ -281,7 +281,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/account.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10.0,
@@ -289,7 +289,7 @@ class _SideMenuState extends State<SideMenu> {
                       Text("TERMS AND CONDITIONS",
                           style: TextStyle(
                             fontSize: 14.0,
-                            color: Color(0xff626365),
+                            color: AppColors.rowLabel,
                             fontWeight: FontWeight.w700,
                             fontFamily: 'poppins',
                           )),
@@ -300,7 +300,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/rightarrow.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10,
@@ -330,7 +330,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/account.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10.0,
@@ -338,7 +338,7 @@ class _SideMenuState extends State<SideMenu> {
                       Text("HELP AND FAQS",
                           style: TextStyle(
                             fontSize: 14.0,
-                            color: Color(0xff626365),
+                            color: AppColors.rowLabel,
                             fontWeight: FontWeight.w700,
                             fontFamily: 'poppins',
                           )),
@@ -349,7 +349,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/rightarrow.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10,
@@ -379,7 +379,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/account.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10.0,
@@ -387,7 +387,7 @@ class _SideMenuState extends State<SideMenu> {
                       Text("PRIVACY",
                           style: TextStyle(
                             fontSize: 14.0,
-                            color: Color(0xff626365),
+                            color: AppColors.rowLabel,
                             fontWeight: FontWeight.w700,
                             fontFamily: 'poppins',
                           )),
@@ -398,7 +398,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/rightarrow.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10,
@@ -430,7 +430,7 @@ class _SideMenuState extends State<SideMenu> {
                       const ImageIcon(
                         AssetImage("images/account.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       const SizedBox(
                         width: 10.0,
@@ -441,14 +441,14 @@ class _SideMenuState extends State<SideMenu> {
                           const Text("CURRENCY   ",
                               style: TextStyle(
                                 fontSize: 14.0,
-                                color: Color(0xff626365),
+                                color: AppColors.rowLabel,
                                 fontWeight: FontWeight.w700,
                                 fontFamily: 'poppins',
                               )),
                           Text(SharedPrefServices.getcurrencycode().toString(),
                               style: TextStyle(
                                 fontSize: 14.0,
-                                color: Colours.strongRed,
+                                color: Theme.of(context).colorScheme.primary,
                                 fontWeight: FontWeight.w700,
                                 fontFamily: 'poppins',
                               )),
@@ -461,7 +461,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/rightarrow.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10,
@@ -499,7 +499,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/account.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10.0,
@@ -507,7 +507,7 @@ class _SideMenuState extends State<SideMenu> {
                       Text("CHANGE PASSWORD",
                           style: TextStyle(
                             fontSize: 14.0,
-                            color: Color(0xff626365),
+                            color: AppColors.rowLabel,
                             fontWeight: FontWeight.w700,
                             fontFamily: 'poppins',
                           )),
@@ -518,7 +518,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/rightarrow.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10,
@@ -576,7 +576,7 @@ class _SideMenuState extends State<SideMenu> {
                                   child: Card(
                                     shape: RoundedRectangleBorder(
                                       side:
-                                          BorderSide(color: Colours.strongRed),
+                                          BorderSide(color: Theme.of(context).colorScheme.primary),
                                       borderRadius: BorderRadius.circular(10.0),
                                     ),
                                     child: Container(
@@ -594,7 +594,7 @@ class _SideMenuState extends State<SideMenu> {
                                             "NO",
                                             style: TextStyle(
                                               fontSize: 15.0,
-                                              color: Colours.strongRed,
+                                              color: Theme.of(context).colorScheme.primary,
                                               fontFamily: 'Poppins',
                                               fontWeight: FontWeight.w700,
                                             ),
@@ -635,7 +635,7 @@ class _SideMenuState extends State<SideMenu> {
                                     child: Container(
                                       width: 100,
                                       decoration: BoxDecoration(
-                                        color: Colours.strongRed,
+                                        color: Theme.of(context).colorScheme.primary,
                                         borderRadius: const BorderRadius.all(
                                           Radius.circular(10.0),
                                         ),
@@ -679,7 +679,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/account.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10.0,
@@ -687,7 +687,7 @@ class _SideMenuState extends State<SideMenu> {
                       Text("LOGOUT",
                           style: TextStyle(
                             fontSize: 14.0,
-                            color: Color(0xff626365),
+                            color: AppColors.rowLabel,
                             fontWeight: FontWeight.w700,
                             fontFamily: 'poppins',
                           )),
@@ -698,7 +698,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/rightarrow.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10,
@@ -716,7 +716,7 @@ class _SideMenuState extends State<SideMenu> {
 
   agentOptions() {
     return Container(
-      color: const Color(0xffF7F7F7),
+      color: AppColors.panelBackground,
       child: Column(
         children: [
           GestureDetector(
@@ -743,7 +743,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/account.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10.0,
@@ -751,7 +751,7 @@ class _SideMenuState extends State<SideMenu> {
                       Text("BANK DETAILS",
                           style: TextStyle(
                             fontSize: 14.0,
-                            color: Color(0xff626365),
+                            color: AppColors.rowLabel,
                             fontWeight: FontWeight.w700,
                             fontFamily: 'poppins',
                           )),
@@ -762,7 +762,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/rightarrow.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10,
@@ -800,7 +800,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/account.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10.0,
@@ -808,7 +808,7 @@ class _SideMenuState extends State<SideMenu> {
                       Text("DEPOSITS",
                           style: TextStyle(
                             fontSize: 14.0,
-                            color: Color(0xff626365),
+                            color: AppColors.rowLabel,
                             fontWeight: FontWeight.w700,
                             fontFamily: 'poppins',
                           )),
@@ -819,7 +819,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/rightarrow.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10,
@@ -857,7 +857,7 @@ class _SideMenuState extends State<SideMenu> {
           //             ImageIcon(
           //               AssetImage("images/account.png"),
           //               size: 20,
-          //               color: Color(0xff626365),
+          //               color: AppColors.rowLabel,
           //             ),
           //             SizedBox(
           //               width: 10.0,
@@ -865,7 +865,7 @@ class _SideMenuState extends State<SideMenu> {
           //             Text("REPORTS",
           //                 style: TextStyle(
           //                   fontSize: 14.0,
-          //                   color: Color(0xff626365),
+          //                   color: AppColors.rowLabel,
           //                   fontWeight: FontWeight.w700,
           //                   fontFamily: 'poppins',
           //                 )),
@@ -876,7 +876,7 @@ class _SideMenuState extends State<SideMenu> {
           //             ImageIcon(
           //               AssetImage("images/rightarrow.png"),
           //               size: 20,
-          //               color: Color(0xff626365),
+          //               color: AppColors.rowLabel,
           //             ),
           //             SizedBox(
           //               width: 10,
@@ -902,7 +902,7 @@ class _SideMenuState extends State<SideMenu> {
                     theme: const ExpandableThemeData(
                       headerAlignment: ExpandablePanelHeaderAlignment.center,
                       tapBodyToCollapse: true,
-                      iconColor: Color(0xff626365),
+                      iconColor: AppColors.rowLabel,
                     ),
                     header: Container(
                       height: 52.0,
@@ -918,7 +918,7 @@ class _SideMenuState extends State<SideMenu> {
                               ImageIcon(
                                 AssetImage("images/account.png"),
                                 size: 20,
-                                color: Color(0xff626365),
+                                color: AppColors.rowLabel,
                               ),
                               SizedBox(
                                 width: 10.0,
@@ -926,7 +926,7 @@ class _SideMenuState extends State<SideMenu> {
                               Text("REPORTS",
                                   style: TextStyle(
                                     fontSize: 14.0,
-                                    color: Color(0xff626365),
+                                    color: AppColors.rowLabel,
                                     fontWeight: FontWeight.w700,
                                     fontFamily: 'poppins',
                                   )),
@@ -939,7 +939,7 @@ class _SideMenuState extends State<SideMenu> {
                       "More details",
                       style: TextStyle(
                         fontSize: 10.0,
-                        color: Colours.strongRed,
+                        color: Theme.of(context).colorScheme.primary,
                         fontFamily: 'poppins',
                       ),
                       softWrap: true,
@@ -1011,7 +1011,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/account.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10.0,
@@ -1019,7 +1019,7 @@ class _SideMenuState extends State<SideMenu> {
                       Text("STATEMENTS",
                           style: TextStyle(
                             fontSize: 14.0,
-                            color: Color(0xff626365),
+                            color: AppColors.rowLabel,
                             fontWeight: FontWeight.w700,
                             fontFamily: 'poppins',
                           )),
@@ -1030,7 +1030,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/rightarrow.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10,
@@ -1062,7 +1062,7 @@ class _SideMenuState extends State<SideMenu> {
                       const ImageIcon(
                         AssetImage("images/account.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       const SizedBox(
                         width: 10.0,
@@ -1073,14 +1073,14 @@ class _SideMenuState extends State<SideMenu> {
                           const Text("CURRENCY   ",
                               style: TextStyle(
                                 fontSize: 14.0,
-                                color: Color(0xff626365),
+                                color: AppColors.rowLabel,
                                 fontWeight: FontWeight.w700,
                                 fontFamily: 'poppins',
                               )),
                           Text(SharedPrefServices.getcurrencycode().toString(),
                               style: TextStyle(
                                 fontSize: 14.0,
-                                color: Colours.strongRed,
+                                color: Theme.of(context).colorScheme.primary,
                                 fontWeight: FontWeight.w700,
                                 fontFamily: 'poppins',
                               )),
@@ -1093,7 +1093,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/rightarrow.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10,
@@ -1131,7 +1131,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/account.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10.0,
@@ -1139,7 +1139,7 @@ class _SideMenuState extends State<SideMenu> {
                       Text("CHANGE PASSWORD",
                           style: TextStyle(
                             fontSize: 14.0,
-                            color: Color(0xff626365),
+                            color: AppColors.rowLabel,
                             fontWeight: FontWeight.w700,
                             fontFamily: 'poppins',
                           )),
@@ -1150,7 +1150,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/rightarrow.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10,
@@ -1208,7 +1208,7 @@ class _SideMenuState extends State<SideMenu> {
                                   child: Card(
                                     shape: RoundedRectangleBorder(
                                       side:
-                                          BorderSide(color: Colours.strongRed),
+                                          BorderSide(color: Theme.of(context).colorScheme.primary),
                                       borderRadius: BorderRadius.circular(10.0),
                                     ),
                                     child: Container(
@@ -1226,7 +1226,7 @@ class _SideMenuState extends State<SideMenu> {
                                             "NO",
                                             style: TextStyle(
                                               fontSize: 15.0,
-                                              color: Colours.strongRed,
+                                              color: Theme.of(context).colorScheme.primary,
                                               fontFamily: 'Poppins',
                                               fontWeight: FontWeight.w700,
                                             ),
@@ -1267,7 +1267,7 @@ class _SideMenuState extends State<SideMenu> {
                                     child: Container(
                                       width: 100,
                                       decoration: BoxDecoration(
-                                        color: Colours.strongRed,
+                                        color: Theme.of(context).colorScheme.primary,
                                         borderRadius: const BorderRadius.all(
                                           Radius.circular(10.0),
                                         ),
@@ -1311,7 +1311,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/account.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10.0,
@@ -1319,7 +1319,7 @@ class _SideMenuState extends State<SideMenu> {
                       Text("LOGOUT",
                           style: TextStyle(
                             fontSize: 14.0,
-                            color: Color(0xff626365),
+                            color: AppColors.rowLabel,
                             fontWeight: FontWeight.w700,
                             fontFamily: 'poppins',
                           )),
@@ -1330,7 +1330,7 @@ class _SideMenuState extends State<SideMenu> {
                       ImageIcon(
                         AssetImage("images/rightarrow.png"),
                         size: 20,
-                        color: Color(0xff626365),
+                        color: AppColors.rowLabel,
                       ),
                       SizedBox(
                         width: 10,
@@ -1353,7 +1353,7 @@ class _SideMenuState extends State<SideMenu> {
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
         builder: (context) => Container(
-              color: const Color(0xffFFF7F7),
+              color: AppColors.sheetBackground,
               height: 250.0,
               child: GestureDetector(
                 onTap: () {
@@ -1366,7 +1366,7 @@ class _SideMenuState extends State<SideMenu> {
                           item['code'],
                           style: const TextStyle(
                             fontSize: 14.0,
-                            color: Color(0xff303135),
+                            color: AppColors.pickerText,
                             fontFamily: 'Poppins',
                             fontWeight: FontWeight.w700,
                           ),

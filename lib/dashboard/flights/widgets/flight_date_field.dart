@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import 'package:outc/dashboard/flights/widgets/colors.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 
 /// One date row: icon + label + formatted date, or an empty-state
 /// placeholder + helper text when [date] is null (used for round trip's
@@ -38,7 +38,7 @@ class FlightDateField extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.calendar_today, size: compact ? 18 : 22, color: Flights_Colours.strongRed),
+          Icon(Icons.calendar_today, size: compact ? 18 : 22, color: AppColors.primary),
           SizedBox(width: compact ? 8 : 12),
           Expanded(
             child: Column(
@@ -54,7 +54,7 @@ class FlightDateField extends StatelessWidget {
                       fontFamily: 'Poppins',
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0.5,
-                      color: Flights_Colours.strongRed,
+                      color: AppColors.primary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -68,7 +68,7 @@ class FlightDateField extends StatelessWidget {
                     fontFamily: 'Poppins',
                     fontWeight: FontWeight.w700,
                     color: !hasDate && emphasizePlaceholder
-                        ? Flights_Colours.strongRed
+                        ? AppColors.primary
                         : Colors.black87,
                   ),
                 ),

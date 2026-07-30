@@ -16,7 +16,7 @@ import 'package:outc/dashboard/flights/screens/fetched_multicity_flights.dart';
 import 'package:outc/dashboard/flights/screens/oneway_flight_list.dart';
 import 'package:outc/dashboard/flights/widgets/calendar/flight_calendar_screen.dart';
 import 'package:outc/dashboard/flights/widgets/calendar/flight_single_date_calendar_screen.dart';
-import 'package:outc/dashboard/flights/widgets/colors.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 import 'package:outc/dashboard/flights/widgets/flight_marketing_section.dart';
 import 'package:outc/dashboard/flights/widgets/multi_city_form.dart';
 import 'package:outc/dashboard/flights/widgets/one_way_round_trip_form.dart';
@@ -78,7 +78,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
           style: TextStyle(
             fontSize: 22.0,
             fontFamily: 'poppins',
-            color: Flights_Colours.strongRed,
+            color: AppColors.primary,
           ),
         ),
         backgroundColor: Colors.white,
@@ -86,8 +86,8 @@ class _FlightsListPageState extends State<FlightsListPage> {
         leading: Padding(
           padding: const EdgeInsets.all(8),
           child: IconButton(
-            color: Flights_Colours.strongRed,
-            icon: Icon(Icons.home, size: 28, color: Flights_Colours.strongRed),
+            color: AppColors.primary,
+            icon: Icon(Icons.home, size: 28, color: AppColors.primary),
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (context) => Dashboard()),
@@ -99,13 +99,13 @@ class _FlightsListPageState extends State<FlightsListPage> {
           Padding(
             padding: const EdgeInsets.all(4.0),
             child: IconButton(
-              color: Flights_Colours.strongRed,
-              icon: Icon(Icons.wallet, size: 28, color: Flights_Colours.strongRed),
+              color: AppColors.primary,
+              icon: Icon(Icons.wallet, size: 28, color: AppColors.primary),
               onPressed: () => _showWalletDialog(context),
             ),
           ),
           IconButton(
-            color: Flights_Colours.strongRed,
+            color: AppColors.primary,
             icon: const ImageIcon(AssetImage("images/notifybell.png")),
             onPressed: () {},
           ),
@@ -188,7 +188,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
           SegmentedControl(
             labels: const ['ONE WAY', 'ROUND TRIP', 'MULTI CITY'],
             selectedIndex: form.tripType.index,
-            activeColor: Flights_Colours.dardModerateBlue,
+            activeColor: AppColors.secondary,
             backgroundColor: Colors.white.withValues(alpha: 0.15),
             inactiveTextColor: Colors.white70,
             onChanged: (index) => _onTripTypeChanged(form, TripType.values[index]),
@@ -452,7 +452,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
                 const SizedBox(height: 10),
                 Text(
                   "INR ${SharedPrefServices.getwalletblc()}",
-                  style: TextStyle(fontSize: 20.0, color: Flights_Colours.strongRed, fontFamily: 'Poppins'),
+                  style: TextStyle(fontSize: 20.0, color: AppColors.primary, fontFamily: 'Poppins'),
                 ),
                 const SizedBox(height: 10),
               ],

@@ -1,68 +1,85 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 
-// This code is copied from https://m2.material.io/design/typography/the-type-system.html#type-scale
-//I use poppins Text Theme from Google Fonts
-//Poppins
-final appTextTheme = TextTheme(
+/// Named type scale built from [AppTypography] — sized for this app's actual
+/// UI density (cards, buttons, fare tables), not Material 2's oversized
+/// 112px-default scale this file used to copy. `headlineLarge` used to be
+/// missing entirely; it's filled in below along with the rest of the scale.
+final TextTheme appTextTheme = TextTheme(
   displayLarge: GoogleFonts.poppins(
-    fontSize: 112,
-    fontWeight: FontWeight.w300,
-    letterSpacing: -1.5,
+    fontSize: AppTypography.displaySize + 4,
+    fontWeight: AppTypography.displayWeight,
+    height: AppTypography.displayHeight,
   ),
   displayMedium: GoogleFonts.poppins(
-    fontSize: 70,
-    fontWeight: FontWeight.w300,
-    letterSpacing: -0.5,
+    fontSize: AppTypography.displaySize,
+    fontWeight: AppTypography.displayWeight,
+    height: AppTypography.displayHeight,
   ),
   displaySmall: GoogleFonts.poppins(
-    fontSize: 56,
-    fontWeight: FontWeight.w400,
+    fontSize: AppTypography.displaySize - 4,
+    fontWeight: AppTypography.displayWeight,
+    height: AppTypography.displayHeight,
+  ),
+  headlineLarge: GoogleFonts.poppins(
+    fontSize: AppTypography.headlineSize + 2,
+    fontWeight: AppTypography.headlineWeight,
+    height: AppTypography.headlineHeight,
   ),
   headlineMedium: GoogleFonts.poppins(
-    fontSize: 40,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 0.25,
+    fontSize: AppTypography.headlineSize,
+    fontWeight: AppTypography.headlineWeight,
+    height: AppTypography.headlineHeight,
   ),
   headlineSmall: GoogleFonts.poppins(
-    fontSize: 28,
-    fontWeight: FontWeight.w400,
+    fontSize: AppTypography.headlineSize - 4,
+    fontWeight: AppTypography.headlineWeight,
+    height: AppTypography.headlineHeight,
   ),
   titleLarge: GoogleFonts.poppins(
-    fontSize: 23,
-    fontWeight: FontWeight.w500,
-    letterSpacing: 0.15,
+    fontSize: AppTypography.titleSize + 2,
+    fontWeight: AppTypography.titleWeight,
+    height: AppTypography.titleHeight,
   ),
   titleMedium: GoogleFonts.poppins(
-    fontSize: 19,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 0.15,
+    fontSize: AppTypography.titleSize,
+    fontWeight: AppTypography.titleWeight,
+    height: AppTypography.titleHeight,
   ),
   titleSmall: GoogleFonts.poppins(
-      fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.1),
+    fontSize: AppTypography.titleSize - 4,
+    fontWeight: AppTypography.titleWeight,
+    height: AppTypography.titleHeight,
+  ),
   bodyLarge: GoogleFonts.poppins(
-    fontSize: 19,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 0.5,
+    fontSize: AppTypography.bodySize + 2,
+    fontWeight: AppTypography.bodyWeight,
+    height: AppTypography.bodyHeight,
   ),
   bodyMedium: GoogleFonts.poppins(
-    fontSize: 16,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 0.25,
-  ),
-  labelLarge: GoogleFonts.poppins(
-    fontSize: 16,
-    fontWeight: FontWeight.w500,
-    letterSpacing: 1.25,
+    fontSize: AppTypography.bodySize,
+    fontWeight: AppTypography.bodyWeight,
+    height: AppTypography.bodyHeight,
   ),
   bodySmall: GoogleFonts.poppins(
-    fontSize: 14,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 0.4,
+    fontSize: AppTypography.captionSize,
+    fontWeight: AppTypography.bodyWeight,
+    height: AppTypography.captionHeight,
+  ),
+  labelLarge: GoogleFonts.poppins(
+    fontSize: AppTypography.labelSize + 2,
+    fontWeight: AppTypography.labelWeight,
+    height: AppTypography.labelHeight,
+  ),
+  labelMedium: GoogleFonts.poppins(
+    fontSize: AppTypography.labelSize,
+    fontWeight: AppTypography.labelWeight,
+    height: AppTypography.labelHeight,
   ),
   labelSmall: GoogleFonts.poppins(
-    fontSize: 12,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 1.5,
+    fontSize: AppTypography.captionSize,
+    fontWeight: AppTypography.captionWeight,
+    height: AppTypography.captionHeight,
   ),
 );

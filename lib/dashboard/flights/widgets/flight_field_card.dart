@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 
 /// Reusable rounded card shell used for the flight search form's outer
 /// container and its internal field rows. Purely presentational.
@@ -53,7 +54,7 @@ class FlightFieldBox extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F5F9),
+        color: AppColors.subtleBackground,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade300, width: 1),
       ),

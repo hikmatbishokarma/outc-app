@@ -6,7 +6,6 @@ import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/providers/bus_seat_selection_provider.dart';
 import 'package:outc/dashboard/bus/screens/bus_pickup_drop_screen.dart';
 import 'package:outc/dashboard/bus/widgets/bus_seat_grid.dart';
-import 'package:outc/widgets/colors/colors.dart';
 
 /// Real seat-selection screen (spec 0008) — replaces the "Seat selection
 /// coming soon" stub on the results screen's "Show Seats" button. Fetches
@@ -53,7 +52,7 @@ class _BusSeatSelectionView extends StatelessWidget {
       builder: (context, provider, _) {
         return Scaffold(
           appBar: AppBar(
-            backgroundColor: Colours.strongRed,
+            backgroundColor: Theme.of(context).colorScheme.primary,
             foregroundColor: Colors.white,
             titleSpacing: 0,
             title: Column(
@@ -159,8 +158,9 @@ class _LegendSheet extends StatelessWidget {
     return BottomSheetShell(
       title: 'Know before you book',
       primaryActionLabel: 'GOT IT',
-      primaryActionColor: Colours.strongRed,
+      primaryActionColor: Theme.of(context).colorScheme.primary,
       onPrimaryAction: () => Navigator.of(context).pop(),
+      glass: true,
       body: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,7 +334,7 @@ class _DeckPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: Colours.strongRed)),
+          Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary)),
           const SizedBox(height: 8),
           Flexible(child: child),
         ],
@@ -371,14 +371,14 @@ class _BottomBar extends StatelessWidget {
                   ),
                   Text(
                     '₹${provider.totalFare.toStringAsFixed(0)}',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colours.strongRed),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Theme.of(context).colorScheme.primary),
                   ),
                 ],
               ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colours.strongRed,
+                backgroundColor: Theme.of(context).colorScheme.primary,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               ),

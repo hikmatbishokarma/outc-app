@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'package:outc/dashboard/flights/widgets/colors.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 
 /// The promotional/marketing content ("Best Price Guaranteed", "24*7
 /// Support", destination carousel, "Why OutC?") shown below the search
@@ -55,7 +55,7 @@ class FlightMarketingSection extends StatelessWidget {
                                   Text(
                                     "BEST PRICE GUARANTED",
                                     style: GoogleFonts.poppins(
-                                        color: Flights_Colours.dardModerateBlue,
+                                        color: AppColors.secondary,
                                         fontSize: 16,
                                         fontWeight: FontWeight.w500),
                                   ),
@@ -103,7 +103,7 @@ class FlightMarketingSection extends StatelessWidget {
                                   Text(
                                     "24*7 SUPPORT",
                                     style: GoogleFonts.poppins(
-                                        color: Flights_Colours.dardModerateBlue,
+                                        color: AppColors.secondary,
                                         fontSize: 16,
                                         fontWeight: FontWeight.w500),
                                   ),
@@ -151,7 +151,7 @@ class FlightMarketingSection extends StatelessWidget {
               Text(
                 "Travel for less with our great deals",
                 style: GoogleFonts.poppins(
-                    color: Flights_Colours.strongRed,
+                    color: AppColors.primary,
                     fontSize: 20,
                     fontWeight: FontWeight.w600),
               ),
@@ -166,7 +166,7 @@ class FlightMarketingSection extends StatelessWidget {
                 Text(
                   "Why OutC ?",
                   style: GoogleFonts.poppins(
-                      color: Flights_Colours.strongRed,
+                      color: AppColors.primary,
                       fontSize: 22,
                       fontWeight: FontWeight.w600),
                 ),

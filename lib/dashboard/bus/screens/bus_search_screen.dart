@@ -9,7 +9,6 @@ import 'package:outc/dashboard/bus/screens/bus_city_search_screen.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/screens/bus_date_calendar_screen.dart';
 import 'package:outc/dashboard/bus/screens/bus_results_screen.dart';
-import 'package:outc/widgets/colors/colors.dart';
 
 /// Bus search screen (spec 0006, one-way only). Replaces the old
 /// `Bus_Dashboard` — no nested `MaterialApp`, inherits the app's own
@@ -36,7 +35,7 @@ class _BusSearchView extends StatelessWidget {
         appBar: AppBar(
           title: const Text('Bus Booking'),
           centerTitle: true,
-          backgroundColor: Colours.strongRed,
+          backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Colors.white,
         ),
         body: SafeArea(
@@ -87,13 +86,13 @@ class _BusSearchView extends StatelessWidget {
                       min: BusSearchProvider.minPassengers,
                       max: BusSearchProvider.maxPassengers,
                       label: 'Passengers',
-                      accentColor: Colours.strongRed,
+                      accentColor: Theme.of(context).colorScheme.primary,
                       onChanged: form.setPassengerCount,
                     ),
                     const SizedBox(height: 20),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colours.strongRed,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
@@ -206,7 +205,7 @@ class _SwapCitiesButtonState extends State<_SwapCitiesButton> {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      shape: CircleBorder(side: BorderSide(color: Colours.strongRed, width: 1.2)),
+      shape: CircleBorder(side: BorderSide(color: Theme.of(context).colorScheme.primary, width: 1.2)),
       elevation: 1.5,
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -220,7 +219,7 @@ class _SwapCitiesButtonState extends State<_SwapCitiesButton> {
             turns: _turns,
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOutCubic,
-            child: Icon(Icons.swap_vert, size: 18, color: Colours.strongRed),
+            child: Icon(Icons.swap_vert, size: 18, color: Theme.of(context).colorScheme.primary),
           ),
         ),
       ),
@@ -247,9 +246,9 @@ class _CityField extends StatelessWidget {
       onTap: onTap,
       child: InputDecorator(
         decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: Colours.strongRed),
+          prefixIcon: Icon(icon, color: Theme.of(context).colorScheme.primary),
           labelText: label,
-          labelStyle: TextStyle(color: Colours.strongRed),
+          labelStyle: TextStyle(color: Theme.of(context).colorScheme.primary),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
           filled: true,
           fillColor: Colors.grey[100],
@@ -275,9 +274,9 @@ class _DateField extends StatelessWidget {
       onTap: onTap,
       child: InputDecorator(
         decoration: InputDecoration(
-          prefixIcon: Icon(Icons.date_range, color: Colours.strongRed),
+          prefixIcon: Icon(Icons.date_range, color: Theme.of(context).colorScheme.primary),
           labelText: 'Journey Date',
-          labelStyle: TextStyle(color: Colours.strongRed),
+          labelStyle: TextStyle(color: Theme.of(context).colorScheme.primary),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
           filled: true,
           fillColor: Colors.grey[100],

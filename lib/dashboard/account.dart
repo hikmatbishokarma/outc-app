@@ -1,7 +1,6 @@
 import 'package:avatars/avatars.dart';
 import 'package:flutter/material.dart';
 import 'package:outc/loginflow/multiloginpage.dart';
-import 'package:outc/widgets/colors/colors.dart';
 import 'package:outc/widgets/components/components.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
 
@@ -41,8 +40,8 @@ class _MyAccountState extends State<MyAccount> {
                             width: 100.0,
                             height: 100.0,
                             child: Avatar(
-                              backgroundColor: Colours.strongRed,
-                              placeholderColors: [Colours.strongRed],
+                              backgroundColor: Theme.of(context).colorScheme.primary,
+                              placeholderColors: [Theme.of(context).colorScheme.primary],
                               useCache: true,
 
                               onTap: () {},
@@ -259,7 +258,7 @@ class _MyAccountState extends State<MyAccount> {
                     //             shape: RoundedRectangleBorder(
                     //               borderRadius: BorderRadius.circular(10),
                     //             ),
-                    //             backgroundColor: Colours.strongRed,
+                    //             backgroundColor: Theme.of(context).colorScheme.primary,
                     //             fixedSize: const Size(330, 48),
                     //             textStyle: const TextStyle(
                     //               fontSize: 14.0,
@@ -308,7 +307,7 @@ class _GuestAccountView extends StatelessWidget {
             Icon(
               Icons.account_circle_outlined,
               size: 100.0,
-              color: Colours.strongRed,
+              color: Theme.of(context).colorScheme.primary,
             ),
             const SizedBox(height: 15.0),
             const Text(
@@ -325,7 +324,7 @@ class _GuestAccountView extends StatelessWidget {
               height: 45,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colours.strongRed,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),

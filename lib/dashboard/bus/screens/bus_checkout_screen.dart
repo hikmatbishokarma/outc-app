@@ -6,7 +6,6 @@ import 'package:outc/core/widgets/bottom_sheet_shell.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/models/bus_seat_model.dart';
 import 'package:outc/dashboard/bus/providers/bus_checkout_provider.dart';
-import 'package:outc/widgets/colors/colors.dart';
 
 /// Checkout screen (spec 0009) — trip summary, price breakup, and passenger
 /// details, reached from `BusPickupDropScreen`'s "Next". Still stops short
@@ -50,7 +49,7 @@ class _BusCheckoutView extends StatelessWidget {
         return Scaffold(
           appBar: AppBar(
             title: const Text('Review & Passenger Details'),
-            backgroundColor: Colours.strongRed,
+            backgroundColor: Theme.of(context).colorScheme.primary,
             foregroundColor: Colors.white,
           ),
           body: SingleChildScrollView(
@@ -218,7 +217,7 @@ class _FareSummarySheet extends StatelessWidget {
     return BottomSheetShell(
       title: 'Fare Summary',
       primaryActionLabel: 'Close',
-      primaryActionColor: Colours.strongRed,
+      primaryActionColor: Theme.of(context).colorScheme.primary,
       onPrimaryAction: () => Navigator.of(context).pop(),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,7 +243,7 @@ class _FareSummarySheet extends StatelessWidget {
               const Text('Amount to be paid', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               Text(
                 '₹${provider.totalFare.toStringAsFixed(0)}',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colours.strongRed),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.primary),
               ),
             ],
           ),
@@ -328,20 +327,20 @@ class _GenderToggle extends StatelessWidget {
         // Plain man/woman person icons instead of the male/female
         // astrological (mars/venus) symbols — clearer at a glance than a
         // symbol most people don't immediately read as a gender marker.
-        _icon(Icons.man, 'Male'),
+        _icon(context, Icons.man, 'Male'),
         const SizedBox(width: 3),
-        _icon(Icons.woman, 'Female'),
+        _icon(context, Icons.woman, 'Female'),
       ],
     );
   }
 
-  Widget _icon(IconData icon, String value) {
+  Widget _icon(BuildContext context, IconData icon, String value) {
     final isSelected = selected == value;
     return GestureDetector(
       onTap: () => onChanged(value),
       child: CircleAvatar(
         radius: 14,
-        backgroundColor: isSelected ? Colours.strongRed : Colors.grey.shade100,
+        backgroundColor: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey.shade100,
         child: Icon(icon, size: 16, color: isSelected ? Colors.white : Colors.grey.shade500),
       ),
     );
@@ -397,7 +396,7 @@ class _TermsRow extends StatelessWidget {
       children: [
         Checkbox(
           value: provider.termsAccepted,
-          activeColor: Colours.strongRed,
+          activeColor: Theme.of(context).colorScheme.primary,
           onChanged: (value) => provider.setTermsAccepted(value ?? false),
         ),
         Expanded(
@@ -423,7 +422,7 @@ class _TermsRow extends StatelessWidget {
       builder: (_) => BottomSheetShell(
         title: title,
         primaryActionLabel: 'Close',
-        primaryActionColor: Colours.strongRed,
+        primaryActionColor: Theme.of(context).colorScheme.primary,
         onPrimaryAction: () => Navigator.of(context).pop(),
         body: Text(
           '$title content will appear here once available.',
@@ -445,7 +444,7 @@ class _LegalLink extends StatelessWidget {
       onTap: onTap,
       child: Text(
         label,
-        style: TextStyle(color: Colours.strongRed, fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
+        style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
       ),
     );
   }
@@ -482,7 +481,7 @@ class _BottomBar extends StatelessWidget {
                   children: [
                     Text(
                       '₹${provider.totalFare.toStringAsFixed(0)}',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colours.strongRed),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Theme.of(context).colorScheme.primary),
                     ),
                     const SizedBox(width: 4),
                     Icon(Icons.info_outline, size: 16, color: Colors.grey.shade600),
@@ -492,7 +491,7 @@ class _BottomBar extends StatelessWidget {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colours.strongRed,
+                backgroundColor: Theme.of(context).colorScheme.primary,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
               ),

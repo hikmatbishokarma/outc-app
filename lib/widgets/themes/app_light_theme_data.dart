@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 import 'package:outc/widgets/themes/app_text_theme.dart';
 
 ThemeData appLightThemeData() {
   return ThemeData(
-    colorScheme: ColorScheme.fromSwatch(
-      primarySwatch: Colors.red,
-    ).copyWith(),
+    colorScheme: const ColorScheme.light(
+      primary: AppColors.primary,
+      secondary: AppColors.secondary,
+      surface: Colors.white,
+      error: AppColors.error,
+      onPrimary: Colors.white,
+      onSecondary: Colors.white,
+      onSurface: AppColors.textPrimary,
+      onError: Colors.white,
+      outline: AppColors.border,
+    ),
     brightness: Brightness.light,
 
     scaffoldBackgroundColor: Colors.white,
@@ -14,84 +23,82 @@ ThemeData appLightThemeData() {
     textTheme: appTextTheme,
 
     /// AppBar theme
-    appBarTheme: const AppBarTheme(backgroundColor: Colors.black
-        // centerTitle: true,
-        // color: Colors.white,
-        // elevation: 0,
-        // titleTextStyle: appTextTheme.headlineSmall?.copyWith(
-        //   color: const Color.fromRGBO(50, 45, 120, 1),
-        //   fontWeight: FontWeight.w700,
-        // ),
-        // actionsIconTheme: const IconThemeData(
-        //   color: Color.fromRGBO(50, 45, 120, 1),
-        // ),
-        // iconTheme: const IconThemeData(
-        //   color: Color.fromRGBO(50, 45, 120, 1),
-        // ),
-        ),
+    appBarTheme: AppBarTheme(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      centerTitle: true,
+      titleTextStyle: appTextTheme.headlineSmall?.copyWith(
+        color: AppColors.primary,
+        fontWeight: FontWeight.w700,
+      ),
+      iconTheme: const IconThemeData(color: AppColors.primary),
+    ),
 
-    /// Button theme
-    // buttonTheme: const ButtonThemeData(
-    //   shape: RoundedRectangleBorder(),
-    //   disabledColor: Color.fromRGBO(34, 193, 224, 0.1),
-    //   buttonColor: Color.fromRGBO(34, 193, 224, 1),
-    // ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: Colors.white,
+      selectedItemColor: AppColors.primary,
+      unselectedItemColor: Colors.grey,
+    ),
 
     /// elevated Button Theme
-    // elevatedButtonTheme: ElevatedButtonThemeData(
-    //   style: ElevatedButton.styleFrom(
-    //     fixedSize: const Size(double.maxFinite, 48),
-    //     foregroundColor: Colors.white,
-    //     backgroundColor: const Color.fromRGBO(50, 45, 120, 1),
-    //     shape: RoundedRectangleBorder(
-    //       borderRadius: BorderRadius.circular(8),
-    //     ),
-    //     elevation: 0,
-    //   ),
-    // ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        fixedSize: const Size(double.maxFinite, 48),
+        foregroundColor: Colors.white,
+        backgroundColor: AppColors.primary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+        ),
+        elevation: 0,
+      ),
+    ),
 
     /// popup TabBar theme
-    // popupMenuTheme: PopupMenuThemeData(
-    //   shape: RoundedRectangleBorder(
-    //     borderRadius: BorderRadius.circular(8),
-    //   ),
-    //   textStyle: appTextTheme.titleSmall?.copyWith(
-    //     color: Colors.black,
-    //   ),
-    // ),
+    popupMenuTheme: PopupMenuThemeData(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      textStyle: appTextTheme.titleSmall?.copyWith(
+        color: AppColors.textPrimary,
+      ),
+    ),
 
     /// input Decoration Theme
-    // inputDecorationTheme: InputDecorationTheme(
-    //   errorBorder: OutlineInputBorder(
-    //     borderRadius: BorderRadius.circular(8),
-    //     borderSide: const BorderSide(
-    //       color: Color.fromRGBO(241, 95, 109, 1),
-    //       width: 1,
-    //     ),
-    //   ),
-    //   floatingLabelStyle: appTextTheme.labelLarge?.copyWith(
-    //     color: const Color.fromRGBO(50, 45, 120, 1),
-    //   ),
-    //   isDense: true,
-    //   iconColor: const Color.fromRGBO(34, 193, 224, 1),
-    //   focusedBorder: OutlineInputBorder(
-    //     borderRadius: BorderRadius.circular(8),
-    //     borderSide: const BorderSide(
-    //       color: Color.fromRGBO(50, 45, 120, 1),
-    //       width: 2,
-    //     ),
-    //   ),
-    //   border: OutlineInputBorder(
-    //     borderRadius: BorderRadius.circular(8),
-    //     borderSide: const BorderSide(
-    //       color: Color.fromRGBO(50, 45, 120, 1),
-    //     ),
-    //   ),
-    // ),
+    inputDecorationTheme: InputDecorationTheme(
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        borderSide: const BorderSide(
+          color: AppColors.error,
+          width: 1,
+        ),
+      ),
+      floatingLabelStyle: appTextTheme.labelLarge?.copyWith(
+        color: AppColors.primary,
+      ),
+      isDense: true,
+      iconColor: AppColors.primary,
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        borderSide: const BorderSide(
+          color: AppColors.primary,
+          width: 2,
+        ),
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        borderSide: const BorderSide(
+          color: AppColors.border,
+        ),
+      ),
+    ),
 
     /// progress Indicator Theme
-    // progressIndicatorTheme: const ProgressIndicatorThemeData(
-    //   color: Colors.black,
-    // ),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: AppColors.primary,
+    ),
+
+    extensions: const <ThemeExtension<dynamic>>[
+      GlassThemeExtension.light,
+    ],
   );
 }

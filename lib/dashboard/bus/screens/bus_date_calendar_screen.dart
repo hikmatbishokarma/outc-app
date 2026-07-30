@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:outc/core/widgets/calendar/calendar_pager.dart';
-import 'package:outc/widgets/colors/colors.dart';
 
 /// Bus's single-date picker — same calendar-grid UI as flights'
 /// `FlightSingleDateCalendarScreen` (via the shared `core/widgets/calendar`
@@ -35,7 +34,7 @@ class _BusDateCalendarScreenState extends State<BusDateCalendarScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Select Journey Date'),
-        backgroundColor: Colours.strongRed,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
       body: SafeArea(
@@ -58,7 +57,7 @@ class _BusDateCalendarScreenState extends State<BusDateCalendarScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colours.strongRed,
+                    backgroundColor: Theme.of(context).colorScheme.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),

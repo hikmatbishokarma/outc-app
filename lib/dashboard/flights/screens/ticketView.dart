@@ -5,7 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:outc/dashboard/dashboard.dart';
 import 'package:outc/dashboard/flights/models/one_way_book_response.dart';
 
-import 'package:outc/dashboard/flights/widgets/colors.dart';
+import 'package:outc/core/theme/design_tokens.dart';
+import 'package:outc/core/widgets/glass_surface.dart';
 
 import 'package:outc/widgets/sharedprefservices.dart';
 
@@ -72,7 +73,7 @@ class _TicketViewState extends State<TicketView> {
             style: TextStyle(
               fontSize: 22.0,
               fontFamily: 'poppins',
-              color: Flights_Colours.strongRed,
+              color: AppColors.primary,
             ),
           ),
           backgroundColor: Colors.white,
@@ -82,11 +83,11 @@ class _TicketViewState extends State<TicketView> {
           leading: Padding(
               padding: const EdgeInsets.all(8),
               child: IconButton(
-                color: Flights_Colours.strongRed,
+                color: AppColors.primary,
                 icon: Icon(
                   Icons.home,
                   size: 28,
-                  color: Flights_Colours.strongRed,
+                  color: AppColors.primary,
                 ),
                 onPressed: () {
                   Navigator.of(context).push(
@@ -102,11 +103,11 @@ class _TicketViewState extends State<TicketView> {
             Padding(
               padding: const EdgeInsets.all(4.0),
               child: IconButton(
-                color: Flights_Colours.strongRed,
+                color: AppColors.primary,
                 icon: Icon(
                   Icons.wallet,
                   size: 28,
-                  color: Flights_Colours.strongRed,
+                  color: AppColors.primary,
                 ),
                 onPressed: () {
                   showDialog(
@@ -137,7 +138,7 @@ class _TicketViewState extends State<TicketView> {
                                   "INR ${SharedPrefServices.getwalletblc()}",
                                   style: TextStyle(
                                     fontSize: 20.0,
-                                    color: Flights_Colours.strongRed,
+                                    color: AppColors.primary,
                                     fontFamily: 'Poppins',
                                     // fontWeight: FontWeight.w700,
                                   ),
@@ -154,7 +155,7 @@ class _TicketViewState extends State<TicketView> {
               ),
             ),
             IconButton(
-              color: Flights_Colours.strongRed,
+              color: AppColors.primary,
               icon: const ImageIcon(
                 AssetImage(
                   "images/notifybell.png",
@@ -180,8 +181,8 @@ class _TicketViewState extends State<TicketView> {
                   borderRadius: BorderRadius.circular(10),
                   gradient: const LinearGradient(
                     colors: [
-                      Color(0xffbd0c21), // Start color
-                      Color(0xff35459c), // End color
+                      AppColors.error, // Start color
+                      AppColors.secondary, // End color
                     ],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
@@ -220,8 +221,8 @@ class _TicketViewState extends State<TicketView> {
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            Color(0xffbd0c21),
-                            Color(0xff35459c),
+                            AppColors.error,
+                            AppColors.secondary,
                             Colors.white,
                           ],
                           begin: Alignment.topLeft,
@@ -235,134 +236,127 @@ class _TicketViewState extends State<TicketView> {
                           ),
                           Padding(
                             padding: const EdgeInsets.only(right: 10, left: 10),
-                            child: Card(
-                              color: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(5)),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                                child: Container(
-                                  margin: const EdgeInsets.only(
-                                      right: 10, left: 10),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                            // The one reserved glass hero surface for the
+                            // Flights flow (docs/architecture.md §4) — this
+                            // status/PNR card is the first thing on the
+                            // gradient background, the "just booked" moment.
+                            // Everything below it stays flat/solid white.
+                            child: GlassSurface(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 10),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
-                                      const SizedBox(height: 10),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text("Journey Date",
-                                              style: GoogleFonts.poppins(
-                                                  color: Colors.grey,
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600)),
-                                          const SizedBox(width: 10),
-                                          Text(formatDate(widget.journeyDate),
-                                              style: GoogleFonts.poppins(
-                                                  color: Colors.black,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500)),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text("PNR/Booking No",
-                                              style: GoogleFonts.poppins(
-                                                  color: Colors.grey,
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600)),
-                                          const SizedBox(width: 10),
-                                          Text(widget.pnr,
-                                              style: GoogleFonts.poppins(
-                                                  color: Colors.black,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500)),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text("Ticket Ref No",
-                                              style: GoogleFonts.poppins(
-                                                  color: Colors.grey,
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600)),
-                                          const SizedBox(width: 10),
-                                          Text(widget.referenceNumber,
-                                              style: GoogleFonts.poppins(
-                                                  color: Colors.black,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500)),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text("Status",
-                                              style: GoogleFonts.poppins(
-                                                  color: Colors.grey,
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600)),
-                                          const SizedBox(width: 10),
-                                          Text(widget.bookingStatus,
-                                              style: GoogleFonts.poppins(
-                                                  color:
-                                                      const Color(0xff008000),
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500)),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text("Booking Date",
-                                              style: GoogleFonts.poppins(
-                                                  color: Colors.grey,
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600)),
-                                          const SizedBox(width: 10),
-                                          Text(formatDate(widget.bookingDate),
-                                              style: GoogleFonts.poppins(
-                                                  color: Colors.black,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500)),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text("Payment Status",
-                                              style: GoogleFonts.poppins(
-                                                  color: Colors.grey,
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600)),
-                                          const SizedBox(width: 10),
-                                          Text('Paid',
-                                              style: GoogleFonts.poppins(
-                                                  color: Colors.black,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500)),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 15),
+                                      Text("Journey Date",
+                                          style: GoogleFonts.poppins(
+                                              color: Colors.white70,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600)),
+                                      const SizedBox(width: 10),
+                                      Text(formatDate(widget.journeyDate),
+                                          style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500)),
                                     ],
                                   ),
-                                ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text("PNR/Booking No",
+                                          style: GoogleFonts.poppins(
+                                              color: Colors.white70,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600)),
+                                      const SizedBox(width: 10),
+                                      Text(widget.pnr,
+                                          style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text("Ticket Ref No",
+                                          style: GoogleFonts.poppins(
+                                              color: Colors.white70,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600)),
+                                      const SizedBox(width: 10),
+                                      Text(widget.referenceNumber,
+                                          style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text("Status",
+                                          style: GoogleFonts.poppins(
+                                              color: Colors.white70,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600)),
+                                      const SizedBox(width: 10),
+                                      Text(widget.bookingStatus,
+                                          style: GoogleFonts.poppins(
+                                              color: AppColors.success,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text("Booking Date",
+                                          style: GoogleFonts.poppins(
+                                              color: Colors.white70,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600)),
+                                      const SizedBox(width: 10),
+                                      Text(formatDate(widget.bookingDate),
+                                          style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text("Payment Status",
+                                          style: GoogleFonts.poppins(
+                                              color: Colors.white70,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600)),
+                                      const SizedBox(width: 10),
+                                      Text('Paid',
+                                          style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 15),
+                                ],
                               ),
                             ),
                           ),
@@ -389,7 +383,7 @@ class _TicketViewState extends State<TicketView> {
                                       const SizedBox(height: 15),
                                       Text("Travel Information",
                                           style: GoogleFonts.poppins(
-                                              color: const Color(0xff35459c),
+                                              color: AppColors.secondary,
                                               fontSize: 16,
                                               fontWeight: FontWeight.w500)),
                                       const SizedBox(height: 10),
@@ -477,7 +471,7 @@ class _TicketViewState extends State<TicketView> {
                                           const Icon(
                                             Icons.arrow_forward,
                                             size: 25,
-                                            color: Color(0xff35459c),
+                                            color: AppColors.secondary,
                                           ),
                                           Row(
                                             children: [
@@ -718,7 +712,7 @@ class _TicketViewState extends State<TicketView> {
                                                 const Icon(
                                                   Icons.arrow_forward,
                                                   size: 25,
-                                                  color: Color(0xff35459c),
+                                                  color: AppColors.secondary,
                                                 ),
                                                 Row(
                                                   children: [
@@ -953,7 +947,7 @@ class _TicketViewState extends State<TicketView> {
                                       const SizedBox(height: 15),
                                       Text("Contact Details",
                                           style: GoogleFonts.poppins(
-                                              color: const Color(0xff35459c),
+                                              color: AppColors.secondary,
                                               fontSize: 16,
                                               fontWeight: FontWeight.w500)),
                                       const SizedBox(height: 5),
@@ -1068,7 +1062,7 @@ class _TicketViewState extends State<TicketView> {
                                       const SizedBox(height: 15),
                                       Text("Passenger Details",
                                           style: GoogleFonts.poppins(
-                                              color: const Color(0xff35459c),
+                                              color: AppColors.secondary,
                                               fontSize: 16,
                                               fontWeight: FontWeight.w500)),
                                       const SizedBox(height: 10),
@@ -1197,7 +1191,7 @@ class _TicketViewState extends State<TicketView> {
                                       const SizedBox(height: 10),
                                       Text("Fare Details",
                                           style: GoogleFonts.poppins(
-                                              color: const Color(0xff35459c),
+                                              color: AppColors.secondary,
                                               fontSize: 16,
                                               fontWeight: FontWeight.w500)),
                                       const SizedBox(height: 10),
@@ -1330,7 +1324,7 @@ class _TicketViewState extends State<TicketView> {
                                 left: 5, top: 1, right: 5),
                             child: Text("OutC Travels",
                                 style: GoogleFonts.poppins(
-                                    color: const Color(0xffbd0c21),
+                                    color: AppColors.error,
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500)),
                           ),

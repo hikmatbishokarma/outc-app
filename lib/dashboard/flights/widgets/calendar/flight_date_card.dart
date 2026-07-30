@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import 'package:outc/dashboard/flights/widgets/colors.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 
 /// One selection card at the top of the flight calendar screen (Departure,
 /// Return, or a Multi-City leg's single date). Highlighted border when
@@ -38,10 +38,10 @@ class FlightDateCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isActive ? Flights_Colours.strongRed.withValues(alpha: 0.06) : Colors.white,
+          color: isActive ? AppColors.primary.withValues(alpha: 0.06) : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isActive ? Flights_Colours.strongRed : Colors.grey.shade300,
+            color: isActive ? AppColors.primary : Colors.grey.shade300,
             width: isActive ? 1.6 : 1,
           ),
         ),
@@ -57,7 +57,7 @@ class FlightDateCard extends StatelessWidget {
                 fontFamily: 'Poppins',
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.5,
-                color: Flights_Colours.strongRed,
+                color: AppColors.primary,
               ),
             ),
             const SizedBox(height: 4),

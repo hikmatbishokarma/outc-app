@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:outc/widgets/colors/colors.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 
 class WidgetComponent {
   // static FlatButton flatButton ({
@@ -79,9 +79,9 @@ class WidgetComponent {
 }
 
 TextStyle textStyleHeading() {
-  return TextStyle(
+  return const TextStyle(
       fontSize: 14.0,
-      color: Colours.orangeOutC,
+      color: AppColors.primary,
       fontFamily: 'poppins',
       fontWeight: FontWeight.bold);
 }
@@ -102,7 +102,7 @@ class TextHeader extends StatelessWidget {
             inputText,
             style: TextStyle(
               fontSize: 10.0,
-              color: Colours.strongRed,
+              color: Theme.of(context).colorScheme.primary,
               fontFamily: 'poppins',
             ),
           ),
@@ -126,7 +126,7 @@ class TextContent extends StatelessWidget {
         inputText,
         style: TextStyle(
           fontSize: 14.0,
-          color: Colours.veryDarkGrey,
+          color: Theme.of(context).colorScheme.onSurface,
           fontFamily: 'poppins',
         ),
       );
@@ -145,7 +145,7 @@ class DivWithPadding extends StatelessWidget {
           ),
           Divider(
             height: 2.0,
-            color: Colours.veryDarkGrey,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           const SizedBox(
             height: 4.0,

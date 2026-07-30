@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:outc/dashboard/flights/models/get_cities_by_search_model.dart';
 import 'package:outc/dashboard/flights/providers/recent_airports_store.dart';
-import 'package:outc/dashboard/flights/widgets/colors.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 
 enum AirportSearchField { origin, destination }
 
@@ -229,7 +229,7 @@ class _AirportFieldBox extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isActive ? Flights_Colours.strongRed : Colors.grey.shade300,
+            color: isActive ? AppColors.primary : Colors.grey.shade300,
             width: isActive ? 1.4 : 1,
           ),
         ),
@@ -243,7 +243,7 @@ class _AirportFieldBox extends StatelessWidget {
                 child: Icon(
                   leadingIcon,
                   size: 22,
-                  color: isActive ? Flights_Colours.strongRed : Colors.grey.shade500,
+                  color: isActive ? AppColors.primary : Colors.grey.shade500,
                 ),
               ),
             ),
@@ -254,7 +254,7 @@ class _AirportFieldBox extends StatelessWidget {
                       controller: controller,
                       focusNode: focusNode,
                       onChanged: onChanged,
-                      cursorColor: Flights_Colours.strongRed,
+                      cursorColor: AppColors.primary,
                       style: const TextStyle(
                         fontSize: 16,
                         fontFamily: 'Poppins',
@@ -436,7 +436,7 @@ class _SearchResultsList extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Row(
               children: [
-                Icon(Icons.flight_takeoff, size: 22, color: Flights_Colours.strongRed),
+                Icon(Icons.flight_takeoff, size: 22, color: AppColors.primary),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(

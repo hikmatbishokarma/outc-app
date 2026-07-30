@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:outc/dashboard/flights/providers/flight_search_form_provider.dart';
-import 'package:outc/dashboard/flights/widgets/colors.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 
 /// The 4-option cabin-class picker: selectable cards with a title,
 /// description, and a selection indicator.
@@ -30,12 +30,12 @@ class CabinSelector extends StatelessWidget {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? Flights_Colours.strongRed.withValues(alpha: 0.08)
+                    ? AppColors.primary.withValues(alpha: 0.08)
                     : Colors.white,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: isSelected
-                      ? Flights_Colours.strongRed
+                      ? AppColors.primary
                       : Colors.grey.shade300,
                   width: isSelected ? 1.6 : 1,
                 ),
@@ -72,7 +72,7 @@ class CabinSelector extends StatelessWidget {
                         ? Icons.radio_button_checked
                         : Icons.radio_button_off,
                     color: isSelected
-                        ? Flights_Colours.strongRed
+                        ? AppColors.primary
                         : Colors.grey.shade400,
                   ),
                 ],

@@ -13,7 +13,6 @@ import 'package:outc/dashboard/my_bookings.dart';
 import 'package:outc/loginflow/multiloginpage.dart';
 import 'package:outc/partnerSidemenu/reportlistpages/hotelreports.dart';
 import 'package:outc/sidemenu/sidemenu.dart';
-import 'package:outc/widgets/colors/colors.dart';
 import 'package:outc/widgets/progressbar.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -42,8 +41,6 @@ class _DashboardState extends State<Dashboard> {
   }
 
   List children = const [HomePage(), MybookingListPage(), MyAccount()];
-
-  Color mainColor = const Color(0xFFFF6700);
 
   @override
   void initState() {
@@ -95,12 +92,12 @@ class _DashboardState extends State<Dashboard> {
           ),
           backgroundColor: Colors.white,
           iconTheme: IconThemeData(
-            color: Colours.borderGrey,
+            color: Theme.of(context).colorScheme.outline,
           ),
           leading: IconButton(
             icon: Icon(
               Icons.menu,
-              color: Colours.borderGrey,
+              color: Theme.of(context).colorScheme.outline,
             ),
             onPressed: () {
               scaffoldKey.currentState!.openDrawer();
@@ -124,7 +121,7 @@ class _DashboardState extends State<Dashboard> {
                   child: Text(
                     'Partner Login',
                     style: TextStyle(
-                      color: Colours.orangeOutC,
+                      color: Theme.of(context).colorScheme.primary,
                       fontFamily: 'poppins',
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
@@ -136,7 +133,7 @@ class _DashboardState extends State<Dashboard> {
               Padding(
                 padding: const EdgeInsets.all(4.0),
                 child: IconButton(
-                  color: Colours.orangeOutC,
+                  color: Theme.of(context).colorScheme.primary,
                   icon: FaIcon(FontAwesomeIcons.wallet),
                   onPressed: () {
                     showDialog(
@@ -155,7 +152,7 @@ class _DashboardState extends State<Dashboard> {
                                   ),
                                   CustomText(
                                     text: "My Wallet Balance",
-                                    textcolor: Colours.textBlack,
+                                    textcolor: Theme.of(context).colorScheme.onSurface,
                                     fontSize: 14,
                                     fontWeight: FontWeight.w400,
                                   ),
@@ -163,7 +160,7 @@ class _DashboardState extends State<Dashboard> {
                                   CustomText(
                                     text:
                                         "INR ${SharedPrefServices.getwalletblc()}",
-                                    textcolor: Colours.orangeOutC,
+                                    textcolor: Theme.of(context).colorScheme.primary,
                                     fontSize: 20,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -179,7 +176,7 @@ class _DashboardState extends State<Dashboard> {
                 ),
               ),
             IconButton(
-              color: Colours.orangeOutC,
+              color: Theme.of(context).colorScheme.primary,
               icon: FaIcon(FontAwesomeIcons.bell),
               // const ImageIcon(
               //   AssetImage(
@@ -195,7 +192,7 @@ class _DashboardState extends State<Dashboard> {
         bottomNavigationBar: BottomNavigationBar(
           backgroundColor: Colors.white,
           currentIndex: selectIndex,
-          selectedItemColor: Colours.orangeOutC,
+          selectedItemColor: Theme.of(context).colorScheme.primary,
           unselectedItemColor: Colors.grey.shade400,
           onTap: _onItemTapped,
           items: const [
@@ -235,7 +232,7 @@ class _DashboardState extends State<Dashboard> {
   //         ),
   //       ),
   //       title: ("Home"),
-  //       activeColorPrimary: Colours.strongRed,
+  //       activeColorPrimary: Theme.of(context).colorScheme.primary,
   //       inactiveColorPrimary: CupertinoColors.systemGrey,
   //       textStyle: const TextStyle(fontSize: 12, fontFamily: "poppins"),
   //     ),
@@ -245,7 +242,7 @@ class _DashboardState extends State<Dashboard> {
   //         AssetImage("images/account.png"),
   //       ),
   //       title: ("Bookings"),
-  //       activeColorPrimary: Colours.strongRed,
+  //       activeColorPrimary: Theme.of(context).colorScheme.primary,
   //       inactiveColorPrimary: CupertinoColors.systemGrey,
   //       textStyle: const TextStyle(fontSize: 12, fontFamily: "poppins"),
   //     ),
@@ -255,7 +252,7 @@ class _DashboardState extends State<Dashboard> {
   //         AssetImage("images/account.png"),
   //       ),
   //       title: ("Account"),
-  //       activeColorPrimary: Colours.strongRed,
+  //       activeColorPrimary: Theme.of(context).colorScheme.primary,
   //       inactiveColorPrimary: CupertinoColors.systemGrey,
   //       textStyle: const TextStyle(fontSize: 12, fontFamily: "poppins"),
   //     ),
@@ -306,7 +303,7 @@ class _DashboardState extends State<Dashboard> {
                         },
                         child: Card(
                           shape: RoundedRectangleBorder(
-                            side: const BorderSide(color: Color(0xFFFF6700)),
+                            side: BorderSide(color: Theme.of(context).colorScheme.primary),
                             borderRadius: BorderRadius.circular(10.0),
                           ),
                           child: Container(
@@ -324,7 +321,7 @@ class _DashboardState extends State<Dashboard> {
                                   "Cancel",
                                   style: TextStyle(
                                     fontSize: 15.0,
-                                    color: Colours.strongRed,
+                                    color: Theme.of(context).colorScheme.primary,
                                     fontFamily: 'Poppins',
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -352,7 +349,7 @@ class _DashboardState extends State<Dashboard> {
                           child: Container(
                             width: 100,
                             decoration: BoxDecoration(
-                              color: Colours.strongRed,
+                              color: Theme.of(context).colorScheme.primary,
                               borderRadius: const BorderRadius.all(
                                 Radius.circular(10.0),
                               ),

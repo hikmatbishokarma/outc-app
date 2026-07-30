@@ -8,7 +8,8 @@ import 'package:outc/dashboard/hotels/models/hotels_search_payload.dart';
 import 'package:outc/dashboard/hotels/screens/search_hotel.dart';
 import 'package:outc/dashboard/hotels/screens/select_room_guests.dart';
 import 'package:outc/dashboard/visa/screens/search_country.dart';
-import 'package:outc/widgets/colors/colors.dart';
+import 'package:outc/core/theme/design_tokens.dart';
+import 'package:outc/core/widgets/glass_surface.dart';
 import 'package:outc/widgets/components/components.dart';
 import 'package:outc/widgets/components/dialogtabsview.dart';
 import 'package:outc/widgets/components/home_card.dart';
@@ -147,76 +148,62 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Padding(
-          //   padding: const EdgeInsets.all(8.0),
-          //   child: GestureDetector(
-          //     onTap: () {
-          //       showToast("Offers Coming Soon");
-          //     },
-          //     child: buildNote('Hello, Udayteja Ch',
-          //         "Click here to grab the special offers."),
-          //   ),
-          // ),
-
           Container(
             margin: const EdgeInsets.only(left: 10, right: 10, top: 15),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: _tiles(context)
-                  .where((tile) => ModuleRegistry.isEnabled(tile.module))
-                  .map((tile) => InkWell(
-                        onTap: tile.onTap,
-                        child: Card(
-                          elevation: 0.0,
-                          shape: RoundedRectangleBorder(
-                            side: BorderSide(
-                              color: Colours.borderGrey,
-                            ),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [colorScheme.primary, colorScheme.secondary],
+              ),
+            ),
+            child: GlassSurface(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: _tiles(context)
+                    .where((tile) => ModuleRegistry.isEnabled(tile.module))
+                    .map((tile) => InkWell(
+                          onTap: tile.onTap,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
                           child: Container(
                             height: 90,
                             width: 75,
-                            decoration: const BoxDecoration(
-                              borderRadius: BorderRadius.all(
-                                Radius.circular(10.0),
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Column(
-                                children: [
-                                  SizedBox(
-                                      height: 40,
-                                      width: 40,
-                                      child: Icon(
-                                        tile.icon,
-                                        size: 34,
-                                        color: Colours.orangeOutC,
-                                      )),
-                                  const SizedBox(
-                                    height: 5,
-                                  ),
-                                  CustomText(
-                                    text: tile.label,
-                                    textcolor: Colours.orangeOutC,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                ],
-                              ),
+                            padding: const EdgeInsets.all(8.0),
+                            child: Column(
+                              children: [
+                                SizedBox(
+                                    height: 40,
+                                    width: 40,
+                                    child: Icon(
+                                      tile.icon,
+                                      size: 34,
+                                      color: Colors.white,
+                                    )),
+                                const SizedBox(
+                                  height: 5,
+                                ),
+                                CustomText(
+                                  text: tile.label,
+                                  textcolor: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ))
-                  .toList(),
+                        ))
+                    .toList(),
+              ),
             ),
           ),
           Padding(

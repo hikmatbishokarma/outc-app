@@ -7,7 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 flutter pub get              # install/update dependencies (run after any pubspec.yaml change)
 flutter analyze              # static analysis — must be clean before any PR
-flutter run -d chrome         # fastest local iteration loop (web); use -d <device-id> for a physical phone
+flutter run -d chrome         # fast hot-reload loop for compiling/wiring logic only — NOT a design/UX reference; this app targets touch-first mobile, not web
+flutter run -d <device-id>    # verify on a physical phone before calling a UI change done — see `flutter devices`
 flutter devices               # list available targets (emulators/physical devices/chrome)
 flutter test                  # run all tests
 flutter test test/widget_test.dart   # run a single test file
@@ -35,6 +36,10 @@ The default `test/widget_test.dart` is the unmodified Flutter counter-app templa
 
 **Known legacy/dead files** (do not use as a pattern; safe to ignore or clean up when touched): `dummy.dart`, `testFlight.dart`, `flightranjith.dart`, `flightbalaji.dart` under `lib/dashboard/flights/`.
 
+**Design tokens & theming**: `lib/core/theme/design_tokens.dart` is the single source of truth for brand colors, semantic colors, typography scale, radius/shadow/spacing scale, and the one "glass surface" style — see `docs/architecture.md` §4 and `specs/0011-design-token-system.md`. Home/Dashboard, Flights, and Bus are migrated onto it (Hotels/Cars/Visa/Agent are tracked in `specs/0013-*`, not yet migrated). **Any screen you write or touch must read `Theme.of(context)` (preferred) or a `design_tokens.dart` constant directly (acceptable where threading `BuildContext` through a large pre-existing file isn't worth the risk — see spec 0011's Flights migration) — never a hardcoded `Color(0xFF...)`/inline hex, and never import a module's legacy `colors.dart`.** Those color files are retired module-by-module as each module migrates; a file may still physically exist afterward if something outside that module still depends on it (e.g. a shared widget also used by an unmigrated module) — that's expected, not a shim, and goes away once the last dependent migrates. Glass/blur is only ever applied via the shared `GlassSurface` widget (`lib/core/widgets/glass_surface.dart`), and only on the one hero surface per flow called out in the spec — never as a base style, never copy-pasted `BackdropFilter`.
+
+**App feedback states** (loading / error / empty / no-data / no-internet): tracked as `specs/0012-app-feedback-states.md`, built on top of the tokens above but a separate concern (behavior/consistency, not visual identity). Until that spec lands, screens still use ad hoc `CircularProgressIndicator`/inconsistent error handling — don't invent a new one-off pattern when touching a screen; either follow spec 0012 once it exists, or flag it rather than adding another bespoke loading/error widget.
+
 ## Process & standards
 
 This repo is developed spec-first because the product owner does not read Dart:
@@ -55,4 +60,4 @@ This repo is developed spec-first because the product owner does not read Dart:
 
 - `flutter analyze` is clean (no new errors; avoid introducing new warnings in touched files).
 - The change matches the module-boundary and layering rules in `docs/architecture.md`.
-- For anything user-facing, actually run it (`flutter run -d chrome` is fastest) and exercise the changed flow — analyzer/tests don't prove a screen works.
+- For anything user-facing, actually run it on a physical phone (`flutter run -d <device-id>`) and exercise the changed flow — analyzer/tests don't prove a screen works, and Chrome doesn't prove it either (mouse/hover and unconstrained browser width hide touch-target and layout bugs that only show up on-device).
