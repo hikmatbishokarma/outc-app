@@ -60,7 +60,10 @@ ThemeData appDarkThemeData() {
 
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        fixedSize: const Size(double.maxFinite, 48),
+        // See app_light_theme_data.dart — `minimumSize`, not `fixedSize`,
+        // for the same reason (fixedSize forces near-infinite width on any
+        // button sharing a Row with other content).
+        minimumSize: const Size(64, 48),
         foregroundColor: Colors.white,
         backgroundColor: AppDarkColors.primary,
         shape: RoundedRectangleBorder(

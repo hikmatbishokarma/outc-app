@@ -43,7 +43,14 @@ ThemeData appLightThemeData() {
     /// elevated Button Theme
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        fixedSize: const Size(double.maxFinite, 48),
+        // `minimumSize`, not `fixedSize` — a fixed width of `double.maxFinite`
+        // demands (near) infinite width from every ElevatedButton, which only
+        // "worked" for buttons already forced full-width by their own parent
+        // (a `SizedBox(width: double.infinity, ...)` or a `Column` with
+        // `CrossAxisAlignment.stretch`). Any button sharing a `Row` with other
+        // content (e.g. a bottom bar's fare info + "Continue"/"Proceed"
+        // button) overflowed by exactly `double.maxFinite` pixels.
+        minimumSize: const Size(64, 48),
         foregroundColor: Colors.white,
         backgroundColor: AppColors.primary,
         shape: RoundedRectangleBorder(
