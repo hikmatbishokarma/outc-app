@@ -171,6 +171,7 @@ class APIService {
         print(response.statusCode);
     } catch (e) {
       print(e.toString());
+      rethrow;
     }
     return flightsListFromJson("exception");
 
@@ -200,6 +201,7 @@ class APIService {
         print(response.statusCode);
     } catch (e) {
       print(e.toString());
+      rethrow;
     }
     return flightRoundtripModelFromJson("exception");
 
@@ -231,6 +233,7 @@ class APIService {
         print(response.statusCode);
     } catch (e) {
       print(e.toString());
+      rethrow;
     }
     return flightDomesticRoundtripModelFromJson("exception");
 

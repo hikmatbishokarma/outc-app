@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import 'package:outc/core/widgets/empty_state.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/providers/bus_results_provider.dart';
 import 'package:outc/dashboard/bus/screens/bus_seat_selection_screen.dart';
@@ -114,8 +115,13 @@ class _BusResultsView extends StatelessWidget {
                 ),
               ),
               Expanded(
-                child: visible.isEmpty
-                    ? const Center(child: Text('No buses match the selected filters.'))
+                child: provider.allTrips.isEmpty
+                    ? const EmptyState(
+                        message: 'No buses found for this route and date.',
+                        illustrationAsset: 'images/illustrations/bus.svg',
+                      )
+                    : visible.isEmpty
+                    ? const EmptyState(message: 'No buses match the selected filters.')
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         itemCount: visible.length,

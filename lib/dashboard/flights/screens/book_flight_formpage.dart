@@ -9,7 +9,10 @@ import 'package:outc/dashboard/flights/models/flight_price_model.dart'
     as flightPrice;
 import 'package:outc/dashboard/flights/models/flightbalaji.dart';
 import 'package:outc/dashboard/flights/screens/ticketView.dart';
+import 'package:outc/core/services/connectivity_service.dart';
 import 'package:outc/core/theme/design_tokens.dart';
+import 'package:outc/core/widgets/error_state.dart';
+import 'package:outc/core/widgets/no_internet_state.dart';
 import 'package:outc/dashboard/flights/widgets/progressbar.dart';
 import 'package:outc/services/api_services_list.dart';
 import 'package:outc/core/booking_context.dart';
@@ -134,6 +137,36 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
   List<flightPrice.SelectedFlight> selectedFlights = [];
 
   bool isApiCallProcess = false;
+
+  /// Checks connectivity before the price/block/book pipeline is fired
+  /// (spec 0012). Shows [NoInternetState] and returns false if offline, so
+  /// the caller can skip the network calls entirely.
+  Future<bool> _requireOnline() async {
+    if (await ConnectivityService.isOnline()) return true;
+    if (!mounted) return false;
+    setState(() => isApiCallProcess = false);
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: NoInternetState(onRetry: () => Navigator.of(context).pop()),
+      ),
+    );
+    return false;
+  }
+
+  void _showErrorSheet([String? message]) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: ErrorState(
+          message: message ?? 'Something went wrong. Please try again.',
+          onRetry: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+  }
 
   String convertDateformat(String dob) {
     if (dob.isEmpty) {
@@ -1721,6 +1754,9 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                       // ......
                                       // int.parse(grandTotal as String);
                                       print('One way service  check');
+                                      if (!await _requireOnline()) return;
+                                      if (!mounted) return;
+
                                       APIService apiService = APIService();
                                       print('Service check');
                                       setState(() {
@@ -1940,7 +1976,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                                               false;
                                                         });
                                                       }
-                                                    });
+                                                    }).catchError((e) { if (mounted) { setState(() => isApiCallProcess = false); _showErrorSheet(); } });
                                                   },
                                                 );
                                               } else {
@@ -1954,13 +1990,13 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                                 isApiCallProcess = false;
                                               });
                                             }
-                                          });
+                                          }).catchError((e) { if (mounted) { setState(() => isApiCallProcess = false); _showErrorSheet(); } });
                                         } else {
                                           setState(() {
                                             isApiCallProcess = false;
                                           });
                                         }
-                                      });
+                                      }).catchError((e) { if (mounted) { setState(() => isApiCallProcess = false); _showErrorSheet(); } });
                                     },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.primary,

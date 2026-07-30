@@ -5,6 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import 'package:outc/core/services/connectivity_service.dart';
+import 'package:outc/core/widgets/empty_state.dart';
+import 'package:outc/core/widgets/error_state.dart';
+import 'package:outc/core/widgets/no_internet_state.dart';
 import 'package:outc/core/widgets/segmented_control.dart';
 import 'package:outc/dashboard/dashboard.dart';
 import 'package:outc/dashboard/flights/models/flights_search_payloadmodel.dart';
@@ -463,7 +467,54 @@ class _FlightsListPageState extends State<FlightsListPage> {
     );
   }
 
-  void _onSearchOneWayRoundTrip(FlightSearchFormProvider form) {
+  /// Checks connectivity before a search request is fired (spec 0012).
+  /// Shows [NoInternetState] and returns false if offline, so the caller
+  /// can skip the network call entirely instead of letting it fail.
+  Future<bool> _requireOnline() async {
+    if (await ConnectivityService.isOnline()) return true;
+    if (!mounted) return false;
+    setState(() => isApiCallProcess = false);
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: NoInternetState(onRetry: () => Navigator.of(context).pop()),
+      ),
+    );
+    return false;
+  }
+
+  void _showEmptyResultsSheet() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => const Padding(
+        padding: EdgeInsets.all(24),
+        child: EmptyState(
+          message: 'No flights available for this search. Try different dates or airports.',
+          illustrationAsset: 'images/illustrations/flight.svg',
+        ),
+      ),
+    );
+  }
+
+  void _showErrorSheet(VoidCallback onRetry) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: ErrorState(
+          onRetry: () {
+            Navigator.of(context).pop();
+            onRetry();
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _onSearchOneWayRoundTrip(FlightSearchFormProvider form) async {
+    if (!await _requireOnline()) return;
+    if (!mounted) return;
     dest.clear();
     if (form.tripType == TripType.roundTrip) {
       dest = [
@@ -524,7 +575,9 @@ class _FlightsListPageState extends State<FlightsListPage> {
     }
   }
 
-  void _onSearchMultiCity(FlightSearchFormProvider form) {
+  Future<void> _onSearchMultiCity(FlightSearchFormProvider form) async {
+    if (!await _requireOnline()) return;
+    if (!mounted) return;
     dest.clear();
     dest = form.multiCitySegments
         .map((segment) => {
@@ -571,39 +624,21 @@ class _FlightsListPageState extends State<FlightsListPage> {
     try {
       APIService apiService = APIService();
       apiService.matchingFlightsList(sendingdata).then((value) async {
-        const invalidsnackbar = SnackBar(
-          content: Text('Data fetched. one way'),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
         inspect(value.statusCode);
-        print(value.data!.flightDetails!);
-        inspect(value.data!.flightDetails!);
         print("StatusCode ${value.statusCode} ");
         if (value.statusCode == 203) {
           setState(() {
             isApiCallProcess = false;
           });
-          const invalidsnackbar = SnackBar(
-            content: Text('Data not Found. try again'),
-          );
-          ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
-
-          // print(value.data);
-        } else if (value.statusCode == 200) {
+          _showEmptyResultsSheet();
+        } else if (value.statusCode == 200 || value.statusCode == 201) {
           setState(() {
             isApiCallProcess = false;
           });
 
-          // showToast('Data found successfully.');
           if (value.data!.flightDetails!.isEmpty) {
-            const invalidsnackbar = SnackBar(
-              content: Text('No Flights available. try again'),
-            );
-            ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
+            _showEmptyResultsSheet();
           } else if (value.data!.flightDetails!.isNotEmpty) {
-            // print(value.data!.flightDetails!);
-            // inspect(value.data!.flightDetails);
-
             print(value.data!.filtersObj);
             inspect(value.data!.filtersObj);
 
@@ -611,39 +646,6 @@ class _FlightsListPageState extends State<FlightsListPage> {
               MaterialPageRoute(
                 builder: (BuildContext context) {
                   return OneWayFlightlistPage(
-                    // dataFlightDetails: value.data!.flightDetails,
-                    traceId: value.data!.traceId!,
-                    originalData: value.data!.flightDetails,
-                    noOfFlights: value.data!.flightDetails!.length,
-                    adultcount: adultcount,
-                    childcount: children,
-                    infantcount: infants,
-                    filterData: value.data!.filtersObj,
-                  );
-                },
-              ),
-            );
-          }
-        } else if (value.statusCode == 201) {
-          setState(() {
-            isApiCallProcess = false;
-          });
-
-          // showToast('Data found successfully.');
-          if (value.data!.flightDetails!.isEmpty) {
-            const invalidsnackbar = SnackBar(
-              content: Text('No Flights available. try again'),
-            );
-            ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
-          } else if (value.data!.flightDetails!.isNotEmpty) {
-            print(value.data!.flightDetails!);
-            inspect(value.data!.flightDetails);
-
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (BuildContext context) {
-                  return OneWayFlightlistPage(
-                    // dataFlightDetails: value.data!.flightDetails,
                     traceId: value.data!.traceId!,
                     originalData: value.data!.flightDetails,
                     noOfFlights: value.data!.flightDetails!.length,
@@ -678,7 +680,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
       setState(() {
         isApiCallProcess = false;
       });
-      rethrow;
+      if (mounted) _showErrorSheet(() => getFlightsListmethod(data));
     }
   }
 
@@ -715,12 +717,8 @@ class _FlightsListPageState extends State<FlightsListPage> {
               isApiCallProcess = false;
             });
 
-            // showToast('Data found successfully.');
             if (value.data!.flightDetails!.isEmpty) {
-              const invalidsnackbar = SnackBar(
-                content: Text('No Flights available. try again'),
-              );
-              ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
+              _showEmptyResultsSheet();
             } else if (value.data!.flightDetails!.isNotEmpty) {
               print('Round Trip Testing');
               print(value.data!.flightDetails!);
@@ -767,7 +765,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
         setState(() {
           isApiCallProcess = false;
         });
-        rethrow;
+        if (mounted) _showErrorSheet(() => getFlightsMulticityListmethod(data));
       }
     } else {
       try {
@@ -790,12 +788,8 @@ class _FlightsListPageState extends State<FlightsListPage> {
               isApiCallProcess = false;
             });
 
-            // showToast('Data found successfully.');
             if (value.data!.flightDetails!.isEmpty) {
-              const invalidsnackbar = SnackBar(
-                content: Text('No Flights available. try again'),
-              );
-              ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
+              _showEmptyResultsSheet();
             } else if (value
                 .data!.flightDetails![0].flightDetails!.isNotEmpty) {
               print(value.data!.flightDetails![0].flightDetails!);
@@ -842,7 +836,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
         setState(() {
           isApiCallProcess = false;
         });
-        rethrow;
+        if (mounted) _showErrorSheet(() => getFlightsMulticityListmethod(data));
       }
     }
   }

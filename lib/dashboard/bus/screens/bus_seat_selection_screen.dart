@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:outc/core/widgets/async_state_view.dart';
 import 'package:outc/core/widgets/bottom_sheet_shell.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
+import 'package:outc/dashboard/bus/models/bus_seat_model.dart';
 import 'package:outc/dashboard/bus/providers/bus_seat_selection_provider.dart';
 import 'package:outc/dashboard/bus/screens/bus_pickup_drop_screen.dart';
 import 'package:outc/dashboard/bus/widgets/bus_seat_grid.dart';
@@ -80,58 +82,47 @@ class _BusSeatSelectionView extends StatelessWidget {
   }
 
   Widget _buildBody(BuildContext context, BusSeatSelectionProvider provider) {
-    if (provider.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (provider.errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(provider.errorMessage!),
-            const SizedBox(height: 12),
-            ElevatedButton(onPressed: provider.load, child: const Text('Retry')),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _DeckPanel(
-                    title: 'Lower Deck',
-                    child: SeatDeckGrid(
-                      seats: provider.lowerDeckSeats,
-                      selectedSeatCodes: provider.selectedSeatCodes,
-                      onTap: provider.toggleSeat,
-                    ),
-                  ),
-                ),
-                if (provider.hasUpperDeck) ...[
-                  const SizedBox(width: 12),
+    return AsyncStateView<List<BusSeat>>(
+      state: provider.state,
+      onRetry: provider.load,
+      emptyMessage: 'No seats available for this trip right now.',
+      dataBuilder: (context, _) => Column(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Expanded(
                     child: _DeckPanel(
-                      title: 'Upper Deck',
+                      title: 'Lower Deck',
                       child: SeatDeckGrid(
-                        seats: provider.upperDeckSeats,
+                        seats: provider.lowerDeckSeats,
                         selectedSeatCodes: provider.selectedSeatCodes,
                         onTap: provider.toggleSeat,
                       ),
                     ),
                   ),
+                  if (provider.hasUpperDeck) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _DeckPanel(
+                        title: 'Upper Deck',
+                        child: SeatDeckGrid(
+                          seats: provider.upperDeckSeats,
+                          selectedSeatCodes: provider.selectedSeatCodes,
+                          onTap: provider.toggleSeat,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

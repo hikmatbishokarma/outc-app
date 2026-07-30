@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'package:outc/core/services/connectivity_service.dart';
+import 'package:outc/core/state/async_state.dart';
+import 'package:outc/core/widgets/async_state_view.dart';
 import 'package:outc/dashboard/bus/models/bus_city_model.dart';
 import 'package:outc/dashboard/bus/services/bus_service.dart';
 
@@ -47,8 +50,7 @@ class _BusCitySearchScreenState extends State<BusCitySearchScreen> {
   final _originFocusNode = FocusNode();
   final _destinationFocusNode = FocusNode();
 
-  List<BusCity> _results = [];
-  bool _isSearching = false;
+  AsyncState<List<BusCity>>? _state;
 
   TextEditingController get _activeController =>
       _activeField == BusCitySearchField.origin ? _originController : _destinationController;
@@ -75,16 +77,25 @@ class _BusCitySearchScreenState extends State<BusCitySearchScreen> {
   Future<void> _onQueryChanged(String query) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) {
-      setState(() => _results = []);
+      setState(() => _state = null);
       return;
     }
-    setState(() => _isSearching = true);
-    final results = await _service.searchCities(trimmed);
-    if (!mounted) return;
-    setState(() {
-      _results = results;
-      _isSearching = false;
-    });
+    setState(() => _state = const AsyncLoading());
+
+    if (!await ConnectivityService.isOnline()) {
+      if (!mounted) return;
+      setState(() => _state = const AsyncOffline());
+      return;
+    }
+
+    try {
+      final results = await _service.searchCities(trimmed);
+      if (!mounted) return;
+      setState(() => _state = results.isEmpty ? const AsyncEmpty() : AsyncData(results));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _state = const AsyncError('Could not search cities. Please try again.'));
+    }
   }
 
   void _switchActiveField(BusCitySearchField field) {
@@ -92,7 +103,7 @@ class _BusCitySearchScreenState extends State<BusCitySearchScreen> {
     setState(() {
       _activeField = field;
       _activeController.clear();
-      _results = [];
+      _state = null;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => _activeFocusNode.requestFocus());
   }
@@ -148,10 +159,9 @@ class _BusCitySearchScreenState extends State<BusCitySearchScreen> {
             ),
             Expanded(
               child: _CityResultsList(
-                results: _results,
-                isLoading: _isSearching,
-                hasQuery: _activeController.text.trim().isNotEmpty,
+                state: _state,
                 onSelect: _selectCity,
+                onRetry: () => _onQueryChanged(_activeController.text),
               ),
             ),
           ],
@@ -257,63 +267,61 @@ class _BusCityFieldBox extends StatelessWidget {
 
 class _CityResultsList extends StatelessWidget {
   const _CityResultsList({
-    required this.results,
-    required this.isLoading,
-    required this.hasQuery,
+    required this.state,
     required this.onSelect,
+    required this.onRetry,
   });
 
-  final List<BusCity> results;
-  final bool isLoading;
-  final bool hasQuery;
+  final AsyncState<List<BusCity>>? state;
   final ValueChanged<BusCity> onSelect;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    if (!hasQuery) return const SizedBox.shrink();
-    if (isLoading) return const Center(child: CircularProgressIndicator());
-    if (results.isEmpty) {
-      return Center(
-        child: Text('No cities found', style: TextStyle(color: Colors.grey.shade600)),
-      );
-    }
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: results.length,
-      separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade200),
-      itemBuilder: (context, index) {
-        final city = results[index];
-        return InkWell(
-          onTap: () => onSelect(city),
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 64),
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Row(
-              children: [
-                Icon(Icons.location_on_outlined, size: 22, color: Theme.of(context).colorScheme.primary),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        city.name,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                      ),
-                      Text(
-                        city.fullName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                      ),
-                    ],
+    final currentState = state;
+    if (currentState == null) return const SizedBox.shrink();
+    return AsyncStateView<List<BusCity>>(
+      state: currentState,
+      onRetry: onRetry,
+      emptyMessage: 'No cities found',
+      dataBuilder: (context, results) => ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: results.length,
+        separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade200),
+        itemBuilder: (context, index) {
+          final city = results[index];
+          return InkWell(
+            onTap: () => onSelect(city),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 64),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Row(
+                children: [
+                  Icon(Icons.location_on_outlined, size: 22, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          city.name,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                        Text(
+                          city.fullName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }

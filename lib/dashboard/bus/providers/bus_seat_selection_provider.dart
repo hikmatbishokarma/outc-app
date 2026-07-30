@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:outc/core/services/connectivity_service.dart';
+import 'package:outc/core/state/async_state.dart';
 import 'package:outc/dashboard/bus/models/bus_seat_model.dart';
 import 'package:outc/dashboard/bus/services/bus_service.dart';
 
@@ -21,11 +23,12 @@ class BusSeatSelectionProvider extends ChangeNotifier {
   final String tripId;
   final int passengerCount;
 
-  List<BusSeat> seats = [];
-  bool isLoading = false;
-  String? errorMessage;
+  AsyncState<List<BusSeat>> state = const AsyncLoading();
 
   final Set<String> selectedSeatCodes = <String>{};
+
+  List<BusSeat> get seats =>
+      switch (state) { AsyncData<List<BusSeat>>(:final value) => value, _ => const [] };
 
   List<BusSeat> get lowerDeckSeats => seats.where((s) => s.zIndex == 0).toList();
   List<BusSeat> get upperDeckSeats => seats.where((s) => s.zIndex != 0).toList();
@@ -38,17 +41,21 @@ class BusSeatSelectionProvider extends ChangeNotifier {
   bool get canContinue => selectedSeatCodes.length == passengerCount;
 
   Future<void> load() async {
-    isLoading = true;
-    errorMessage = null;
+    state = const AsyncLoading();
     notifyListeners();
+
+    if (!await ConnectivityService.isOnline()) {
+      state = const AsyncOffline();
+      notifyListeners();
+      return;
+    }
 
     try {
       final response = await _service.getTripAvailability(searchId: searchId, tripId: tripId);
-      seats = response.seats;
+      state = response.seats.isEmpty ? const AsyncEmpty() : AsyncData(response.seats);
     } catch (e) {
-      errorMessage = 'Could not load seat availability. Please try again.';
+      state = const AsyncError('Could not load seat availability. Please try again.');
     } finally {
-      isLoading = false;
       notifyListeners();
     }
   }

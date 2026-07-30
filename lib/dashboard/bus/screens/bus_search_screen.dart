@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import 'package:outc/core/state/async_state.dart';
+import 'package:outc/core/widgets/error_state.dart';
+import 'package:outc/core/widgets/no_internet_state.dart';
 import 'package:outc/core/widgets/stepper_control.dart';
 import 'package:outc/dashboard/bus/models/bus_city_model.dart';
 import 'package:outc/dashboard/bus/providers/bus_search_provider.dart';
@@ -96,8 +99,9 @@ class _BusSearchView extends StatelessWidget {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      onPressed: form.isSearching ? null : () => _onSearch(context, form),
-                      icon: form.isSearching
+                      onPressed:
+                          form.state is AsyncLoading ? null : () => _onSearch(context, form),
+                      icon: form.state is AsyncLoading
                           ? const SizedBox(
                               width: 18,
                               height: 18,
@@ -105,10 +109,23 @@ class _BusSearchView extends StatelessWidget {
                             )
                           : const Icon(Icons.search, color: Colors.white),
                       label: Text(
-                        form.isSearching ? 'Searching...' : 'Search Buses',
+                        form.state is AsyncLoading ? 'Searching...' : 'Search Buses',
                         style: const TextStyle(color: Colors.white, fontSize: 16),
                       ),
                     ),
+                    if (form.state is AsyncError<BusSearchResponse>)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: ErrorState(
+                          message: (form.state as AsyncError<BusSearchResponse>).message,
+                          onRetry: () => _onSearch(context, form),
+                        ),
+                      ),
+                    if (form.state is AsyncOffline<BusSearchResponse>)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: NoInternetState(onRetry: () => _onSearch(context, form)),
+                      ),
                   ],
                 ),
               ),
@@ -158,16 +175,16 @@ class _BusSearchView extends StatelessWidget {
       return;
     }
 
-    final response = await form.search();
+    await form.search();
 
     if (!context.mounted) return;
 
-    if (response == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(form.errorMessage ?? 'Could not fetch buses. Please try again.')),
-      );
+    final state = form.state;
+    if (state is! AsyncData<BusSearchResponse>) {
+      // AsyncError/AsyncOffline are rendered inline below the search button.
       return;
     }
+    final response = state.value;
 
     final trips = response.data?.trips ?? [];
     final filters = response.data?.filters ?? BusFilters.fromTrips(trips);
