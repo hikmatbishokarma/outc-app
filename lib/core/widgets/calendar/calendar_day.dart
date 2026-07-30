@@ -38,6 +38,12 @@ class CalendarDay extends StatelessWidget {
   /// Reserved for a future holiday-indicator layer. Unused today.
   final bool isHoliday;
 
+  /// Single source of truth for this cell's height — also used by
+  /// `CalendarMonth`'s blank cells and by `CalendarPager`'s scroll-offset
+  /// table (specs/0010), so the rendered height and the height used to
+  /// compute "scroll to month N" can never drift apart.
+  static const double cellHeight = 46;
+
   bool get _isSelected => isSelectedStart || isSelectedEnd;
 
   @override
@@ -50,7 +56,7 @@ class CalendarDay extends StatelessWidget {
       onTap: canTap ? onTap : null,
       borderRadius: BorderRadius.circular(20),
       child: SizedBox(
-        height: 46,
+        height: cellHeight,
         child: Stack(
           alignment: Alignment.center,
           children: [

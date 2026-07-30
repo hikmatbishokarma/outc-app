@@ -143,7 +143,6 @@ class _FlightCalendarScreenState extends State<FlightCalendarScreen> {
             const SizedBox(height: 12),
             Expanded(
               child: CalendarPager(
-                key: ValueKey(_activeField),
                 baseMonth: baseMonth,
                 minDate: _minDate,
                 initialPage: initialPage.clamp(0, 23),

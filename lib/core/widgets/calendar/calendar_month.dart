@@ -46,7 +46,6 @@ class CalendarMonth extends StatelessWidget {
     required this.onDateTap,
     this.start,
     this.end,
-    this.showMonthLabel = true,
   });
 
   final DateTime month;
@@ -55,11 +54,18 @@ class CalendarMonth extends StatelessWidget {
   final DateTime? end;
   final ValueChanged<DateTime> onDateTap;
 
-  /// The pager shows a fixed month/year title of its own and suppresses
-  /// this per-page label to avoid showing two titles while swiping.
-  final bool showMonthLabel;
-
   static DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  /// Number of 7-day rows this month's grid renders (4, 5, or 6, depending
+  /// on weekday alignment) — used by `CalendarPager` (specs/0010) to
+  /// precompute each month section's height for scroll-to-month math,
+  /// without needing to build the widget first.
+  static int rowCount(DateTime month) {
+    final firstOfMonth = DateTime(month.year, month.month, 1);
+    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+    final leadingBlanks = firstOfMonth.weekday - 1;
+    return ((leadingBlanks + daysInMonth) / 7).ceil();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,19 +89,6 @@ class CalendarMonth extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (showMonthLabel)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            child: Text(
-              monthLabel(month),
-              style: const TextStyle(
-                fontSize: 18,
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w700,
-                color: Colors.black87,
-              ),
-            ),
-          ),
         for (int row = 0; row < cells.length ~/ 7; row++)
           Row(
             children: [
@@ -103,7 +96,9 @@ class CalendarMonth extends StatelessWidget {
                 Expanded(
                   child: Builder(builder: (context) {
                     final date = cells[row * 7 + col];
-                    if (date == null) return const SizedBox(height: 46);
+                    if (date == null) {
+                      return const SizedBox(height: CalendarDay.cellHeight);
+                    }
                     final normalized = _dateOnly(date);
                     final isDisabled = normalized.isBefore(min);
                     final isStart = startDate != null && normalized == startDate;
