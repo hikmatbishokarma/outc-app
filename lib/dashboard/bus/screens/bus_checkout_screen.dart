@@ -8,8 +8,6 @@ import 'package:outc/dashboard/bus/models/bus_seat_model.dart';
 import 'package:outc/dashboard/bus/providers/bus_checkout_provider.dart';
 import 'package:outc/widgets/colors/colors.dart';
 
-const _titles = ['Mr', 'Mrs', 'Ms'];
-
 /// Checkout screen (spec 0009) — trip summary, price breakup, and passenger
 /// details, reached from `BusPickupDropScreen`'s "Next". Still stops short
 /// of an actual booking submission (no block/book endpoint captured yet) —
@@ -274,21 +272,6 @@ class _PassengerForm extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(
-              width: 68,
-              child: DropdownButtonFormField<String>(
-                initialValue: passenger.title,
-                isExpanded: true,
-                style: const TextStyle(fontSize: 13, color: Colors.black87),
-                icon: const Icon(Icons.arrow_drop_down, size: 16),
-                decoration: _decoration('Title'),
-                items: _titles.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                onChanged: (value) {
-                  if (value != null) provider.updatePassenger(index, title: value);
-                },
-              ),
-            ),
-            const SizedBox(width: 6),
             Expanded(
               child: TextField(
                 style: const TextStyle(fontSize: 13),

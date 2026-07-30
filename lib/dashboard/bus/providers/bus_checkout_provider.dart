@@ -43,9 +43,8 @@ class BusCheckoutProvider extends ChangeNotifier {
     return true;
   }
 
-  void updatePassenger(int index, {String? title, String? name, String? age, String? gender}) {
+  void updatePassenger(int index, {String? name, String? age, String? gender}) {
     final passenger = passengers[index];
-    if (title != null) passenger.title = title;
     if (name != null) passenger.name = name;
     if (age != null) passenger.age = age;
     if (gender != null) passenger.gender = gender;
