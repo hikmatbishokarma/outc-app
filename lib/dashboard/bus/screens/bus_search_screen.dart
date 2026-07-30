@@ -50,18 +50,31 @@ class _BusSearchView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _CityField(
-                      icon: Icons.location_on,
-                      label: 'From',
-                      city: form.originCity,
-                      onTap: () => _pickCities(context, form, BusCitySearchField.origin),
-                    ),
-                    const SizedBox(height: 10),
-                    _CityField(
-                      icon: Icons.directions_bus,
-                      label: 'To',
-                      city: form.destinationCity,
-                      onTap: () => _pickCities(context, form, BusCitySearchField.destination),
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Column(
+                          children: [
+                            _CityField(
+                              icon: Icons.location_on,
+                              label: 'From',
+                              city: form.originCity,
+                              onTap: () => _pickCities(context, form, BusCitySearchField.origin),
+                            ),
+                            const SizedBox(height: 10),
+                            _CityField(
+                              icon: Icons.directions_bus,
+                              label: 'To',
+                              city: form.destinationCity,
+                              onTap: () => _pickCities(context, form, BusCitySearchField.destination),
+                            ),
+                          ],
+                        ),
+                        Positioned(
+                          right: 8,
+                          child: _SwapCitiesButton(onTap: form.swapCities),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 10),
                     _DateField(
@@ -169,6 +182,46 @@ class _BusSearchView extends StatelessWidget {
           trips: trips,
           filters: filters,
           searchId: response.searchId,
+        ),
+      ),
+    );
+  }
+}
+
+/// Swaps origin/destination — matches the flights module's
+/// `_SwapCitiesButton` (one_way_round_trip_form.dart) styling.
+class _SwapCitiesButton extends StatefulWidget {
+  const _SwapCitiesButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  State<_SwapCitiesButton> createState() => _SwapCitiesButtonState();
+}
+
+class _SwapCitiesButtonState extends State<_SwapCitiesButton> {
+  double _turns = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      shape: CircleBorder(side: BorderSide(color: Colours.strongRed, width: 1.2)),
+      elevation: 1.5,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: () {
+          setState(() => _turns += 0.5);
+          widget.onTap();
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: AnimatedRotation(
+            turns: _turns,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            child: Icon(Icons.swap_vert, size: 18, color: Colours.strongRed),
+          ),
         ),
       ),
     );
