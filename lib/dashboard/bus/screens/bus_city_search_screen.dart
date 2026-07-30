@@ -38,24 +38,38 @@ class _BusCitySearchScreenState extends State<BusCitySearchScreen> {
   BusCity? _origin;
   BusCity? _destination;
 
-  final _controller = TextEditingController();
-  final _focusNode = FocusNode();
+  // Separate controller/focus node per field (rather than one shared pair
+  // swapped between them) — a shared FocusNode silently failed to reattach
+  // when the active field toggled between a TextField and a Text widget,
+  // so auto-advancing to "To" after picking "From" never actually opened
+  // the keyboard there.
+  final _originController = TextEditingController();
+  final _destinationController = TextEditingController();
+  final _originFocusNode = FocusNode();
+  final _destinationFocusNode = FocusNode();
 
   List<BusCity> _results = [];
   bool _isSearching = false;
+
+  TextEditingController get _activeController =>
+      _activeField == BusCitySearchField.origin ? _originController : _destinationController;
+  FocusNode get _activeFocusNode =>
+      _activeField == BusCitySearchField.origin ? _originFocusNode : _destinationFocusNode;
 
   @override
   void initState() {
     super.initState();
     _origin = widget.initialOrigin;
     _destination = widget.initialDestination;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _focusNode.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _activeFocusNode.requestFocus());
   }
 
   @override
   void dispose() {
-    _controller.dispose();
-    _focusNode.dispose();
+    _originController.dispose();
+    _destinationController.dispose();
+    _originFocusNode.dispose();
+    _destinationFocusNode.dispose();
     super.dispose();
   }
 
@@ -78,10 +92,10 @@ class _BusCitySearchScreenState extends State<BusCitySearchScreen> {
     if (_activeField == field) return;
     setState(() {
       _activeField = field;
-      _controller.clear();
+      _activeController.clear();
       _results = [];
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _focusNode.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _activeFocusNode.requestFocus());
   }
 
   void _selectCity(BusCity city) {
@@ -115,8 +129,8 @@ class _BusCitySearchScreenState extends State<BusCitySearchScreen> {
                     onTap: () => _switchActiveField(BusCitySearchField.origin),
                     placeholder: 'From',
                     city: _origin,
-                    controller: _controller,
-                    focusNode: _focusNode,
+                    controller: _originController,
+                    focusNode: _originFocusNode,
                     onChanged: _onQueryChanged,
                   ),
                   const SizedBox(height: 12),
@@ -126,8 +140,8 @@ class _BusCitySearchScreenState extends State<BusCitySearchScreen> {
                     onTap: () => _switchActiveField(BusCitySearchField.destination),
                     placeholder: 'To',
                     city: _destination,
-                    controller: _controller,
-                    focusNode: _focusNode,
+                    controller: _destinationController,
+                    focusNode: _destinationFocusNode,
                     onChanged: _onQueryChanged,
                   ),
                 ],
@@ -137,7 +151,7 @@ class _BusCitySearchScreenState extends State<BusCitySearchScreen> {
               child: _CityResultsList(
                 results: _results,
                 isLoading: _isSearching,
-                hasQuery: _controller.text.trim().isNotEmpty,
+                hasQuery: _activeController.text.trim().isNotEmpty,
                 onSelect: _selectCity,
               ),
             ),
