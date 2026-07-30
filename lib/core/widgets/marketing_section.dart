@@ -4,12 +4,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:outc/core/theme/design_tokens.dart';
 
 /// The promotional/marketing content ("Best Price Guaranteed", "24*7
-/// Support", destination carousel, "Why OutC?") shown below the search
-/// form. Unrelated to the search-form redesign (specs/0003) — extracted
-/// verbatim out of the old `search_flights.dart` monolith only to keep
-/// that file's build() readable, not restyled.
-class FlightMarketingSection extends StatelessWidget {
-  const FlightMarketingSection({super.key});
+/// Support", destination images, "Why OutC?") shown below Flights' search
+/// form and on the Home tab — generic app-wide content, not flights-specific,
+/// so it lives in `lib/core/` per `docs/architecture.md` §1 rather than
+/// being cross-imported from the flights module. Extracted verbatim out of
+/// the old `search_flights.dart` monolith, not restyled.
+class MarketingSection extends StatelessWidget {
+  const MarketingSection({super.key});
 
   static const String _whyOutc1 =
       "Our competitive rates and exclusive offers are what gives us a top notch over our competitors. We promise 'Unbeatable' services both in pricing and quality. Here is the one stop destination for your Dream Destination. OutC provide you the best travel packages at the lowest possible pricing that gives the best value for your each penny. We are your Travel Companion and works for you so that can get the best travel experience and live some memorable moments.";
@@ -127,10 +128,11 @@ class FlightMarketingSection extends StatelessWidget {
               Container(
                 height: 250,
                 width: double.infinity,
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(10)),
+                decoration:
+                    BoxDecoration(borderRadius: BorderRadius.circular(10)),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: Image.network(
+                  child: const _NetworkImage(
                     "https://i.insider.com/5d38ca7d36e03c5dfa2ed4e3?width=750&format=jpeg&auto=webp",
                   ),
                 ),
@@ -139,10 +141,14 @@ class FlightMarketingSection extends StatelessWidget {
               Container(
                 height: 250,
                 width: double.infinity,
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(10)),
+                decoration:
+                    BoxDecoration(borderRadius: BorderRadius.circular(10)),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: Image.network(
+                  // This particular URL 404s (dead link, not something this
+                  // migration broke) — `_NetworkImage` hides it instead of
+                  // showing Flutter's default red-X error placeholder.
+                  child: const _NetworkImage(
                     "https://www.indus.travel/aviator/qstvsndfvb/uploads/2018/07/most-visited-places-India-by-foreign-tourists.jpg",
                   ),
                 ),
@@ -187,13 +193,40 @@ class FlightMarketingSection extends StatelessWidget {
           margin: const EdgeInsets.only(left: 10, right: 10, bottom: 20),
           child: Column(
             children: [
-              Text(_whyOutc1, style: GoogleFonts.poppins(color: Colors.black, fontSize: 12)),
-              Text(_whyOutc2, style: GoogleFonts.poppins(color: Colors.black, fontSize: 12)),
-              Text(_whyOutc3, style: GoogleFonts.poppins(color: Colors.black, fontSize: 12)),
+              Text(_whyOutc1,
+                  style:
+                      GoogleFonts.poppins(color: Colors.black, fontSize: 12)),
+              Text(_whyOutc2,
+                  style:
+                      GoogleFonts.poppins(color: Colors.black, fontSize: 12)),
+              Text(_whyOutc3,
+                  style:
+                      GoogleFonts.poppins(color: Colors.black, fontSize: 12)),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+/// `Image.network` with a graceful fallback — a dead/404 URL collapses to an
+/// empty box instead of Flutter's default red-X error placeholder.
+class _NetworkImage extends StatelessWidget {
+  const _NetworkImage(this.url);
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+      loadingBuilder: (context, child, progress) {
+        if (progress == null) return child;
+        return const Center(child: CircularProgressIndicator());
+      },
     );
   }
 }

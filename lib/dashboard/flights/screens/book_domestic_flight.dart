@@ -11,6 +11,7 @@ import 'package:outc/dashboard/flights/models/flight_price_model.dart'
 import 'package:outc/dashboard/flights/models/flightranjith.dart';
 import 'package:outc/dashboard/flights/screens/ticketView.dart';
 import 'package:outc/core/theme/design_tokens.dart';
+import 'package:outc/core/widgets/app_top_bar.dart';
 import 'package:outc/dashboard/flights/widgets/progressbar.dart';
 import 'package:outc/services/api_services_list.dart';
 import 'package:outc/core/booking_context.dart';
@@ -440,17 +441,8 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
     grandTotal2 = total2 + 200;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade200,
-      // appBar: AppBar(
-      //   backgroundColor: Colors.transparent,
-      //   elevation: 0,
-      //   centerTitle: true,
-      //   title: const Text(
-      //     "Enter Details",
-      //     style: TextStyle(
-      //         color: Colors.black, fontSize: 25, fontWeight: FontWeight.w500),
-      //   ),
-      // ),
+      backgroundColor: AppColors.panelBackground,
+      appBar: const AppTopBar(title: 'Booking Details'),
       body: SafeArea(
         child: Container(
           margin: const EdgeInsets.only(right: 10, left: 10),
@@ -458,46 +450,6 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 10.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      GestureDetector(
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Icon(
-                            Icons.arrow_back_ios_new_outlined,
-                            color: AppColors.textSecondary,
-                            // color: Colors.transparent,
-                            size: 20,
-                          ),
-                        ),
-                        onTap: () {
-                          Navigator.pop(context, false);
-                        },
-                      ),
-                      Text(
-                        "Booking Details",
-                        // ${filteredList.length}",
-                        style: TextStyle(
-                            fontFamily: 'poppins',
-                            fontSize: 16.0,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w700),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.all(8.0),
-                        child: Icon(
-                          Icons.filter_alt,
-                          color: Colors.transparent,
-                          // color: Colors.transparent,
-                          size: 20,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 const SizedBox(
                   height: 25,
                 ),
@@ -519,8 +471,7 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                                 right: 15, left: 15, top: 25, bottom: 25),
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(10),
-                                border:
-                                    Border.all(color: AppColors.secondary)),
+                                border: Border.all(color: AppColors.secondary)),
                             child: Column(
                               children: [
                                 Container(
@@ -712,8 +663,7 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                                 right: 15, left: 15, top: 25, bottom: 25),
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(10),
-                                border:
-                                    Border.all(color: AppColors.secondary)),
+                                border: Border.all(color: AppColors.secondary)),
                             child: Column(
                               children: [
                                 Container(
@@ -906,8 +856,8 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                                   right: 10, left: 10, top: 20, bottom: 15),
                               decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                      color: AppColors.secondary)),
+                                  border:
+                                      Border.all(color: AppColors.secondary)),
                               child: Container(
                                 margin: const EdgeInsets.only(
                                     right: 10, left: 10, top: 10),
@@ -961,22 +911,26 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                                                 borderRadius:
                                                     BorderRadius.circular(5),
                                                 borderSide: const BorderSide(
-                                                    color: AppColors.fieldBorder)),
+                                                    color:
+                                                        AppColors.fieldBorder)),
                                             enabledBorder: OutlineInputBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(5),
                                                 borderSide: const BorderSide(
-                                                    color: AppColors.fieldBorder)),
+                                                    color:
+                                                        AppColors.fieldBorder)),
                                             focusedBorder: OutlineInputBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(5),
                                                 borderSide: const BorderSide(
-                                                    color: AppColors.fieldBorder)),
+                                                    color:
+                                                        AppColors.fieldBorder)),
                                             errorBorder: OutlineInputBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(5),
                                                 borderSide: const BorderSide(
-                                                    color: AppColors.fieldBorder)),
+                                                    color:
+                                                        AppColors.fieldBorder)),
                                             hintText: 'Enter Mobile Number',
                                             hintStyle: GoogleFonts.poppins(
                                                 color: AppColors.textSecondary,
@@ -1319,8 +1273,7 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                                 right: 15, left: 15, top: 20, bottom: 15),
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
-                                border:
-                                    Border.all(color: AppColors.secondary)),
+                                border: Border.all(color: AppColors.secondary)),
                             child: Container(
                               margin:
                                   const EdgeInsets.only(right: 15, left: 15),
@@ -1507,8 +1460,7 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                                 right: 15, left: 15, top: 20, bottom: 15),
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
-                                border:
-                                    Border.all(color: AppColors.secondary)),
+                                border: Border.all(color: AppColors.secondary)),
                             child: Container(
                               margin:
                                   const EdgeInsets.only(right: 15, left: 15),
@@ -1634,8 +1586,7 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                                 right: 15, left: 15, top: 15, bottom: 15),
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
-                                border:
-                                    Border.all(color: AppColors.secondary)),
+                                border: Border.all(color: AppColors.secondary)),
                             child: Container(
                               margin:
                                   const EdgeInsets.only(right: 10, left: 10),
@@ -1721,8 +1672,7 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                                 right: 15, left: 15, top: 15, bottom: 15),
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
-                                border:
-                                    Border.all(color: AppColors.secondary)),
+                                border: Border.all(color: AppColors.secondary)),
                             child: Container(
                               margin:
                                   const EdgeInsets.only(right: 10, left: 10),
@@ -1758,17 +1708,20 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                                                 borderRadius:
                                                     BorderRadius.circular(3),
                                                 borderSide: const BorderSide(
-                                                    color: AppColors.fieldBorder)),
+                                                    color:
+                                                        AppColors.fieldBorder)),
                                             enabledBorder: OutlineInputBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(3),
                                                 borderSide: const BorderSide(
-                                                    color: AppColors.fieldBorder)),
+                                                    color:
+                                                        AppColors.fieldBorder)),
                                             focusedBorder: OutlineInputBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(3),
                                                 borderSide: const BorderSide(
-                                                    color: AppColors.fieldBorder)),
+                                                    color:
+                                                        AppColors.fieldBorder)),
                                           ),
                                         ),
                                       ),
@@ -1888,7 +1841,8 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                                             TextSpan(
                                                 text: 'I Agree To All The',
                                                 style: GoogleFonts.poppins(
-                                                    color: AppColors.textSecondary,
+                                                    color:
+                                                        AppColors.textSecondary,
                                                     fontSize: 14,
                                                     fontWeight:
                                                         FontWeight.w500)),
@@ -1902,7 +1856,8 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                                             TextSpan(
                                                 text: 'and ',
                                                 style: GoogleFonts.poppins(
-                                                    color: AppColors.textSecondary,
+                                                    color:
+                                                        AppColors.textSecondary,
                                                     fontSize: 14,
                                                     fontWeight:
                                                         FontWeight.w500)),
@@ -2325,8 +2280,7 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                                                     PgBlockPaymentData(
                                                       paymentLink: value
                                                           .data.paymentLink,
-                                                      pgType:
-                                                          value.data.pgType,
+                                                      pgType: value.data.pgType,
                                                     ),
                                                     onResult: (pgResult) {
                                                       if (pgResult.status !=
@@ -2339,128 +2293,132 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                                                         return;
                                                       }
                                                       setState(() {
-                                                        isApiCallProcess =
-                                                            true;
+                                                        isApiCallProcess = true;
                                                       });
                                                       //  book..
                                                       apiService
                                                           .flightOnewayBook(
                                                               bookingRefNo)
-                                                          .then(
-                                                              (value) async {
-                                                        if (value
-                                                                .statusCode ==
+                                                          .then((value) async {
+                                                        if (value.statusCode ==
                                                             203) {
-                                                      setState(() {
-                                                        isApiCallProcess =
-                                                            false;
-                                                      });
-                                                    } else if (value
-                                                            .statusCode ==
-                                                        401) {
-                                                      setState(() {
-                                                        isApiCallProcess =
-                                                            false;
-                                                      });
-                                                    } else if (value
-                                                            .statusCode ==
-                                                        400) {
-                                                      setState(() {
-                                                        isApiCallProcess =
-                                                            false;
-                                                      });
-                                                    } else if (value
-                                                            .statusCode ==
-                                                        404) {
-                                                      setState(() {
-                                                        isApiCallProcess =
-                                                            false;
-                                                      });
-                                                    } else if (value
+                                                          setState(() {
+                                                            isApiCallProcess =
+                                                                false;
+                                                          });
+                                                        } else if (value
                                                                 .statusCode ==
-                                                            200 ||
-                                                        value.statusCode ==
-                                                            201) {
-                                                      print(bookingRefNo);
-                                                      print(
-                                                          'balaji testing success');
-                                                      String pnr = value.charges
-                                                          .ticketAllData.pnr
-                                                          .toString();
-                                                      String operator = value
-                                                          .charges
-                                                          .ticketAllData
-                                                          .ticketAllDataOperator
-                                                          .toString();
-                                                      String referenceNumber =
-                                                          value
+                                                            401) {
+                                                          setState(() {
+                                                            isApiCallProcess =
+                                                                false;
+                                                          });
+                                                        } else if (value
+                                                                .statusCode ==
+                                                            400) {
+                                                          setState(() {
+                                                            isApiCallProcess =
+                                                                false;
+                                                          });
+                                                        } else if (value
+                                                                .statusCode ==
+                                                            404) {
+                                                          setState(() {
+                                                            isApiCallProcess =
+                                                                false;
+                                                          });
+                                                        } else if (value
+                                                                    .statusCode ==
+                                                                200 ||
+                                                            value.statusCode ==
+                                                                201) {
+                                                          print(bookingRefNo);
+                                                          print(
+                                                              'balaji testing success');
+                                                          String pnr = value
                                                               .charges
                                                               .ticketAllData
-                                                              .referenceNumber
+                                                              .pnr
                                                               .toString();
-                                                      String journeyDate = value
-                                                          .charges
-                                                          .ticketAllData
-                                                          .journeyDate
-                                                          .toString();
-                                                      String bookingDate = value
-                                                          .charges
-                                                          .ticketAllData
-                                                          .bookingDate
-                                                          .toString();
-                                                      String bookingStatus =
-                                                          value
+                                                          String operator = value
                                                               .charges
                                                               .ticketAllData
-                                                              .bookingStatus
+                                                              .ticketAllDataOperator
                                                               .toString();
-                                                      final flightData = value
-                                                          .charges
-                                                          .ticketAllData
-                                                          .oneWaySegment;
-                                                      final baggageInfo = value
-                                                          .charges
-                                                          .ticketAllData
-                                                          .oneWayBaggageInfo;
-                                                      final passengerInfo =
-                                                          value
+                                                          String
+                                                              referenceNumber =
+                                                              value
+                                                                  .charges
+                                                                  .ticketAllData
+                                                                  .referenceNumber
+                                                                  .toString();
+                                                          String journeyDate =
+                                                              value
+                                                                  .charges
+                                                                  .ticketAllData
+                                                                  .journeyDate
+                                                                  .toString();
+                                                          String bookingDate =
+                                                              value
+                                                                  .charges
+                                                                  .ticketAllData
+                                                                  .bookingDate
+                                                                  .toString();
+                                                          String bookingStatus =
+                                                              value
+                                                                  .charges
+                                                                  .ticketAllData
+                                                                  .bookingStatus
+                                                                  .toString();
+                                                          final flightData =
+                                                              value
+                                                                  .charges
+                                                                  .ticketAllData
+                                                                  .oneWaySegment;
+                                                          final baggageInfo = value
                                                               .charges
                                                               .ticketAllData
-                                                              .passengers;
-                                                      final fareData = value
-                                                          .charges
-                                                          .ticketAllData
-                                                          .oneWayflightFare;
+                                                              .oneWayBaggageInfo;
+                                                          final passengerInfo =
+                                                              value
+                                                                  .charges
+                                                                  .ticketAllData
+                                                                  .passengers;
+                                                          final fareData = value
+                                                              .charges
+                                                              .ticketAllData
+                                                              .oneWayflightFare;
 
-                                                      Navigator.of(context)
-                                                          .push(
-                                                        MaterialPageRoute(
-                                                          builder: (BuildContext
-                                                              context) {
-                                                            return TicketView(
-                                                              operator:
-                                                                  operator,
-                                                              pnr: pnr,
-                                                              referenceNumber:
-                                                                  referenceNumber,
-                                                              journeyDate:
-                                                                  journeyDate,
-                                                              bookingDate:
-                                                                  bookingDate,
-                                                              bookingStatus:
-                                                                  bookingStatus,
-                                                              flightData:
-                                                                  flightData,
-                                                              baggageInfo:
-                                                                  baggageInfo,
-                                                              passengerInfo:
-                                                                  passengerInfo,
-                                                              fareData:
-                                                                  fareData,
-                                                            );
-                                                          },
-                                                        ),
-                                                      );
+                                                          Navigator.of(context)
+                                                              .push(
+                                                            MaterialPageRoute(
+                                                              builder:
+                                                                  (BuildContext
+                                                                      context) {
+                                                                return TicketView(
+                                                                  operator:
+                                                                      operator,
+                                                                  pnr: pnr,
+                                                                  referenceNumber:
+                                                                      referenceNumber,
+                                                                  journeyDate:
+                                                                      journeyDate,
+                                                                  bookingDate:
+                                                                      bookingDate,
+                                                                  bookingStatus:
+                                                                      bookingStatus,
+                                                                  flightData:
+                                                                      flightData,
+                                                                  baggageInfo:
+                                                                      baggageInfo,
+                                                                  passengerInfo:
+                                                                      passengerInfo,
+                                                                  fareData:
+                                                                      fareData,
+                                                                );
+                                                              },
+                                                            ),
+                                                          );
                                                         } else {
                                                           setState(() {
                                                             isApiCallProcess =
@@ -2903,8 +2861,8 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                             child: Container(
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                      color: AppColors.fieldBorder),
+                                  border:
+                                      Border.all(color: AppColors.fieldBorder),
                                 ),
                                 child: DropdownButtonHideUnderline(
                                     child: DropdownButton<String>(
@@ -2966,8 +2924,8 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                               width: double.infinity,
                               decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                      color: AppColors.fieldBorder)),
+                                  border:
+                                      Border.all(color: AppColors.fieldBorder)),
                               child: Padding(
                                   padding: const EdgeInsets.only(
                                       left: 10, bottom: 14),
@@ -3012,8 +2970,8 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                               width: double.infinity,
                               decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                      color: AppColors.fieldBorder)),
+                                  border:
+                                      Border.all(color: AppColors.fieldBorder)),
                               child: Padding(
                                   padding: const EdgeInsets.only(
                                       left: 10, bottom: 14),
@@ -3058,8 +3016,8 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                               width: double.infinity,
                               decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                      color: AppColors.fieldBorder)),
+                                  border:
+                                      Border.all(color: AppColors.fieldBorder)),
                               child: Padding(
                                   padding: const EdgeInsets.only(
                                       left: 10, bottom: 14),
@@ -3125,8 +3083,8 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
                               width: double.infinity,
                               decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                      color: AppColors.fieldBorder)),
+                                  border:
+                                      Border.all(color: AppColors.fieldBorder)),
                               child: Padding(
                                   padding: const EdgeInsets.only(
                                       left: 10, bottom: 14),

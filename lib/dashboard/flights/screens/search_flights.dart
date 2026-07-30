@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import 'package:outc/core/widgets/app_top_bar.dart';
 import 'package:outc/core/widgets/segmented_control.dart';
-import 'package:outc/dashboard/dashboard.dart';
 import 'package:outc/dashboard/flights/models/flights_search_payloadmodel.dart';
 import 'package:outc/dashboard/flights/models/get_cities_by_search_model.dart';
 import 'package:outc/dashboard/flights/providers/flight_search_form_provider.dart';
@@ -17,7 +17,7 @@ import 'package:outc/dashboard/flights/screens/oneway_flight_list.dart';
 import 'package:outc/dashboard/flights/widgets/calendar/flight_calendar_screen.dart';
 import 'package:outc/dashboard/flights/widgets/calendar/flight_single_date_calendar_screen.dart';
 import 'package:outc/core/theme/design_tokens.dart';
-import 'package:outc/dashboard/flights/widgets/flight_marketing_section.dart';
+import 'package:outc/core/widgets/marketing_section.dart';
 import 'package:outc/dashboard/flights/widgets/multi_city_form.dart';
 import 'package:outc/dashboard/flights/widgets/one_way_round_trip_form.dart';
 import 'package:outc/dashboard/flights/widgets/progressbar.dart';
@@ -71,41 +71,15 @@ class _FlightsListPageState extends State<FlightsListPage> {
 
   Widget uiSetup(BuildContext context, FlightSearchFormProvider form) {
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: Text(
-          "OutC",
-          style: TextStyle(
-            fontSize: 22.0,
-            fontFamily: 'poppins',
-            color: AppColors.primary,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(color: Colors.grey),
-        leading: Padding(
-          padding: const EdgeInsets.all(8),
-          child: IconButton(
-            color: AppColors.primary,
-            icon: Icon(Icons.home, size: 28, color: AppColors.primary),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => Dashboard()),
-              );
-            },
-          ),
-        ),
-        actions: <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(4.0),
-            child: IconButton(
-              color: AppColors.primary,
-              icon: Icon(Icons.wallet, size: 28, color: AppColors.primary),
-              onPressed: () => _showWalletDialog(context),
-            ),
+      backgroundColor: AppColors.panelBackground,
+      appBar: AppTopBar(
+        title: 'Flights',
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.wallet),
+            onPressed: () => _showWalletDialog(context),
           ),
           IconButton(
-            color: AppColors.primary,
             icon: const ImageIcon(AssetImage("images/notifybell.png")),
             onPressed: () {},
           ),
@@ -122,7 +96,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: AnimatedSwitcher(
@@ -148,7 +122,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const FlightMarketingSection(),
+                    const MarketingSection(),
                   ],
                 ),
               ),
@@ -160,45 +134,18 @@ class _FlightsListPageState extends State<FlightsListPage> {
   }
 
   Widget _buildHeader(BuildContext context, FlightSearchFormProvider form) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      decoration: const BoxDecoration(
-        borderRadius: BorderRadius.only(
-          bottomRight: Radius.circular(24),
-          bottomLeft: Radius.circular(24),
-        ),
-        color: Colors.blue,
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: const Icon(
-                  Icons.arrow_back_ios_new_outlined,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SegmentedControl(
-            labels: const ['ONE WAY', 'ROUND TRIP', 'MULTI CITY'],
-            selectedIndex: form.tripType.index,
-            activeColor: AppColors.secondary,
-            backgroundColor: Colors.white.withValues(alpha: 0.15),
-            inactiveTextColor: Colors.white70,
-            onChanged: (index) => _onTripTypeChanged(form, TripType.values[index]),
-          ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: SegmentedControl(
+        labels: const ['ONE WAY', 'ROUND TRIP', 'MULTI CITY'],
+        selectedIndex: form.tripType.index,
+        onChanged: (index) => _onTripTypeChanged(form, TripType.values[index]),
       ),
     );
   }
 
-  Widget _buildOneWayRoundTripForm(BuildContext context, FlightSearchFormProvider form) {
+  Widget _buildOneWayRoundTripForm(
+      BuildContext context, FlightSearchFormProvider form) {
     return OneWayRoundTripFormCard(
       tripType: form.tripType,
       fromCity: _nullIfEmpty(SharedPrefServices.getcityFrom()),
@@ -216,27 +163,34 @@ class _FlightsListPageState extends State<FlightsListPage> {
       onPickFrom: () => _pickAirport(context, isOrigin: true),
       onPickTo: () => _pickAirport(context, isOrigin: false),
       onSwapCities: _swapCities,
-      onPickDeparture: () => _pickDates(context, form, FlightCalendarField.departure),
-      onPickReturn: () => _pickDates(context, form, FlightCalendarField.returnDate),
-      onTravellersChanged: (selection) => _applyTravellerSelection(form, selection),
+      onPickDeparture: () =>
+          _pickDates(context, form, FlightCalendarField.departure),
+      onPickReturn: () =>
+          _pickDates(context, form, FlightCalendarField.returnDate),
+      onTravellersChanged: (selection) =>
+          _applyTravellerSelection(form, selection),
       onSearch: () => _onSearchOneWayRoundTrip(form),
       isSearching: isApiCallProcess,
     );
   }
 
-  Widget _buildMultiCityForm(BuildContext context, FlightSearchFormProvider form) {
+  Widget _buildMultiCityForm(
+      BuildContext context, FlightSearchFormProvider form) {
     return MultiCityFormCard(
       segments: form.multiCitySegments,
       adultCount: form.adultCount,
       childCount: form.childCount,
       infantCount: form.infantCount,
       cabinClass: form.cabinClass,
-      onPickFrom: (index) => _pickMultiCityAirport(context, form, index, isOrigin: true),
-      onPickTo: (index) => _pickMultiCityAirport(context, form, index, isOrigin: false),
+      onPickFrom: (index) =>
+          _pickMultiCityAirport(context, form, index, isOrigin: true),
+      onPickTo: (index) =>
+          _pickMultiCityAirport(context, form, index, isOrigin: false),
       onPickDate: (index) => _pickMultiCitySegmentDate(context, form, index),
       onAddSegment: form.addSegment,
       onRemoveSegment: form.removeSegment,
-      onTravellersChanged: (selection) => _applyTravellerSelection(form, selection),
+      onTravellersChanged: (selection) =>
+          _applyTravellerSelection(form, selection),
       onSearch: () => _onSearchMultiCity(form),
       isSearching: isApiCallProcess,
       minSegments: FlightSearchFormProvider.minMultiCitySegments,
@@ -262,7 +216,8 @@ class _FlightsListPageState extends State<FlightsListPage> {
     form.setTripType(type);
   }
 
-  void _applyTravellerSelection(FlightSearchFormProvider form, TravellerSelection selection) {
+  void _applyTravellerSelection(
+      FlightSearchFormProvider form, TravellerSelection selection) {
     form.setPassengers(
       adults: selection.adults,
       children: selection.children,
@@ -278,7 +233,9 @@ class _FlightsListPageState extends State<FlightsListPage> {
     final result = await Navigator.of(context).push<AirportSearchResult>(
       MaterialPageRoute(
         builder: (_) => AirportSearchScreen(
-          initialField: isOrigin ? AirportSearchField.origin : AirportSearchField.destination,
+          initialField: isOrigin
+              ? AirportSearchField.origin
+              : AirportSearchField.destination,
           initialOrigin: _datumFrom(
             city: SharedPrefServices.getcityFrom(),
             code: SharedPrefServices.getairportcodeFrom(),
@@ -295,18 +252,23 @@ class _FlightsListPageState extends State<FlightsListPage> {
     if (result == null) return;
     if (result.origin != null) {
       await SharedPrefServices.setcityFrom(result.origin!.city ?? '');
-      await SharedPrefServices.setairportcodeFrom(result.origin!.airportCode ?? '');
+      await SharedPrefServices.setairportcodeFrom(
+          result.origin!.airportCode ?? '');
       await SharedPrefServices.setcountryFrom(result.origin!.country ?? '');
     }
     if (result.destination != null) {
       await SharedPrefServices.setcityTo(result.destination!.city ?? '');
-      await SharedPrefServices.setairportcodeTo(result.destination!.airportCode ?? '');
+      await SharedPrefServices.setairportcodeTo(
+          result.destination!.airportCode ?? '');
       await SharedPrefServices.setcountryTo(result.destination!.country ?? '');
     }
     if (mounted) setState(() {});
   }
 
-  static Datum? _datumFrom({required String? city, required String? code, required String? country}) {
+  static Datum? _datumFrom(
+      {required String? city,
+      required String? code,
+      required String? country}) {
     if (city == null || city.trim().isEmpty) return null;
     return Datum(city: city, airportCode: code, country: country);
   }
@@ -317,7 +279,8 @@ class _FlightsListPageState extends State<FlightsListPage> {
     final country = SharedPrefServices.getcountryFrom();
 
     SharedPrefServices.setcityFrom(SharedPrefServices.getcityTo() ?? '');
-    SharedPrefServices.setairportcodeFrom(SharedPrefServices.getairportcodeTo() ?? '');
+    SharedPrefServices.setairportcodeFrom(
+        SharedPrefServices.getairportcodeTo() ?? '');
     SharedPrefServices.setcountryFrom(SharedPrefServices.getcountryTo() ?? '');
 
     SharedPrefServices.setcityTo(city ?? '');
@@ -337,7 +300,9 @@ class _FlightsListPageState extends State<FlightsListPage> {
     final result = await Navigator.of(context).push<AirportSearchResult>(
       MaterialPageRoute(
         builder: (_) => AirportSearchScreen(
-          initialField: isOrigin ? AirportSearchField.origin : AirportSearchField.destination,
+          initialField: isOrigin
+              ? AirportSearchField.origin
+              : AirportSearchField.destination,
           initialOrigin: _datumFrom(
             city: segment.originCity,
             code: segment.originAirportCode,
@@ -354,7 +319,8 @@ class _FlightsListPageState extends State<FlightsListPage> {
     if (result == null) return;
     var updated = form.multiCitySegments[index];
     if (result.origin != null) updated = updated.withOrigin(result.origin!);
-    if (result.destination != null) updated = updated.withDestination(result.destination!);
+    if (result.destination != null)
+      updated = updated.withDestination(result.destination!);
     form.updateSegment(index, updated);
   }
 
@@ -374,7 +340,8 @@ class _FlightsListPageState extends State<FlightsListPage> {
           // while the user is just picking a One Way departure date.
           // The underlying value is preserved either way; not passing it
           // here only means this particular visit starts it empty.
-          initialReturn: form.tripType == TripType.roundTrip ? raw_arrival_date : null,
+          initialReturn:
+              form.tripType == TripType.roundTrip ? raw_arrival_date : null,
         ),
       ),
     );
@@ -410,7 +377,8 @@ class _FlightsListPageState extends State<FlightsListPage> {
     int index,
   ) async {
     final segment = form.multiCitySegments[index];
-    final firstAllowed = index == 0 ? DateTime.now() : form.multiCitySegments[index - 1].date;
+    final firstAllowed =
+        index == 0 ? DateTime.now() : form.multiCitySegments[index - 1].date;
     final routeLabel =
         '${segment.originAirportCode ?? segment.originCity ?? '—'} → '
         '${segment.destinationAirportCode ?? segment.destinationCity ?? '—'}';
@@ -452,7 +420,10 @@ class _FlightsListPageState extends State<FlightsListPage> {
                 const SizedBox(height: 10),
                 Text(
                   "INR ${SharedPrefServices.getwalletblc()}",
-                  style: TextStyle(fontSize: 20.0, color: AppColors.primary, fontFamily: 'Poppins'),
+                  style: TextStyle(
+                      fontSize: 20.0,
+                      color: AppColors.primary,
+                      fontFamily: 'Poppins'),
                 ),
                 const SizedBox(height: 10),
               ],
@@ -528,7 +499,8 @@ class _FlightsListPageState extends State<FlightsListPage> {
     dest.clear();
     dest = form.multiCitySegments
         .map((segment) => {
-              "departureDateTime": DateFormat('yyyy-MM-dd').format(segment.date),
+              "departureDateTime":
+                  DateFormat('yyyy-MM-dd').format(segment.date),
               "origin": (segment.originAirportCode ?? "").toString(),
               "destination": (segment.destinationAirportCode ?? "").toString(),
               "flightDateFlex": 3

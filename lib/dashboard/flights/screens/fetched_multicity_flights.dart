@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:outc/dashboard/flights/models/flight_roundtrip_model.dart';
 import 'package:outc/dashboard/flights/screens/book_flight_formpage.dart';
 import 'package:outc/core/theme/design_tokens.dart';
+import 'package:outc/core/widgets/app_top_bar.dart';
 import 'package:outc/dashboard/flights/widgets/ticketdesign.dart';
 
 import 'package:outc/widgets/components/components.dart';
@@ -91,137 +92,19 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
         _currentRangeValues.end.round().toString());
 
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: Text(
-          "OutC",
-          style: TextStyle(
-            fontSize: 22.0,
-            fontFamily: 'poppins',
-            color: AppColors.primary,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        iconTheme: const IconThemeData(
-          color: Colors.grey,
-        ),
-        automaticallyImplyLeading: false,
-        actions: <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(4.0),
-            child: IconButton(
-              color: AppColors.primary,
-              icon: Icon(
-                Icons.wallet,
-                size: 28,
-                color: AppColors.primary,
-              ),
-              onPressed: () {
-                showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        backgroundColor: Colors.white,
-                        content: Container(
-                          color: Colors.transparent,
-                          height: 80,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              const SizedBox(
-                                height: 10,
-                              ),
-                              const Text(
-                                "My Wallet Balance",
-                                style: TextStyle(
-                                  fontSize: 14.0,
-                                  color: Colors.black,
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                "INR ${SharedPrefServices.getwalletblc()}",
-                                style: TextStyle(
-                                  fontSize: 20.0,
-                                  color: AppColors.primary,
-                                  fontFamily: 'Poppins',
-                                  // fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(
-                                height: 10,
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    });
-              },
-            ),
-          ),
+      backgroundColor: AppColors.panelBackground,
+      appBar: AppTopBar(
+        title: 'Flight Results',
+        actions: [
           IconButton(
-            color: AppColors.primary,
-            icon: const ImageIcon(
-              AssetImage(
-                "images/notifybell.png",
-              ),
-            ),
-            onPressed: () {},
+            icon: const Icon(Icons.filter_alt),
+            onPressed: () => setState(() => filterIcon = true),
           ),
         ],
       ),
       body: SafeArea(
         child: Column(
           children: [
-            Container(
-              margin: const EdgeInsets.only(top: 10.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Icon(
-                        Icons.arrow_back_ios_new_outlined,
-                        color: AppColors.textSecondary,
-                        // color: Colors.transparent,
-                        size: 20,
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context, false);
-                    },
-                  ),
-                  Text(
-                    "Flights List MultiCity",
-                    // ${filteredList.length}",
-                    style: TextStyle(
-                        fontFamily: 'poppins',
-                        fontSize: 16.0,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700),
-                  ),
-                  GestureDetector(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Icon(
-                        Icons.filter_alt,
-                        color: AppColors.primary,
-                        // color: Colors.transparent,
-                        size: 20,
-                      ),
-                    ),
-                    onTap: () {
-                      setState(() {
-                        filterIcon = true;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
             dataFlightDetails!.isEmpty
                 ? Center(
                     child: Text(
@@ -344,8 +227,7 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                               Icon(
                                                 Icons.flight_takeoff,
                                                 size: 30,
-                                                color:
-                                                    AppColors.primary,
+                                                color: AppColors.primary,
                                               ),
                                               Text(
                                                 dataFlightDetails![index]
@@ -356,7 +238,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                     : "Non Refundable",
                                                 style: TextStyle(
                                                   fontSize: 12.0,
-                                                  color: AppColors.textSecondary,
+                                                  color:
+                                                      AppColors.textSecondary,
                                                   fontWeight: FontWeight.bold,
                                                   fontFamily: 'Poppins',
                                                 ),
@@ -364,8 +247,7 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                               Icon(
                                                 Icons.flight_land,
                                                 size: 30,
-                                                color:
-                                                    AppColors.primary,
+                                                color: AppColors.primary,
                                               ),
                                             ],
                                           ),
@@ -390,8 +272,7 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                               SizedBox(
                                                 width: 150,
                                                 child: Divider(
-                                                  color:
-                                                      AppColors.primary,
+                                                  color: AppColors.primary,
                                                   thickness: 3,
                                                 ),
                                               ),
@@ -547,8 +428,7 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                               Icon(
                                                 Icons.flight_takeoff,
                                                 size: 30,
-                                                color:
-                                                    AppColors.primary,
+                                                color: AppColors.primary,
                                               ),
                                               Text(
                                                 dataFlightDetails![index]
@@ -559,7 +439,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                     : "Non Refundable",
                                                 style: TextStyle(
                                                   fontSize: 12.0,
-                                                  color: AppColors.textSecondary,
+                                                  color:
+                                                      AppColors.textSecondary,
                                                   fontWeight: FontWeight.bold,
                                                   fontFamily: 'Poppins',
                                                 ),
@@ -567,8 +448,7 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                               Icon(
                                                 Icons.flight_land,
                                                 size: 30,
-                                                color:
-                                                    AppColors.primary,
+                                                color: AppColors.primary,
                                               ),
                                             ],
                                           ),
@@ -597,8 +477,7 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                               SizedBox(
                                                 width: 150,
                                                 child: Divider(
-                                                  color:
-                                                      AppColors.primary,
+                                                  color: AppColors.primary,
                                                   thickness: 3,
                                                 ),
                                               ),
@@ -694,7 +573,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                               "Baggage Details",
                                                               style: TextStyle(
                                                                 fontSize: 14.0,
-                                                                color: AppColors.primary,
+                                                                color: AppColors
+                                                                    .primary,
                                                                 fontWeight:
                                                                     FontWeight
                                                                         .bold,
@@ -727,7 +607,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                                     Icon(
                                                                       Icons
                                                                           .flight_takeoff,
-                                                                      color: AppColors.primary,
+                                                                      color: AppColors
+                                                                          .primary,
                                                                     ),
                                                                   ],
                                                                 ),
@@ -737,7 +618,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                                       TextStyle(
                                                                     fontSize:
                                                                         14.0,
-                                                                    color: AppColors.primary,
+                                                                    color: AppColors
+                                                                        .primary,
                                                                     fontWeight:
                                                                         FontWeight
                                                                             .bold,
@@ -751,7 +633,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                                       TextStyle(
                                                                     fontSize:
                                                                         14.0,
-                                                                    color: AppColors.textSecondary,
+                                                                    color: AppColors
+                                                                        .textSecondary,
                                                                     fontWeight:
                                                                         FontWeight
                                                                             .bold,
@@ -769,7 +652,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                                 Icon(
                                                                   Icons
                                                                       .luggage_outlined,
-                                                                  color: AppColors.secondary,
+                                                                  color: AppColors
+                                                                      .secondary,
                                                                 ),
                                                                 Text(
                                                                   "${dataFlightDetails![index].flightDetails![0].flightSegments![0].checkInBaggage} CheckedIn Baggage",
@@ -777,7 +661,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                                       TextStyle(
                                                                     fontSize:
                                                                         14.0,
-                                                                    color: AppColors.secondary,
+                                                                    color: AppColors
+                                                                        .secondary,
                                                                     fontWeight:
                                                                         FontWeight
                                                                             .bold,
@@ -792,7 +677,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                                 Icon(
                                                                   Icons
                                                                       .luggage_outlined,
-                                                                  color: AppColors.secondary,
+                                                                  color: AppColors
+                                                                      .secondary,
                                                                 ),
                                                                 Text(
                                                                   dataFlightDetails![index]
@@ -808,7 +694,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                                       TextStyle(
                                                                     fontSize:
                                                                         14.0,
-                                                                    color: AppColors.secondary,
+                                                                    color: AppColors
+                                                                        .secondary,
                                                                     fontWeight:
                                                                         FontWeight
                                                                             .bold,
@@ -1061,8 +948,7 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                               decoration: BoxDecoration(
                                   color: Colors.grey[300],
                                   borderRadius: BorderRadius.circular(3),
-                                  border: Border.all(
-                                      color: AppColors.primary)),
+                                  border: Border.all(color: AppColors.primary)),
                               child: Container(
                                 margin:
                                     const EdgeInsets.only(right: 15, left: 15),
@@ -1407,7 +1293,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                               right: 4),
                                                       child: Icon(
                                                         Icons.sunny,
-                                                        color: AppColors.primary,
+                                                        color:
+                                                            AppColors.primary,
                                                       ),
                                                     ),
                                                     Padding(
@@ -1459,7 +1346,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                               right: 4),
                                                       child: Icon(
                                                         Icons.sunny,
-                                                        color: AppColors.primary,
+                                                        color:
+                                                            AppColors.primary,
                                                       ),
                                                     ),
                                                     Padding(
@@ -1511,7 +1399,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                               right: 4),
                                                       child: Icon(
                                                         Icons.sunny,
-                                                        color: AppColors.primary,
+                                                        color:
+                                                            AppColors.primary,
                                                       ),
                                                     ),
                                                     Padding(
@@ -1563,7 +1452,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                               right: 4),
                                                       child: Icon(
                                                         Icons.sunny,
-                                                        color: AppColors.primary,
+                                                        color:
+                                                            AppColors.primary,
                                                       ),
                                                     ),
                                                     Padding(
@@ -1653,7 +1543,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                               right: 4),
                                                       child: Icon(
                                                         Icons.sunny,
-                                                        color: AppColors.primary,
+                                                        color:
+                                                            AppColors.primary,
                                                       ),
                                                     ),
                                                     Padding(
@@ -1705,7 +1596,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                               right: 4),
                                                       child: Icon(
                                                         Icons.sunny,
-                                                        color: AppColors.primary,
+                                                        color:
+                                                            AppColors.primary,
                                                       ),
                                                     ),
                                                     Padding(
@@ -1757,7 +1649,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                               right: 4),
                                                       child: Icon(
                                                         Icons.sunny,
-                                                        color: AppColors.primary,
+                                                        color:
+                                                            AppColors.primary,
                                                       ),
                                                     ),
                                                     Padding(
@@ -1809,7 +1702,8 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                               right: 4),
                                                       child: Icon(
                                                         Icons.sunny,
-                                                        color: AppColors.primary,
+                                                        color:
+                                                            AppColors.primary,
                                                       ),
                                                     ),
                                                     Padding(
@@ -2074,8 +1968,7 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                       });
                                     },
                                     style: ElevatedButton.styleFrom(
-                                        backgroundColor:
-                                            AppColors.primary,
+                                        backgroundColor: AppColors.primary,
                                         shape: RoundedRectangleBorder(
                                           borderRadius:
                                               BorderRadius.circular(10),

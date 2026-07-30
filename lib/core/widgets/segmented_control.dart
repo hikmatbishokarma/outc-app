@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// Generic animated segmented control: a row of equal-width, tappable labels
-/// with a sliding pill indicator behind the selected one. Not tied to any
+/// A row of compact outlined toggle chips — one per label, selected one
+/// shown with a colored border/text on a white background (MMT-style: light
+/// and compact, not a large filled/sliding-pill control). Not tied to any
 /// module's colors or copy — callers supply [labels], [selectedIndex], and
 /// [onChanged].
 class SegmentedControl extends StatelessWidget {
@@ -12,9 +13,8 @@ class SegmentedControl extends StatelessWidget {
     required this.onChanged,
     this.activeColor,
     this.inactiveTextColor,
-    this.backgroundColor,
-    this.height = 48,
-    this.borderRadius = 14,
+    this.height = 38,
+    this.borderRadius = 8,
   });
 
   final List<String> labels;
@@ -22,7 +22,6 @@ class SegmentedControl extends StatelessWidget {
   final ValueChanged<int> onChanged;
   final Color? activeColor;
   final Color? inactiveTextColor;
-  final Color? backgroundColor;
   final double height;
   final double borderRadius;
 
@@ -30,70 +29,42 @@ class SegmentedControl extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final active = activeColor ?? colorScheme.primary;
-    final inactiveText = inactiveTextColor ?? colorScheme.onSurfaceVariant;
-    final background = backgroundColor ?? colorScheme.surfaceContainerHighest;
+    final inactiveText = inactiveTextColor ?? Colors.grey.shade700;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final segmentWidth = constraints.maxWidth / labels.length;
-        return Container(
-          height: height,
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(borderRadius),
-          ),
-          padding: const EdgeInsets.all(4),
-          child: Stack(
-            children: [
-              AnimatedAlign(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOutCubic,
-                alignment: Alignment(
-                  labels.length == 1
-                      ? 0
-                      : -1 + (2 * selectedIndex) / (labels.length - 1),
-                  0,
+    return Row(
+      children: List.generate(labels.length, (index) {
+        final isSelected = index == selectedIndex;
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: index == labels.length - 1 ? 0 : 8),
+            child: GestureDetector(
+              onTap: () => onChanged(index),
+              child: Container(
+                height: height,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(borderRadius),
+                  border: Border.all(
+                    color: isSelected ? active : Colors.grey.shade300,
+                    width: isSelected ? 1.4 : 1,
+                  ),
                 ),
-                child: Container(
-                  width: segmentWidth - 4,
-                  height: height - 8,
-                  decoration: BoxDecoration(
-                    color: active,
-                    borderRadius: BorderRadius.circular(borderRadius - 4),
+                child: Text(
+                  labels[index],
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isSelected ? active : inactiveText,
                   ),
                 ),
               ),
-              Row(
-                children: List.generate(labels.length, (index) {
-                  final isSelected = index == selectedIndex;
-                  return Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => onChanged(index),
-                      child: Center(
-                        child: AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 200),
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w700,
-                            color: isSelected ? Colors.white : inactiveText,
-                          ),
-                          child: Text(
-                            labels[index],
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ],
+            ),
           ),
         );
-      },
+      }),
     );
   }
 }

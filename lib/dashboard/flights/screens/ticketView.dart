@@ -6,9 +6,8 @@ import 'package:outc/dashboard/dashboard.dart';
 import 'package:outc/dashboard/flights/models/one_way_book_response.dart';
 
 import 'package:outc/core/theme/design_tokens.dart';
+import 'package:outc/core/widgets/app_top_bar.dart';
 import 'package:outc/core/widgets/glass_surface.dart';
-
-import 'package:outc/widgets/sharedprefservices.dart';
 
 class TicketView extends StatefulWidget {
   final String pnr;
@@ -66,106 +65,9 @@ class _TicketViewState extends State<TicketView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          centerTitle: true,
-          title: Text(
-            "OutC",
-            style: TextStyle(
-              fontSize: 22.0,
-              fontFamily: 'poppins',
-              color: AppColors.primary,
-            ),
-          ),
-          backgroundColor: Colors.white,
-          iconTheme: const IconThemeData(
-            color: Colors.grey,
-          ),
-          leading: Padding(
-              padding: const EdgeInsets.all(8),
-              child: IconButton(
-                color: AppColors.primary,
-                icon: Icon(
-                  Icons.home,
-                  size: 28,
-                  color: AppColors.primary,
-                ),
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (BuildContext context) {
-                        return Dashboard();
-                      },
-                    ),
-                  );
-                },
-              )),
-          actions: <Widget>[
-            Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: IconButton(
-                color: AppColors.primary,
-                icon: Icon(
-                  Icons.wallet,
-                  size: 28,
-                  color: AppColors.primary,
-                ),
-                onPressed: () {
-                  showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          backgroundColor: Colors.white,
-                          content: Container(
-                            color: Colors.transparent,
-                            height: 80,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                const SizedBox(
-                                  height: 10,
-                                ),
-                                const Text(
-                                  "My Wallet Balance",
-                                  style: TextStyle(
-                                    fontSize: 14.0,
-                                    color: Colors.black,
-                                    fontFamily: 'Poppins',
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  "INR ${SharedPrefServices.getwalletblc()}",
-                                  style: TextStyle(
-                                    fontSize: 20.0,
-                                    color: AppColors.primary,
-                                    fontFamily: 'Poppins',
-                                    // fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                const SizedBox(
-                                  height: 10,
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      });
-                },
-              ),
-            ),
-            IconButton(
-              color: AppColors.primary,
-              icon: const ImageIcon(
-                AssetImage(
-                  "images/notifybell.png",
-                ),
-              ),
-              onPressed: () {},
-            ),
-          ],
-        ),
-        backgroundColor: Colors.white,
+        appBar: const AppTopBar(
+            title: 'Booking Confirmed', automaticallyImplyLeading: false),
+        backgroundColor: AppColors.panelBackground,
         floatingActionButton: Padding(
           padding: const EdgeInsets.only(bottom: 5, left: 10, right: 10),
           child: SizedBox(
