@@ -216,6 +216,11 @@ class _TripCard extends StatelessWidget {
   final String? searchId;
   final int passengerCount;
 
+  bool get _isAc {
+    final type = trip.busType.toUpperCase();
+    return type.contains('AC') && !type.contains('NON-AC') && !type.contains('NON AC');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -228,6 +233,7 @@ class _TripCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: Column(
@@ -236,8 +242,27 @@ class _TripCard extends StatelessWidget {
                       Text(trip.displayName,
                           style: const TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text(trip.busType,
-                          style: TextStyle(color: Colors.grey.shade600)),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _isAc
+                              ? AppColors.skyBlue.withValues(alpha: 0.18)
+                              : AppColors.surfaceGrey.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: Text(
+                          trip.busType,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: _isAc
+                                ? AppColors.secondary
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -250,24 +275,18 @@ class _TripCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(trip.departureTime,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text(trip.duration,
-                    style: TextStyle(color: Colors.grey.shade600)),
-                Text(trip.arrivalTime,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
-              ],
+            const SizedBox(height: 13),
+            _RouteRow(
+              departureTime: trip.departureTime,
+              arrivalTime: trip.arrivalTime,
+              duration: trip.duration,
             ),
             const SizedBox(height: 6),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('${trip.availableSeats} seats available',
-                    style: TextStyle(color: Colors.grey.shade600)),
+                    style: const TextStyle(color: AppColors.textSecondary)),
                 TextButton(
                   onPressed: () {
                     final id = searchId;
@@ -301,4 +320,96 @@ class _TripCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Pickup → drop indicator: two direction-coded dots joined by a dashed
+/// line, with the duration + a bus glyph sitting inline at the midpoint.
+class _RouteRow extends StatelessWidget {
+  const _RouteRow({
+    required this.departureTime,
+    required this.arrivalTime,
+    required this.duration,
+  });
+
+  final String departureTime;
+  final String arrivalTime;
+  final String duration;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(departureTime,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        const SizedBox(width: 6),
+        _dot(AppColors.secondary),
+        const Expanded(child: _DashedLine()),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.directions_bus_rounded,
+                  size: 13, color: AppColors.secondary),
+              const SizedBox(width: 4),
+              Text(duration,
+                  style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary)),
+            ],
+          ),
+        ),
+        const Expanded(child: _DashedLine()),
+        _dot(AppColors.skyBlue),
+        const SizedBox(width: 6),
+        Text(arrivalTime,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+      ],
+    );
+  }
+
+  Widget _dot(Color color) => Container(
+        width: 6,
+        height: 6,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      );
+}
+
+class _DashedLine extends StatelessWidget {
+  const _DashedLine();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 1,
+      child: CustomPaint(
+        size: const Size(double.infinity, 1),
+        painter: _DashedLinePainter(color: AppColors.border),
+      ),
+    );
+  }
+}
+
+class _DashedLinePainter extends CustomPainter {
+  _DashedLinePainter({required this.color});
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+    const dashWidth = 3.0;
+    const gapWidth = 3.0;
+    double x = 0;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, 0), Offset(x + dashWidth, 0), paint);
+      x += dashWidth + gapWidth;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedLinePainter oldDelegate) =>
+      oldDelegate.color != color;
 }
