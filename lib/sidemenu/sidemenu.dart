@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:expandable/expandable.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:outc/loginflow/multiloginpage.dart';
 import 'package:outc/partnerSidemenu/bank_details_page.dart';
 import 'package:outc/partnerSidemenu/change_pasword_page.dart';
@@ -559,8 +560,8 @@ class _SideMenuState extends State<SideMenu> {
                             const SizedBox(height: 10),
                             Padding(
                               padding: const EdgeInsets.all(8.0),
-                              child: Image.asset(
-                                'images/outc.png',
+                              child: SvgPicture.asset(
+                                'images/OutcLogoNew.svg',
                                 height: 40,
                               ),
                             ),
@@ -1191,8 +1192,8 @@ class _SideMenuState extends State<SideMenu> {
                             const SizedBox(height: 10),
                             Padding(
                               padding: const EdgeInsets.all(8.0),
-                              child: Image.asset(
-                                'images/outc.png',
+                              child: SvgPicture.asset(
+                                'images/OutcLogoNew.svg',
                                 height: 40,
                               ),
                             ),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:outc/dashboard/dashboard.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
 
@@ -46,8 +47,8 @@ class _SplashscreenState extends State<Splashscreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Center(
-              child: Image.asset(
-                "images/outc.png",
+              child: SvgPicture.asset(
+                "images/OutcLogoNew.svg",
                 height: 250,
                 width: 350,
               ),

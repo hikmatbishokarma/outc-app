@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import 'package:outc/core/module_registry.dart';
 import 'package:outc/dashboard/account.dart';
@@ -85,8 +86,8 @@ class _DashboardState extends State<Dashboard> {
         backgroundColor: Colors.white,
         appBar: AppBar(
           centerTitle: false,
-          title: Image.asset(
-            "images/outc.png",
+          title: SvgPicture.asset(
+            "images/OutcLogoNew.svg",
             height: 40,
             width: 40,
           ),
@@ -284,8 +285,8 @@ class _DashboardState extends State<Dashboard> {
                   const SizedBox(height: 10),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: Image.asset(
-                      'images/outc.png',
+                    child: SvgPicture.asset(
+                      'images/OutcLogoNew.svg',
                       height: 40,
                     ),
                   ),
