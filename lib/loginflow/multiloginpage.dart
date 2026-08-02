@@ -1,5 +1,6 @@
 import 'package:animated_segmented_tab_control/animated_segmented_tab_control.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:outc/core/module_registry.dart';
 import 'package:outc/loginflow/agentloginpage.dart';
@@ -51,7 +52,7 @@ class _MultiLoginScreenState extends State<MultiLoginScreen> {
                   child: Container(
                     height: 150.0,
                     alignment: Alignment.topCenter,
-                    child: Center(child: Image.asset('images/outc.png')),
+                    child: Center(child: SvgPicture.asset('images/OutcLogoNew.svg')),
                   ),
                 ),
                 const SizedBox(height: 20),

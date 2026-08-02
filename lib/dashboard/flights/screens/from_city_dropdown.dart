@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:outc/dashboard/flights/models/get_cities_by_search_model.dart';
 import 'package:http/http.dart' as http;
 import 'package:outc/dashboard/flights/widgets/colors.dart';
+import 'package:outc/services/app_constants.dart';
 
 import 'package:outc/widgets/sharedprefservices.dart';
 
@@ -162,7 +163,7 @@ class _SelectCityState extends State<SelectCity> {
 
   Future<List<Datum>> fetchDataFromBackend(String countrycode) async {
     var url = Uri.parse(
-        'https://outc.in/api/v1/flights/updatedAirPort/search/$countrycode');
+        '${AppConstant.baseUrl}api/v1/flights/updatedAirPort/search/$countrycode');
     final response = await http.get(url);
     print(url);
     if (response.statusCode == 200) {

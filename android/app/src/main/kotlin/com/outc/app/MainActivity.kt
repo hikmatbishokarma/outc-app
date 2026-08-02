@@ -1,4 +1,4 @@
-package com.example.outc_new
+package com.outc.app
 
 import io.flutter.embedding.android.FlutterActivity
 

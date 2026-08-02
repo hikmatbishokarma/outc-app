@@ -9,10 +9,8 @@ import 'package:outc/dashboard/flights/models/flight_price_model.dart'
     as flightPrice;
 import 'package:outc/dashboard/flights/models/flightbalaji.dart';
 import 'package:outc/dashboard/flights/screens/ticketView.dart';
-import 'package:outc/core/services/connectivity_service.dart';
 import 'package:outc/core/theme/design_tokens.dart';
-import 'package:outc/core/widgets/error_state.dart';
-import 'package:outc/core/widgets/no_internet_state.dart';
+import 'package:outc/core/widgets/app_top_bar.dart';
 import 'package:outc/dashboard/flights/widgets/progressbar.dart';
 import 'package:outc/services/api_services_list.dart';
 import 'package:outc/core/booking_context.dart';
@@ -137,36 +135,6 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
   List<flightPrice.SelectedFlight> selectedFlights = [];
 
   bool isApiCallProcess = false;
-
-  /// Checks connectivity before the price/block/book pipeline is fired
-  /// (spec 0012). Shows [NoInternetState] and returns false if offline, so
-  /// the caller can skip the network calls entirely.
-  Future<bool> _requireOnline() async {
-    if (await ConnectivityService.isOnline()) return true;
-    if (!mounted) return false;
-    setState(() => isApiCallProcess = false);
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: NoInternetState(onRetry: () => Navigator.of(context).pop()),
-      ),
-    );
-    return false;
-  }
-
-  void _showErrorSheet([String? message]) {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: ErrorState(
-          message: message ?? 'Something went wrong. Please try again.',
-          onRetry: () => Navigator.of(context).pop(),
-        ),
-      ),
-    );
-  }
 
   String convertDateformat(String dob) {
     if (dob.isEmpty) {
@@ -418,17 +386,8 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
     print('grandTotal $finalAmount');
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade200,
-      // appBar: AppBar(
-      //   backgroundColor: Colors.transparent,
-      //   elevation: 0,
-      //   centerTitle: true,
-      //   title: const Text(
-      //     "Enter Details",
-      //     style: TextStyle(
-      //         color: Colors.black, fontSize: 25, fontWeight: FontWeight.w500),
-      //   ),
-      // ),
+      backgroundColor: AppColors.panelBackground,
+      appBar: const AppTopBar(title: 'Booking Details'),
       body: SafeArea(
         child: Container(
           margin: const EdgeInsets.only(right: 10, left: 10),
@@ -436,46 +395,6 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 10.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      GestureDetector(
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Icon(
-                            Icons.arrow_back_ios_new_outlined,
-                            color: AppColors.textSecondary,
-                            // color: Colors.transparent,
-                            size: 20,
-                          ),
-                        ),
-                        onTap: () {
-                          Navigator.pop(context, false);
-                        },
-                      ),
-                      Text(
-                        "Booking Details",
-                        // ${filteredList.length}",
-                        style: TextStyle(
-                            fontFamily: 'poppins',
-                            fontSize: 16.0,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w700),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.all(8.0),
-                        child: Icon(
-                          Icons.filter_alt,
-                          color: Colors.transparent,
-                          // color: Colors.transparent,
-                          size: 20,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 const SizedBox(
                   height: 25,
                 ),
@@ -496,8 +415,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                 right: 15, left: 15, top: 25, bottom: 25),
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(10),
-                                border:
-                                    Border.all(color: AppColors.secondary)),
+                                border: Border.all(color: AppColors.secondary)),
                             child: Column(
                               children: [
                                 Container(
@@ -688,8 +606,8 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                   right: 10, left: 10, top: 20, bottom: 15),
                               decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                      color: AppColors.secondary)),
+                                  border:
+                                      Border.all(color: AppColors.secondary)),
                               child: Container(
                                 margin: const EdgeInsets.only(
                                     right: 10, left: 10, top: 10),
@@ -743,22 +661,26 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                                 borderRadius:
                                                     BorderRadius.circular(5),
                                                 borderSide: const BorderSide(
-                                                    color: AppColors.fieldBorder)),
+                                                    color:
+                                                        AppColors.fieldBorder)),
                                             enabledBorder: OutlineInputBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(5),
                                                 borderSide: const BorderSide(
-                                                    color: AppColors.fieldBorder)),
+                                                    color:
+                                                        AppColors.fieldBorder)),
                                             focusedBorder: OutlineInputBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(5),
                                                 borderSide: const BorderSide(
-                                                    color: AppColors.fieldBorder)),
+                                                    color:
+                                                        AppColors.fieldBorder)),
                                             errorBorder: OutlineInputBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(5),
                                                 borderSide: const BorderSide(
-                                                    color: AppColors.fieldBorder)),
+                                                    color:
+                                                        AppColors.fieldBorder)),
                                             hintText: 'Enter Mobile Number',
                                             hintStyle: GoogleFonts.poppins(
                                                 color: AppColors.textSecondary,
@@ -1056,8 +978,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                 right: 15, left: 15, top: 20, bottom: 15),
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
-                                border:
-                                    Border.all(color: AppColors.secondary)),
+                                border: Border.all(color: AppColors.secondary)),
                             child: Container(
                               margin:
                                   const EdgeInsets.only(right: 15, left: 15),
@@ -1188,8 +1109,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                 right: 15, left: 15, top: 15, bottom: 15),
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
-                                border:
-                                    Border.all(color: AppColors.secondary)),
+                                border: Border.all(color: AppColors.secondary)),
                             child: Container(
                               margin:
                                   const EdgeInsets.only(right: 10, left: 10),
@@ -1273,8 +1193,7 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                 right: 15, left: 15, top: 15, bottom: 15),
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
-                                border:
-                                    Border.all(color: AppColors.secondary)),
+                                border: Border.all(color: AppColors.secondary)),
                             child: Container(
                               margin:
                                   const EdgeInsets.only(right: 10, left: 10),
@@ -1310,17 +1229,20 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                                 borderRadius:
                                                     BorderRadius.circular(3),
                                                 borderSide: const BorderSide(
-                                                    color: AppColors.fieldBorder)),
+                                                    color:
+                                                        AppColors.fieldBorder)),
                                             enabledBorder: OutlineInputBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(3),
                                                 borderSide: const BorderSide(
-                                                    color: AppColors.fieldBorder)),
+                                                    color:
+                                                        AppColors.fieldBorder)),
                                             focusedBorder: OutlineInputBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(3),
                                                 borderSide: const BorderSide(
-                                                    color: AppColors.fieldBorder)),
+                                                    color:
+                                                        AppColors.fieldBorder)),
                                           ),
                                         ),
                                       ),
@@ -1440,7 +1362,8 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                             TextSpan(
                                                 text: 'I Agree To All The',
                                                 style: GoogleFonts.poppins(
-                                                    color: AppColors.textSecondary,
+                                                    color:
+                                                        AppColors.textSecondary,
                                                     fontSize: 14,
                                                     fontWeight:
                                                         FontWeight.w500)),
@@ -1454,7 +1377,8 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                             TextSpan(
                                                 text: 'and ',
                                                 style: GoogleFonts.poppins(
-                                                    color: AppColors.textSecondary,
+                                                    color:
+                                                        AppColors.textSecondary,
                                                     fontSize: 14,
                                                     fontWeight:
                                                         FontWeight.w500)),
@@ -1754,9 +1678,6 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                       // ......
                                       // int.parse(grandTotal as String);
                                       print('One way service  check');
-                                      if (!await _requireOnline()) return;
-                                      if (!mounted) return;
-
                                       APIService apiService = APIService();
                                       print('Service check');
                                       setState(() {
@@ -1877,106 +1798,125 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                                         .then((value) async {
                                                       if (value.statusCode ==
                                                           203) {
-                                                    setState(() {
-                                                      isApiCallProcess = false;
-                                                    });
-                                                  } else if (value.statusCode ==
-                                                      401) {
-                                                    setState(() {
-                                                      isApiCallProcess = false;
-                                                    });
-                                                  } else if (value.statusCode ==
-                                                      400) {
-                                                    setState(() {
-                                                      isApiCallProcess = false;
-                                                    });
-                                                  } else if (value.statusCode ==
-                                                      404) {
-                                                    setState(() {
-                                                      isApiCallProcess = false;
-                                                    });
-                                                  } else if (value.statusCode ==
-                                                          200 ||
-                                                      value.statusCode == 201) {
-                                                    String pnr = value.charges
-                                                        .ticketAllData.pnr
-                                                        .toString();
-                                                    String operator = value
-                                                        .charges
-                                                        .ticketAllData
-                                                        .ticketAllDataOperator
-                                                        .toString();
-                                                    String referenceNumber =
-                                                        value
+                                                        setState(() {
+                                                          isApiCallProcess =
+                                                              false;
+                                                        });
+                                                      } else if (value
+                                                              .statusCode ==
+                                                          401) {
+                                                        setState(() {
+                                                          isApiCallProcess =
+                                                              false;
+                                                        });
+                                                      } else if (value
+                                                              .statusCode ==
+                                                          400) {
+                                                        setState(() {
+                                                          isApiCallProcess =
+                                                              false;
+                                                        });
+                                                      } else if (value
+                                                              .statusCode ==
+                                                          404) {
+                                                        setState(() {
+                                                          isApiCallProcess =
+                                                              false;
+                                                        });
+                                                      } else if (value
+                                                                  .statusCode ==
+                                                              200 ||
+                                                          value.statusCode ==
+                                                              201) {
+                                                        String pnr = value
                                                             .charges
                                                             .ticketAllData
-                                                            .referenceNumber
+                                                            .pnr
                                                             .toString();
-                                                    String journeyDate = value
-                                                        .charges
-                                                        .ticketAllData
-                                                        .journeyDate
-                                                        .toString();
-                                                    String bookingDate = value
-                                                        .charges
-                                                        .ticketAllData
-                                                        .bookingDate
-                                                        .toString();
-                                                    String bookingStatus = value
-                                                        .charges
-                                                        .ticketAllData
-                                                        .bookingStatus
-                                                        .toString();
-                                                    final flightData = value
-                                                        .charges
-                                                        .ticketAllData
-                                                        .oneWaySegment;
-                                                    final baggageInfo = value
-                                                        .charges
-                                                        .ticketAllData
-                                                        .oneWayBaggageInfo;
-                                                    final passengerInfo = value
-                                                        .charges
-                                                        .ticketAllData
-                                                        .passengers;
-                                                    final fareData = value
-                                                        .charges
-                                                        .ticketAllData
-                                                        .oneWayflightFare;
+                                                        String operator = value
+                                                            .charges
+                                                            .ticketAllData
+                                                            .ticketAllDataOperator
+                                                            .toString();
+                                                        String referenceNumber =
+                                                            value
+                                                                .charges
+                                                                .ticketAllData
+                                                                .referenceNumber
+                                                                .toString();
+                                                        String journeyDate =
+                                                            value
+                                                                .charges
+                                                                .ticketAllData
+                                                                .journeyDate
+                                                                .toString();
+                                                        String bookingDate =
+                                                            value
+                                                                .charges
+                                                                .ticketAllData
+                                                                .bookingDate
+                                                                .toString();
+                                                        String bookingStatus =
+                                                            value
+                                                                .charges
+                                                                .ticketAllData
+                                                                .bookingStatus
+                                                                .toString();
+                                                        final flightData = value
+                                                            .charges
+                                                            .ticketAllData
+                                                            .oneWaySegment;
+                                                        final baggageInfo = value
+                                                            .charges
+                                                            .ticketAllData
+                                                            .oneWayBaggageInfo;
+                                                        final passengerInfo =
+                                                            value
+                                                                .charges
+                                                                .ticketAllData
+                                                                .passengers;
+                                                        final fareData = value
+                                                            .charges
+                                                            .ticketAllData
+                                                            .oneWayflightFare;
 
-                                                    Navigator.of(context).push(
-                                                      MaterialPageRoute(
-                                                        builder: (BuildContext
-                                                            context) {
-                                                          return TicketView(
-                                                            operator: operator,
-                                                            pnr: pnr,
-                                                            referenceNumber:
-                                                                referenceNumber,
-                                                            journeyDate:
-                                                                journeyDate,
-                                                            bookingDate:
-                                                                bookingDate,
-                                                            bookingStatus:
-                                                                bookingStatus,
-                                                            flightData:
-                                                                flightData,
-                                                            baggageInfo:
-                                                                baggageInfo,
-                                                            passengerInfo:
-                                                                passengerInfo,
-                                                            fareData: fareData,
-                                                          );
-                                                        },
-                                                      ),
-                                                    );
+                                                        Navigator.of(context)
+                                                            .push(
+                                                          MaterialPageRoute(
+                                                            builder:
+                                                                (BuildContext
+                                                                    context) {
+                                                              return TicketView(
+                                                                operator:
+                                                                    operator,
+                                                                pnr: pnr,
+                                                                referenceNumber:
+                                                                    referenceNumber,
+                                                                journeyDate:
+                                                                    journeyDate,
+                                                                bookingDate:
+                                                                    bookingDate,
+                                                                bookingStatus:
+                                                                    bookingStatus,
+                                                                flightData:
+                                                                    flightData,
+                                                                baggageInfo:
+                                                                    baggageInfo,
+                                                                passengerInfo:
+                                                                    passengerInfo,
+                                                                fareData:
+                                                                    fareData,
+                                                              );
+                                                            },
+                                                          ),
+                                                        );
                                                       } else {
                                                         setState(() {
                                                           isApiCallProcess =
                                                               false;
                                                         });
                                                       }
-                                                    }).catchError((e) { if (mounted) { setState(() => isApiCallProcess = false); _showErrorSheet(); } });
+                                                    });
                                                   },
                                                 );
                                               } else {
@@ -1990,13 +1930,13 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                                                 isApiCallProcess = false;
                                               });
                                             }
-                                          }).catchError((e) { if (mounted) { setState(() => isApiCallProcess = false); _showErrorSheet(); } });
+                                          });
                                         } else {
                                           setState(() {
                                             isApiCallProcess = false;
                                           });
                                         }
-                                      }).catchError((e) { if (mounted) { setState(() => isApiCallProcess = false); _showErrorSheet(); } });
+                                      });
                                     },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.primary,
@@ -2500,8 +2440,8 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                             child: Container(
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                      color: AppColors.fieldBorder),
+                                  border:
+                                      Border.all(color: AppColors.fieldBorder),
                                 ),
                                 child: DropdownButtonHideUnderline(
                                     child: DropdownButton<String>(
@@ -2563,8 +2503,8 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                               width: double.infinity,
                               decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                      color: AppColors.fieldBorder)),
+                                  border:
+                                      Border.all(color: AppColors.fieldBorder)),
                               child: Padding(
                                   padding: const EdgeInsets.only(
                                       left: 10, bottom: 14),
@@ -2609,8 +2549,8 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                               width: double.infinity,
                               decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                      color: AppColors.fieldBorder)),
+                                  border:
+                                      Border.all(color: AppColors.fieldBorder)),
                               child: Padding(
                                   padding: const EdgeInsets.only(
                                       left: 10, bottom: 14),
@@ -2655,8 +2595,8 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                               width: double.infinity,
                               decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                      color: AppColors.fieldBorder)),
+                                  border:
+                                      Border.all(color: AppColors.fieldBorder)),
                               child: Padding(
                                   padding: const EdgeInsets.only(
                                       left: 10, bottom: 14),
@@ -2722,8 +2662,8 @@ class _BookFlightFormpageState extends State<BookFlightFormpage> {
                               width: double.infinity,
                               decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                      color: AppColors.fieldBorder)),
+                                  border:
+                                      Border.all(color: AppColors.fieldBorder)),
                               child: Padding(
                                   padding: const EdgeInsets.only(
                                       left: 10, bottom: 14),

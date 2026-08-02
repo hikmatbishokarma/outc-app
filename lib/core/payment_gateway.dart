@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'widgets/payment_redirect_webview.dart';
+
 class PgBlockPaymentData {
   final String paymentLink; // Cashfree session id (pgType 1) or a plain success URL (pgType 3)
   final int pgType; // 1 = Cashfree, 3 = wallet (already paid server-side)
@@ -78,6 +80,33 @@ class MockCashfreeGateway implements PaymentGateway {
   }
 }
 
+/// Real pgType 1 adapter — replaces [MockCashfreeGateway] now that the
+/// redirect contract is confirmed (`b2coutcbusblockbookrespo.txt`:
+/// `payment_link` is actually a Cashfree `payment_session_id`, and the
+/// gateway redirects to `outc.in/pg_success`/`pg_failure` on completion).
+/// Booking confirmation doesn't need anything back from this — the caller
+/// already holds the booking reference from `blockTicket`'s response, so
+/// this only has to report success/failure.
+class CashfreeGateway implements PaymentGateway {
+  @override
+  Future<void> open(
+    BuildContext context,
+    PgBlockPaymentData data, {
+    required void Function(PgResult) onResult,
+  }) async {
+    final result = await Navigator.of(context).push<PaymentResult>(
+      MaterialPageRoute(
+        builder: (_) => PaymentRedirectWebView.cashfree(paymentSessionId: data.paymentLink),
+      ),
+    );
+    onResult(
+      result?.success == true
+          ? const PgResult(status: PgResultStatus.success)
+          : const PgResult(status: PgResultStatus.failure, errorMessage: 'Payment not completed'),
+    );
+  }
+}
+
 /// Picks the correct adapter for the pgType the backend returned on block.
 PaymentGateway paymentGatewayFor(int pgType) =>
-    pgType == 3 ? WalletAlreadyPaidGateway() : MockCashfreeGateway();
+    pgType == 3 ? WalletAlreadyPaidGateway() : CashfreeGateway();

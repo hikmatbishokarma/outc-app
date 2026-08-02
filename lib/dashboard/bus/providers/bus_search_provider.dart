@@ -1,7 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:outc/core/services/connectivity_service.dart';
-import 'package:outc/core/state/async_state.dart';
 import 'package:outc/dashboard/bus/models/bus_city_model.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/services/bus_service.dart';
@@ -18,11 +16,8 @@ class BusSearchProvider extends ChangeNotifier {
   DateTime journeyDate = DateTime.now();
   int passengerCount = minPassengers;
 
-  /// Null until the first search is attempted (spec 0012). `AsyncData`
-  /// always carries the response even when `data.trips` is empty —
-  /// `BusResultsScreen` is the one that renders `EmptyState`, since it
-  /// already owns the "what does the result set look like" rendering.
-  AsyncState<BusSearchResponse>? state;
+  bool isSearching = false;
+  String? errorMessage;
 
   bool get canSearch => originCity != null && destinationCity != null;
 
@@ -54,20 +49,15 @@ class BusSearchProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Builds the request and calls the search endpoint, storing the outcome
-  /// in [state]. Navigation is the screen's responsibility, not the
-  /// provider's — it reads [state] after this resolves.
-  Future<void> search() async {
-    if (!canSearch) return;
+  /// Builds the request, calls the search endpoint, and returns the parsed
+  /// response. Navigation/snackbars are the screen's responsibility, not
+  /// the provider's.
+  Future<BusSearchResponse?> search() async {
+    if (!canSearch) return null;
 
-    state = const AsyncLoading();
+    isSearching = true;
+    errorMessage = null;
     notifyListeners();
-
-    if (!await ConnectivityService.isOnline()) {
-      state = const AsyncOffline();
-      notifyListeners();
-      return;
-    }
 
     try {
       final request = BusSearchRequest(
@@ -78,10 +68,12 @@ class BusSearchProvider extends ChangeNotifier {
         dst: destinationCity!.name,
       );
       final response = await _service.searchBuses(request);
-      state = AsyncData(response);
+      return response;
     } catch (e) {
-      state = const AsyncError('Could not fetch buses. Please try again.');
+      errorMessage = 'Could not fetch buses. Please try again.';
+      return null;
     } finally {
+      isSearching = false;
       notifyListeners();
     }
   }

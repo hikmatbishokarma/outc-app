@@ -2,24 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import 'package:outc/core/payment_gateway.dart';
+import 'package:outc/core/theme/design_tokens.dart';
+import 'package:outc/core/widgets/app_top_bar.dart';
 import 'package:outc/core/widgets/bottom_sheet_shell.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/models/bus_seat_model.dart';
 import 'package:outc/dashboard/bus/providers/bus_checkout_provider.dart';
+import 'package:outc/dashboard/bus/screens/bus_ticket_screen.dart';
+import 'package:outc/loginflow/auth_gate.dart';
 
 /// Checkout screen (spec 0009) — trip summary, price breakup, and passenger
-/// details, reached from `BusPickupDropScreen`'s "Next". Still stops short
-/// of an actual booking submission (no block/book endpoint captured yet) —
-/// "Proceed" shows the same "coming soon" stub used across specs 0006-0008.
+/// details, reached from `BusPickupDropScreen`'s "Next". "Proceed" gates on
+/// `ensureLoggedIn` (a guest has no real customerId to book against — same
+/// guard flights' booking screens use), then calls
+/// `BusCheckoutProvider.blockSeats()`, routes through `paymentGatewayFor`
+/// (`lib/core/payment_gateway.dart` — the same mock-Cashfree/wallet
+/// abstraction flights already uses), and on payment success calls
+/// `confirmBooking()` and pushes `BusTicketScreen`.
 class BusCheckoutScreen extends StatelessWidget {
   const BusCheckoutScreen({
     super.key,
+    required this.searchId,
+    required this.tripId,
     required this.trip,
     required this.selectedSeats,
     required this.boardingPoint,
     required this.droppingPoint,
   });
 
+  final String searchId;
+  final String tripId;
   final BusTrip trip;
   final List<BusSeat> selectedSeats;
   final BusBoardingPoint boardingPoint;
@@ -29,6 +42,8 @@ class BusCheckoutScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => BusCheckoutProvider(
+        searchId: searchId,
+        tripId: tripId,
         trip: trip,
         selectedSeats: selectedSeats,
         boardingPoint: boardingPoint,
@@ -47,11 +62,8 @@ class _BusCheckoutView extends StatelessWidget {
     return Consumer<BusCheckoutProvider>(
       builder: (context, provider, _) {
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('Review & Passenger Details'),
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Colors.white,
-          ),
+          backgroundColor: AppColors.panelBackground,
+          appBar: const AppTopBar(title: 'Review & Passenger Details'),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(12),
             child: Column(
@@ -118,7 +130,8 @@ class _TripSummary extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(trip.displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(trip.displayName,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         Text(trip.busType, style: TextStyle(color: Colors.grey.shade600)),
         const SizedBox(height: 14),
         // Horizontal itinerary row — departure on the left, duration + a
@@ -133,9 +146,11 @@ class _TripSummary extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(_formatTime(provider.boardingPoint.time),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 15)),
                   Text(provider.boardingPoint.name,
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                      style:
+                          TextStyle(color: Colors.grey.shade600, fontSize: 12)),
                 ],
               ),
             ),
@@ -144,7 +159,8 @@ class _TripSummary extends StatelessWidget {
               child: Column(
                 children: [
                   Text(trip.duration,
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
+                      style:
+                          TextStyle(color: Colors.grey.shade600, fontSize: 11)),
                   const SizedBox(height: 6),
                   const _DashedLine(),
                 ],
@@ -155,10 +171,12 @@ class _TripSummary extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(_formatTime(provider.droppingPoint.time),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 15)),
                   Text(provider.droppingPoint.name,
                       textAlign: TextAlign.right,
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                      style:
+                          TextStyle(color: Colors.grey.shade600, fontSize: 12)),
                 ],
               ),
             ),
@@ -187,7 +205,8 @@ class _DashedLine extends StatelessWidget {
       builder: (context, constraints) {
         const dashWidth = 4.0;
         const dashGap = 4.0;
-        final dashCount = (constraints.maxWidth / (dashWidth + dashGap)).floor();
+        final dashCount =
+            (constraints.maxWidth / (dashWidth + dashGap)).floor();
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
@@ -223,7 +242,8 @@ class _FareSummarySheet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Base Fare', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          const Text('Base Fare',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           const SizedBox(height: 6),
           for (final seat in provider.selectedSeats)
             Padding(
@@ -231,7 +251,8 @@ class _FareSummarySheet extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Seat ${seat.seatCode}', style: TextStyle(color: Colors.grey.shade700)),
+                  Text('Seat ${seat.seatCode}',
+                      style: TextStyle(color: Colors.grey.shade700)),
                   Text('₹${seat.fare.toStringAsFixed(0)}'),
                 ],
               ),
@@ -240,10 +261,14 @@ class _FareSummarySheet extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Amount to be paid', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text('Amount to be paid',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               Text(
                 '₹${provider.totalFare.toStringAsFixed(0)}',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.primary),
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Theme.of(context).colorScheme.primary),
               ),
             ],
           ),
@@ -254,7 +279,8 @@ class _FareSummarySheet extends StatelessWidget {
 }
 
 class _PassengerForm extends StatelessWidget {
-  const _PassengerForm({required this.index, required this.seatCode, required this.provider});
+  const _PassengerForm(
+      {required this.index, required this.seatCode, required this.provider});
   final int index;
   final String seatCode;
   final BusCheckoutProvider provider;
@@ -275,7 +301,8 @@ class _PassengerForm extends StatelessWidget {
               child: TextField(
                 style: const TextStyle(fontSize: 13),
                 decoration: _decoration('Name'),
-                onChanged: (value) => provider.updatePassenger(index, name: value),
+                onChanged: (value) =>
+                    provider.updatePassenger(index, name: value),
               ),
             ),
             const SizedBox(width: 6),
@@ -285,13 +312,15 @@ class _PassengerForm extends StatelessWidget {
                 style: const TextStyle(fontSize: 13),
                 keyboardType: TextInputType.number,
                 decoration: _decoration('Age'),
-                onChanged: (value) => provider.updatePassenger(index, age: value),
+                onChanged: (value) =>
+                    provider.updatePassenger(index, age: value),
               ),
             ),
             const SizedBox(width: 6),
             _GenderToggle(
               selected: passenger.gender,
-              onChanged: (value) => provider.updatePassenger(index, gender: value),
+              onChanged: (value) =>
+                  provider.updatePassenger(index, gender: value),
             ),
           ],
         ),
@@ -306,7 +335,9 @@ class _PassengerForm extends StatelessWidget {
         filled: true,
         fillColor: Colors.grey.shade100,
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none),
       );
 }
 
@@ -340,8 +371,11 @@ class _GenderToggle extends StatelessWidget {
       onTap: () => onChanged(value),
       child: CircleAvatar(
         radius: 14,
-        backgroundColor: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey.shade100,
-        child: Icon(icon, size: 16, color: isSelected ? Colors.white : Colors.grey.shade500),
+        backgroundColor: isSelected
+            ? Theme.of(context).colorScheme.primary
+            : Colors.grey.shade100,
+        child: Icon(icon,
+            size: 16, color: isSelected ? Colors.white : Colors.grey.shade500),
       ),
     );
   }
@@ -356,7 +390,8 @@ class _ContactDetails extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Contact Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const Text('Contact Details',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         Text('For the whole booking, not per passenger',
             style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
         const SizedBox(height: 10),
@@ -380,8 +415,11 @@ class _ContactDetails extends StatelessWidget {
         isDense: true,
         filled: true,
         fillColor: Colors.grey.shade100,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none),
       );
 }
 
@@ -404,9 +442,13 @@ class _TermsRow extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               const Text('I agree to the '),
-              _LegalLink(label: 'Terms & Conditions', onTap: () => _showLegalSheet(context, 'Terms & Conditions')),
+              _LegalLink(
+                  label: 'Terms & Conditions',
+                  onTap: () => _showLegalSheet(context, 'Terms & Conditions')),
               const Text(' and '),
-              _LegalLink(label: 'Privacy Policy', onTap: () => _showLegalSheet(context, 'Privacy Policy')),
+              _LegalLink(
+                  label: 'Privacy Policy',
+                  onTap: () => _showLegalSheet(context, 'Privacy Policy')),
             ],
           ),
         ),
@@ -444,7 +486,10 @@ class _LegalLink extends StatelessWidget {
       onTap: onTap,
       child: Text(
         label,
-        style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
+        style: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.w700,
+            decoration: TextDecoration.underline),
       ),
     );
   }
@@ -463,7 +508,10 @@ class _BottomBar extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 6, offset: const Offset(0, -2)),
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 6,
+                offset: const Offset(0, -2)),
           ],
         ),
         child: Row(
@@ -481,10 +529,14 @@ class _BottomBar extends StatelessWidget {
                   children: [
                     Text(
                       '₹${provider.totalFare.toStringAsFixed(0)}',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Theme.of(context).colorScheme.primary),
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: Theme.of(context).colorScheme.primary),
                     ),
                     const SizedBox(width: 4),
-                    Icon(Icons.info_outline, size: 16, color: Colors.grey.shade600),
+                    Icon(Icons.info_outline,
+                        size: 16, color: Colors.grey.shade600),
                   ],
                 ),
               ),
@@ -492,21 +544,80 @@ class _BottomBar extends StatelessWidget {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
               ),
-              onPressed: provider.canProceed
-                  ? () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Booking coming soon')),
-                      );
-                    }
+              onPressed: provider.canProceed && !provider.isBooking
+                  ? () => _submit(context, provider)
                   : null,
-              child: const Text('Proceed', style: TextStyle(color: Colors.white)),
+              child: provider.isBooking
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Proceed',
+                      style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _submit(
+      BuildContext context, BusCheckoutProvider provider) async {
+    final loggedIn = await ensureLoggedIn(context);
+    if (!context.mounted) return;
+    if (!loggedIn) return;
+
+    final blockData = await provider.blockSeats();
+    if (!context.mounted) return;
+    if (blockData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                provider.errorMessage ?? 'Booking failed. Please try again.')),
+      );
+      return;
+    }
+
+    paymentGatewayFor(blockData.pgType).open(
+      context,
+      PgBlockPaymentData(
+        paymentLink: blockData.paymentLink ?? '',
+        pgType: blockData.pgType,
+      ),
+      onResult: (pgResult) async {
+        if (pgResult.status != PgResultStatus.success) return;
+
+        final result = await provider.confirmBooking();
+        if (!context.mounted) return;
+        if (result == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text(provider.errorMessage ??
+                    'Booking failed. Please try again.')),
+          );
+          return;
+        }
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => BusTicketScreen(
+              booking: result,
+              trip: provider.trip,
+              selectedSeats: provider.selectedSeats,
+              boardingPoint: provider.boardingPoint,
+              droppingPoint: provider.droppingPoint,
+              passengers: provider.passengers,
+              totalFare: provider.totalFare,
+            ),
+          ),
+        );
+      },
     );
   }
 }

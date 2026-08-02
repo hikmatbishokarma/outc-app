@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
+import 'package:outc/core/widgets/app_top_bar.dart';
 import 'package:outc/core/widgets/calendar/calendar_pager.dart';
 
 /// Bus's single-date picker — same calendar-grid UI as flights'
 /// `FlightSingleDateCalendarScreen` (via the shared `core/widgets/calendar`
-/// pieces promoted from that module), styled with the bus module's own navy
-/// chrome instead of duplicating flights' header/button widgets, which stay
-/// flights-specific. Bus is one-way only (spec 0006), so there's no
-/// departure/return pair to manage — just a single selection, returned via
-/// `Navigator.pop`.
+/// pieces promoted from that module), using the shared `AppTopBar` instead of
+/// duplicating flights' header/button widgets, which stay flights-specific.
+/// Bus is one-way only (spec 0006), so there's no departure/return pair to
+/// manage — just a single selection, returned via `Navigator.pop`.
 class BusDateCalendarScreen extends StatefulWidget {
   const BusDateCalendarScreen({super.key, required this.initialDate, required this.minDate});
 
@@ -32,11 +32,7 @@ class _BusDateCalendarScreenState extends State<BusDateCalendarScreen> {
         (_selected.year - baseMonth.year) * 12 + (_selected.month - baseMonth.month);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Select Journey Date'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-      ),
+      appBar: const AppTopBar(title: 'Select Journey Date'),
       body: SafeArea(
         child: Column(
           children: [

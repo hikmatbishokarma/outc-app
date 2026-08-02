@@ -220,7 +220,7 @@ class UserDetails {
 
 class Walletdetails {
   final int? userWalletId;
-  final int? amount;
+  final num? amount;
   final int? userId;
 
   Walletdetails({
@@ -229,9 +229,13 @@ class Walletdetails {
     this.userId,
   });
 
+  // Amount is a currency value — confirmed against a real `login` response
+  // that the backend sends it as a formatted string ("0.00"), not a number,
+  // unlike UserWalletId/UserID. Parsed defensively since it may vary by
+  // endpoint (mobileLogin vs login).
   factory Walletdetails.fromJson(Map<String, dynamic> json) => Walletdetails(
         userWalletId: json["UserWalletId"],
-        amount: json["Amount"],
+        amount: json["Amount"] is num ? json["Amount"] as num : num.tryParse(json["Amount"]?.toString() ?? ''),
         userId: json["UserID"],
       );
 

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1091477465213",
+    "project_id": "outctest-2025",
+    "storage_bucket": "outctest-2025.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1091477465213:android:8a38edcc2267f42823e914",
+        "android_client_info": {
+          "package_name": "com.outc.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1091477465213-o92rscsbmahcp5vh4j297r1mnlmidne3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.outc.app",
+            "certificate_hash": "b02918c74628403077b05c6afb7c825111315412"
+          }
+        },
+        {
+          "client_id": "1091477465213-hnp182mfs77rd779mhq4ie4i4hllguh3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA07Waz9cwmmEKV11cm0-_9yt0nw8UNi0o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1091477465213-hnp182mfs77rd779mhq4ie4i4hllguh3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
