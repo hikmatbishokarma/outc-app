@@ -263,6 +263,11 @@ class _AirportFieldBox extends StatelessWidget {
                       ),
                       decoration: InputDecoration(
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        focusedErrorBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
                         isCollapsed: true,
                         hintText: placeholder,
                         hintStyle: TextStyle(
