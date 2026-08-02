@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:outc/dashboard/flights/models/get_cities_by_search_model.dart';
 import 'package:outc/dashboard/flights/providers/recent_airports_store.dart';
 import 'package:outc/core/theme/design_tokens.dart';
+import 'package:outc/services/app_constants.dart';
 
 enum AirportSearchField { origin, destination }
 
@@ -90,7 +91,7 @@ class _AirportSearchScreenState extends State<AirportSearchScreen> {
   }
 
   Future<List<Datum>> _fetchAirports(String query) async {
-    final url = Uri.parse('https://outc.in/api/v1/flights/updatedAirPort/search/$query');
+    final url = Uri.parse('${AppConstant.baseUrl}api/v1/flights/updatedAirPort/search/$query');
     final response = await http.get(url);
     if (response.statusCode == 200) {
       final List<dynamic> jsonData = json.decode(response.body)['data'];

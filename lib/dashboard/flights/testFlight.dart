@@ -11,6 +11,7 @@ import 'package:outc/dashboard/flights/models/get_cities_by_search_model.dart';
 import 'package:outc/dashboard/flights/models/topcities_static.dart';
 import 'package:outc/dashboard/flights/providers/searchlist_provider.dart';
 import 'package:outc/services/api_services_list.dart';
+import 'package:outc/services/app_constants.dart';
 import 'package:outc/widgets/components/printlocal.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:provider/provider.dart' as provider;
@@ -172,7 +173,7 @@ class _FlightSearchPageState extends State<FlightSearchPage> {
 
   Future<List<Datum>> fetchDataFromBackend(String countrycode) async {
     var url = Uri.parse(
-        'https://outc.in/api/v1/flights/updatedAirPort/search/$countrycode');
+        '${AppConstant.baseUrl}api/v1/flights/updatedAirPort/search/$countrycode');
     final response = await http.get(url);
     print(url);
     if (response.statusCode == 200) {
