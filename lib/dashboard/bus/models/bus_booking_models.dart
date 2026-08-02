@@ -33,22 +33,25 @@ class BusBookingPassenger {
   Map<String, dynamic> toJson() => {
         'age': age,
         'name': name,
+        'countryCode': '91',
         'title': _title,
         'gender': gender == 'Female' ? 'F' : 'M',
         'seatNo': seatNo,
-        'fare': fare.toString(),
+        'fare': fare,
         'seatCodes': seatNo,
-        'serviceTax': '0',
+        'serviceTax': 0,
         'markup': 0,
-        'serviceCharge': '0',
+        'serviceCharge': 0,
         'agentMarkup': 0,
       };
 }
 
-/// Request body for `POST /api/v1/buses/blockTicket`. No coupon/promo or
-/// insurance UI exists yet, so `convienenceData`/`promoData`/`insuranceData`
-/// are sent as neutral "not applied" constants rather than left out (the
-/// endpoint's captured sample always includes them).
+/// Request body for `POST /api/v1/buses/blockTicket`. Shape confirmed
+/// directly against the backend team (2026-08-02): `fare`/`serviceTax`/
+/// `serviceCharge` must be numbers (not strings), `countryCode` is the bare
+/// dialing code with no `+`, and `convienenceData`/`promoData`/
+/// `insuranceData` must be omitted rather than sent as "not applied"
+/// placeholders — the endpoint rejects/mishandles them when present.
 class BusBlockRequest {
   BusBlockRequest({
     required this.bookingContext,
@@ -73,26 +76,29 @@ class BusBlockRequest {
   final double totalPrice;
 
   Map<String, dynamic> toJson() => {
-        'userId': bookingContext.userId,
-        'pgType': bookingContext.pgTypeValue,
         'tripId': tripId,
         'searchId': searchId,
         'boardingId': boardingId,
         'droppingId': droppingId,
+        'noofSeats': passengerDetails.length,
         'emailId': emailId,
         'mobileNo': mobileNo,
-        'countryCode': '+91',
+        'countryCode': '91',
         'passengerDetails': passengerDetails.map((p) => p.toJson()).toList(),
         'insuranceRequired': 0,
+        'userId': bookingContext.userId,
+        // Confirmed by backend for the customer flow specifically; bus
+        // booking as an agent isn't confirmed yet, so agents keep the
+        // pre-existing guessed value rather than assuming it's also 2.
+        'roleType': bookingContext.payerType == PayerType.agent ? bookingContext.roleTypeValue : 2,
+        'membership': 1,
         'promoCode': '',
         'convienenceId': 0,
+        'pgType': bookingContext.pgTypeValue,
+        'currency': 'INR',
+        'currencyRatio': 1,
         'totalPrice': totalPrice,
         'isCouponReedem': false,
-        'currencyRatio': 1,
-        'currency': 'INR',
-        'convienenceData': {'type': 1, 'amount': 0},
-        'promoData': {'PromoID': 0, 'status': false, 'Discount': 0},
-        'insuranceData': {'amount': 0, 'insuranceCoverage': 0, 'status': 0, 'serviceType': 3},
       };
 
   factory BusBlockRequest.fromCheckout({
