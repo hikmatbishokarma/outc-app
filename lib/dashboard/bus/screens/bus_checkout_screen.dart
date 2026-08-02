@@ -71,16 +71,29 @@ class _BusCheckoutView extends StatelessWidget {
               children: [
                 _SectionCard(child: _TripSummary(provider: provider)),
                 const SizedBox(height: 12),
-                for (var i = 0; i < provider.selectedSeats.length; i++) ...[
-                  _SectionCard(
-                    child: _PassengerForm(
-                      index: i,
-                      seatCode: provider.selectedSeats[i].seatCode,
-                      provider: provider,
-                    ),
+                _SectionCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Traveller Details',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 14),
+                      for (var i = 0; i < provider.selectedSeats.length; i++) ...[
+                        if (i > 0) ...[
+                          const SizedBox(height: 14),
+                          Divider(height: 1, color: Colors.grey.shade200),
+                          const SizedBox(height: 14),
+                        ],
+                        _PassengerForm(
+                          index: i,
+                          seatCode: provider.selectedSeats[i].seatCode,
+                          provider: provider,
+                        ),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                ],
+                ),
+                const SizedBox(height: 12),
                 _SectionCard(child: _ContactDetails(provider: provider)),
                 const SizedBox(height: 12),
                 _TermsRow(provider: provider),
@@ -288,94 +301,96 @@ class _PassengerForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final passenger = provider.passengers[index];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    // No "Passenger N · Seat X" heading here — the selected seats are
+    // already listed once in _TripSummary above, repeating them per row
+    // was redundant (MMT doesn't repeat it either, it's implicit by order).
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text('Passenger ${index + 1} · Seat $seatCode',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-        const SizedBox(height: 10),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: TextField(
-                style: const TextStyle(fontSize: 13),
-                decoration: _decoration('Name'),
-                onChanged: (value) =>
-                    provider.updatePassenger(index, name: value),
-              ),
-            ),
-            const SizedBox(width: 6),
-            SizedBox(
-              width: 48,
-              child: TextField(
-                style: const TextStyle(fontSize: 13),
-                keyboardType: TextInputType.number,
-                decoration: _decoration('Age'),
-                onChanged: (value) =>
-                    provider.updatePassenger(index, age: value),
-              ),
-            ),
-            const SizedBox(width: 6),
-            _GenderToggle(
-              selected: passenger.gender,
-              onChanged: (value) =>
-                  provider.updatePassenger(index, gender: value),
-            ),
-          ],
+        Expanded(
+          flex: 3,
+          child: TextField(
+            decoration: _decoration(context, 'Full Name'),
+            onChanged: (value) => provider.updatePassenger(index, name: value),
+          ),
+        ),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 80,
+          child: TextField(
+            keyboardType: TextInputType.number,
+            decoration: _decoration(context, 'Age'),
+            onChanged: (value) => provider.updatePassenger(index, age: value),
+          ),
+        ),
+        const SizedBox(width: 10),
+        _GenderToggle(
+          selected: passenger.gender,
+          onChanged: (value) => provider.updatePassenger(index, gender: value),
         ),
       ],
     );
   }
 
-  InputDecoration _decoration(String label) => InputDecoration(
+  // Outlined, not filled-gray — matches the reference bus-booking app's
+  // field style. Same decoration _ContactDetails uses elsewhere on this
+  // screen, so Name/Age look identical to Phone/Email.
+  InputDecoration _decoration(BuildContext context, String label) => InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(fontSize: 12),
         isDense: true,
-        filled: true,
-        fillColor: Colors.grey.shade100,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.grey.shade400)),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none),
+            borderSide: BorderSide(color: Colors.grey.shade400)),
       );
 }
 
-/// Compact male/female icon-toggle — matches the reference bus-booking app's
-/// inline avatar-style gender picker instead of a two-line `RadioListTile`
-/// pair, so the whole passenger row (title/name/age/gender) fits in one
-/// horizontal line.
+/// Male/female icon picker — each icon keeps its own colored border at rest
+/// (blue for male, pink for female) so the two are distinguishable before
+/// picking either one, not just after. Selecting one fills its circle solid;
+/// distinct man/woman glyphs, not the same icon recolored, so they're
+/// actually readable as different at a glance.
 class _GenderToggle extends StatelessWidget {
   const _GenderToggle({required this.selected, required this.onChanged});
   final String? selected;
   final ValueChanged<String> onChanged;
+
+  static const _maleColor = Color(0xFF2F6FED);
+  static const _femaleColor = Color(0xFFE0459C);
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Plain man/woman person icons instead of the male/female
-        // astrological (mars/venus) symbols — clearer at a glance than a
-        // symbol most people don't immediately read as a gender marker.
-        _icon(context, Icons.man, 'Male'),
-        const SizedBox(width: 3),
-        _icon(context, Icons.woman, 'Female'),
+        _icon(Icons.man, 'Male', _maleColor),
+        const SizedBox(width: 8),
+        _icon(Icons.woman, 'Female', _femaleColor),
       ],
     );
   }
 
-  Widget _icon(BuildContext context, IconData icon, String value) {
+  Widget _icon(IconData icon, String value, Color color) {
     final isSelected = selected == value;
     return GestureDetector(
       onTap: () => onChanged(value),
-      child: CircleAvatar(
-        radius: 14,
-        backgroundColor: isSelected
-            ? Theme.of(context).colorScheme.primary
-            : Colors.grey.shade100,
-        child: Icon(icon,
-            size: 16, color: isSelected ? Colors.white : Colors.grey.shade500),
+      child: Container(
+        width: 36,
+        height: 36,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isSelected ? color : Colors.transparent,
+          border: Border.all(color: color, width: 1.5),
+        ),
+        child: Icon(icon, size: 20, color: isSelected ? Colors.white : color),
       ),
     );
   }
@@ -397,29 +412,58 @@ class _ContactDetails extends StatelessWidget {
         const SizedBox(height: 10),
         TextField(
           keyboardType: TextInputType.phone,
-          decoration: _decoration('Phone'),
+          decoration: _decoration(context, 'Phone Number', prefixText: '+91  '),
           onChanged: provider.setPhone,
         ),
         const SizedBox(height: 10),
         TextField(
           keyboardType: TextInputType.emailAddress,
-          decoration: _decoration('Email'),
+          decoration:
+              _decoration(context, 'Email Address', prefixIcon: Icons.email_outlined),
           onChanged: provider.setEmail,
         ),
       ],
     );
   }
 
-  InputDecoration _decoration(String label) => InputDecoration(
+  // Same outlined style as _PassengerForm's Name/Age fields. Phone gets a
+  // +91 text prefix (country code is more useful here than an icon); Email
+  // gets an icon (a country code doesn't apply) — whichever fits the field.
+  // Both go through prefixIcon, not InputDecoration.prefixText — prefixText
+  // sits behind the resting (unfocused+empty) label and only becomes
+  // visible once focused, which hid +91 entirely at rest.
+  InputDecoration _decoration(BuildContext context, String label,
+          {String? prefixText, IconData? prefixIcon}) =>
+      InputDecoration(
         labelText: label,
         isDense: true,
-        filled: true,
-        fillColor: Colors.grey.shade100,
+        prefixIcon: prefixIcon != null
+            ? Padding(
+                padding: const EdgeInsets.only(left: 12, right: 8),
+                child: Icon(prefixIcon, size: 20, color: Colors.grey.shade500),
+              )
+            : prefixText != null
+                ? Padding(
+                    padding: const EdgeInsets.only(left: 12, right: 4),
+                    child: Center(
+                      widthFactor: 1,
+                      child: Text(prefixText,
+                          style: TextStyle(fontSize: 16, color: Colors.grey.shade700)),
+                    ),
+                  )
+                : null,
+        prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.grey.shade400)),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none),
+            borderSide: BorderSide(color: Colors.grey.shade400)),
       );
 }
 
