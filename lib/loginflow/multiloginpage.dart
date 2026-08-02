@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:outc/core/module_registry.dart';
+import 'package:outc/core/theme/design_tokens.dart';
 import 'package:outc/loginflow/agentloginpage.dart';
 import 'package:outc/loginflow/userloginpage.dart';
-import 'package:outc/widgets/colors/colors.dart';
 
 class MultiLoginScreen extends StatefulWidget {
   final bool isGateMode;
@@ -27,11 +27,11 @@ class _MultiLoginScreenState extends State<MultiLoginScreen> {
     return Container(
       height: double.infinity,
       width: double.infinity,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colours.dardModerateBlue, Colours.skyBlue],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.white, AppColors.border],
         ),
       ),
       child: Scaffold(
@@ -46,65 +46,91 @@ class _MultiLoginScreenState extends State<MultiLoginScreen> {
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(false),
                     icon: const Icon(Icons.arrow_back_ios_new_outlined,
-                        color: Colors.white),
+                        color: AppColors.primary),
                   ),
                 Center(
-                  child: Container(
-                    height: 150.0,
-                    alignment: Alignment.topCenter,
-                    child: Center(child: SvgPicture.asset('images/OutcLogoNew.svg')),
+                  child: Column(
+                    children: [
+                      SvgPicture.asset('images/OutcLogoNew.svg', width: 130),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Book flights, hotels, buses & more",
+                        style: GoogleFonts.poppins(
+                          textStyle: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
                 Expanded(
-                  child: showToggle
-                      ? DefaultTabController(
-                          length: 2,
-                          initialIndex: widget.startOnAgent ? 1 : 0,
-                          child: Column(
-                            children: [
-                              Container(
-                                height: 45,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                                child: SegmentedTabControl(
-                                  tabTextColor: Colors.black,
-                                  selectedTabTextColor: Colors.white,
-                                  textStyle: GoogleFonts.poppins(
-                                    textStyle: const TextStyle(
-                                      color: Colors.white,
-                                      fontFamily: 'poppins',
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      boxShadow: AppShadows.elevated,
+                    ),
+                    child: showToggle
+                        ? DefaultTabController(
+                            length: 2,
+                            initialIndex: widget.startOnAgent ? 1 : 0,
+                            child: Column(
+                              children: [
+                                Container(
+                                  height: 44,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(100),
                                   ),
-                                  indicatorPadding: const EdgeInsets.all(3),
-                                  tabs: [
-                                    SegmentTab(
-                                      color: Colours.orangeOutC,
-                                      label: 'Personal Account',
+                                  child: SegmentedTabControl(
+                                    barDecoration: BoxDecoration(
+                                      color: AppColors.subtleBackground,
+                                      borderRadius: BorderRadius.circular(100),
                                     ),
-                                    SegmentTab(
-                                      color: Colours.orangeOutC,
-                                      label: 'Partner/Agent Account',
+                                    indicatorDecoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(100),
                                     ),
-                                  ],
+                                    tabTextColor: AppColors.textSecondary,
+                                    selectedTabTextColor: Colors.white,
+                                    textStyle: GoogleFonts.poppins(
+                                      textStyle: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    indicatorPadding: const EdgeInsets.all(3),
+                                    tabs: const [
+                                      SegmentTab(
+                                        color: AppColors.primary,
+                                        label: 'Personal Account',
+                                      ),
+                                      SegmentTab(
+                                        color: AppColors.primary,
+                                        label: 'Partner/Agent Account',
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const Expanded(
-                                child: TabBarView(
-                                  children: [
-                                    UserLogin(isGateMode: false),
-                                    AgentLogin(isGateMode: false),
-                                  ],
+                                const Expanded(
+                                  child: TabBarView(
+                                    children: [
+                                      UserLogin(isGateMode: false),
+                                      AgentLogin(isGateMode: false),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : UserLogin(isGateMode: widget.isGateMode),
+                              ],
+                            ),
+                          )
+                        : UserLogin(isGateMode: widget.isGateMode),
+                  ),
                 ),
                 const SizedBox(height: 10),
               ],
