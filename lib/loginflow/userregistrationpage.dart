@@ -2,14 +2,18 @@ import 'package:country_picker/country_picker.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:outc/core/services/login_crypto_service.dart';
+import 'package:outc/loginflow/model/login_request_model.dart';
 import 'package:outc/loginflow/model/register_request_model.dart';
 import 'package:outc/loginflow/privacypolicypage.dart';
 import 'package:outc/loginflow/termsandconditionspage.dart';
+import 'package:outc/services/api_services_list.dart';
+import 'package:outc/services/app_constants.dart';
 import 'package:outc/widgets/colors/colors.dart';
 import 'package:outc/widgets/components/toast.dart';
 import 'package:outc/widgets/progressbar.dart';
-import 'dart:developer';
 
 class UserRegistration extends StatefulWidget {
   const UserRegistration({super.key});
@@ -59,7 +63,8 @@ class _UserRegistrationState extends State<UserRegistration> {
         Password: "",
         DeviceToken: "string",
         DeviceType: "mobile",
-        FirBaseToken: "string");
+        FirBaseToken: "string",
+        isloginType: IsLoginType.password);
   }
 
   @override
@@ -72,6 +77,94 @@ class _UserRegistrationState extends State<UserRegistration> {
   }
 
   void onListen() => setState(() {});
+
+  Future<void> _submitRegistration() async {
+    requestModelId.FullName = fullnameController.text.trim();
+    // Encrypted the same way login's password is (LoginCryptoService) — the
+    // spec's own example showed a plaintext password here, unlike login's
+    // AES-ciphertext example, but that's most likely just an illustrative
+    // value rather than the real wire format. Confirm against a real
+    // response/backend behavior before trusting this assumption fully.
+    requestModelId.Password = LoginCryptoService.encryptPassword(
+      passwordController.text,
+      AppConstant.loginSecretKey,
+    );
+    requestModelId.Email = emailController.text.trim();
+    requestModelId.Mobile = phoneController.text.trim();
+    requestModelId.DialingCode = selectedCountry.phoneCode;
+
+    setState(() => isApiCallProcess = true);
+    final response = await APIService().register(requestModelId);
+    setState(() => isApiCallProcess = false);
+
+    if (!response.isSuccess || response.userId == null) {
+      showToast(response.message ?? 'Registration failed. Please try again.');
+      return;
+    }
+
+    if (!mounted) return;
+    _showOtpDialog(response.userId!);
+  }
+
+  void _showOtpDialog(String userId) {
+    final otpController = TextEditingController();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Verify Your Email'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Enter the OTP sent to ${emailController.text.trim()}'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: otpController,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              decoration: const InputDecoration(hintText: 'Enter OTP'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              final resent = await APIService().resendOtp(
+                ResendOtpRequest(
+                  userId: userId,
+                  email: emailController.text.trim(),
+                  mobile: phoneController.text.trim(),
+                ),
+              );
+              showToast(resent.isSuccess ? 'OTP resent' : 'Could not resend OTP');
+            },
+            child: const Text('Resend OTP'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final response = await APIService().verifyOtp(
+                VerifyOtpRequest(
+                  userId: userId,
+                  otp: otpController.text.trim(),
+                  otpType: 1,
+                  isloginType: IsLoginType.password,
+                ),
+              );
+              if (!dialogContext.mounted) return;
+              if (response.isSuccess) {
+                Navigator.of(dialogContext).pop();
+                showToast('Registration complete — please log in');
+                if (mounted) Navigator.of(context).pop();
+              } else {
+                showToast(response.message ?? 'Invalid OTP. Please try again.');
+              }
+            },
+            child: const Text('Verify'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget uiSetup(BuildContext context) {
     return Scaffold(
@@ -98,7 +191,7 @@ class _UserRegistrationState extends State<UserRegistration> {
                       height: 150.0,
                       alignment: Alignment.topCenter,
                       child:
-                          Center(child: Image.asset('images/outc.png')),
+                          Center(child: SvgPicture.asset('images/OutcLogoNew.svg')),
                     ),
                   ),
                   const SizedBox(
@@ -484,27 +577,20 @@ class _UserRegistrationState extends State<UserRegistration> {
                 ),
               ),
               onPressed: () {
-                print(valuecheck);
-                if (valuecheck == true) {
-                  requestModelId.FullName = fullnameController.text.toString();
-                  requestModelId.Password = passwordController.text.toString();
-                  requestModelId.Email = emailController.text.toString();
-                  requestModelId.Mobile = phoneController.text.toString();
-                  requestModelId.DialingCode = selectedCountry.phoneCode;
-
-                  print("Registration Data: $requestModelId");
-
-                  inspect(requestModelId);
-                } else {
-                  const invalidsnackbar = SnackBar(
-                    content: Text('Agree Terms and Conditions to Register'),
+                if (!valuecheck) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Agree Terms and Conditions to Register')),
                   );
-                  ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
+                  return;
                 }
-
-                // setState(() {
-                //   isApiCallProcess = true;
-                // });
+                if (fullnameController.text.trim().isEmpty ||
+                    emailController.text.trim().isEmpty ||
+                    phoneController.text.trim().isEmpty ||
+                    passwordController.text.isEmpty) {
+                  showToast('Please fill in all fields');
+                  return;
+                }
+                _submitRegistration();
               },
             ),
           ),

@@ -15,6 +15,7 @@ import 'package:outc/loginflow/model/flight_oneway_book_response_model.dart';
 import 'package:outc/loginflow/model/login_request_model.dart';
 import 'package:outc/loginflow/model/login_response_model.dart';
 import 'package:outc/loginflow/model/partner_response_model.dart';
+import 'package:outc/loginflow/model/register_request_model.dart';
 import 'package:outc/partnerSidemenu/models/password_update_model.dart';
 import 'package:outc/partnerSidemenu/models/updatepasswordmodel.dart';
 import 'package:outc/services/app_constants.dart';
@@ -82,6 +83,71 @@ class APIService {
     inspect(requestModel);
 
     throw Exception('Failed to load Data');
+  }
+
+  // Customer Login (Google / password via isloginType) — the newer `login`
+  // endpoint (`mobileLogin.txt`), needed because `mobileLogin` above has no
+  // Google branch at all. Path confirmed via client-shared API spec. Both
+  // b2c.outc.in and outc.in were confirmed to behave identically for this
+  // endpoint (same null-pointer bug reproduced on both, same fix applied to
+  // both) — client asked to stay on b2c.outc.in, matching mobileLogin above.
+  Future<Loginauth> loginV2(Loginrequestauth requestModel) async {
+    String url = "${AppConstant.baseUrl}api/v1/admin/login";
+    print(url);
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(requestModel.toJsonBody()),
+      );
+
+      print("response.body requestModel ${requestModel.toJsonBody()}");
+      print("response.body signin ${response.body}");
+      print("response.body statusCode ${response.statusCode}");
+
+      return loginauthFromJson(response.body);
+    } catch (e) {
+      print(e.toString());
+    }
+
+    throw Exception('Failed to load Data');
+  }
+
+  // Registration + OTP verification (client-shared "Authentication Technical
+  // Workflow & API Specification"). Response shapes are unconfirmed — see
+  // RegisterResponse/VerifyOtpResponse's docs. Same host as loginV2 above
+  // (b2c.outc.in), per client instruction.
+  Future<RegisterResponse> register(Registerrequest requestModel) async {
+    String url = "${AppConstant.baseUrl}api/v1/admin/user/register";
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(requestModel.toJson()),
+    );
+    print("register response ${response.statusCode} ${response.body}");
+    return RegisterResponse.fromJson(json.decode(response.body));
+  }
+
+  Future<VerifyOtpResponse> verifyOtp(VerifyOtpRequest requestModel) async {
+    String url = "${AppConstant.baseUrl}api/v1/admin/verifyotp";
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(requestModel.toJson()),
+    );
+    print("verifyOtp response ${response.statusCode} ${response.body}");
+    return VerifyOtpResponse.fromJson(json.decode(response.body));
+  }
+
+  Future<VerifyOtpResponse> resendOtp(ResendOtpRequest requestModel) async {
+    String url = "${AppConstant.baseUrl}api/v1/admin/resendotp";
+    final response = await http.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(requestModel.toJson()),
+    );
+    print("resendOtp response ${response.statusCode} ${response.body}");
+    return VerifyOtpResponse.fromJson(json.decode(response.body));
   }
 
   // Partner Login

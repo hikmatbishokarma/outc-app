@@ -12,8 +12,12 @@ import 'package:outc/widgets/sharedprefservices.dart';
 /// The only place in the bus module that talks to the network
 /// (`docs/architecture.md` §1/§2). Search/seat-availability live on
 /// `AppConstant.busBaseUrl` (`outc.in`); block/book live on
-/// `AppConstant.baseUrl` (`b2c.outc.in`), the host every other module's
-/// booking endpoints use — confirmed against a live capture of both calls.
+/// `AppConstant.baseUrl` (`b2c.outc.in`). These two hosts are NOT fully
+/// interchangeable — confirmed via direct curl that `b2c.outc.in` returns a
+/// hard 404 ("Cannot POST") for `buses/availability/price`, while `outc.in`
+/// returns real trip data for the same request. `searchBusCities` happens
+/// to work on both, but its siblings don't, so the whole search group stays
+/// on `outc.in` together rather than being split endpoint-by-endpoint.
 class BusService {
   Future<List<BusCity>> searchCities(String query) async {
     final url = Uri.parse('${AppConstant.busBaseUrl}api/v1/buses/searchBusCities/$query');
@@ -58,10 +62,6 @@ class BusService {
     return BusSeatAvailabilityResponse.fromJson(json.decode(response.body));
   }
 
-  /// `blockTicket`/`bookTicket` live on `AppConstant.baseUrl` (`b2c.outc.in`)
-  /// — the host every other module's booking endpoints use — unlike
-  /// `searchBuses`/`getTripAvailability` above, which are on the bus-specific
-  /// `busBaseUrl` (`outc.in`).
   Future<BusBlockResponse> blockTicket(BusBlockRequest request) async {
     final url = Uri.parse('${AppConstant.baseUrl}api/v1/buses/blockTicket');
     final response = await http.post(
@@ -72,6 +72,8 @@ class BusService {
       },
       body: json.encode(request.toJson()),
     );
+    print('blockTicket request ${json.encode(request.toJson())}');
+    print('blockTicket response ${response.statusCode} ${response.body}');
     // Confirmed against a live capture: a successful block can come back as
     // either 200 or 201 (the endpoint's own creation-style response code).
     if (response.statusCode != 200 && response.statusCode != 201) {
@@ -89,6 +91,7 @@ class BusService {
         'Authorization': 'Bearer ${SharedPrefServices.getjwtVerifiertoken()}',
       },
     );
+    print('bookTicket response ${response.statusCode} ${response.body}');
     if (response.statusCode != 200) {
       throw Exception('Could not confirm the booking (HTTP ${response.statusCode})');
     }
