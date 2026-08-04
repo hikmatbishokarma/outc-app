@@ -83,11 +83,16 @@ picker must show `fullName` (or `name` + `state`) to disambiguate, not just grou
 
 ### Bus search (confirmed — both request and response)
 
-`POST https://outc.in/api/v1/buses/availability/price`, `Authorization: Bearer <token>` (a guest
+`POST https://b2c.outc.in/api/v1/buses/availability`, `Authorization: Bearer <token>` (a guest
 capture showed `Bearer null` — see Open Questions on whether guest search even needs a token),
 `Content-Type: application/json`. Captured live from the app for the same
 Hyderabad → Bangalore corridor as the response sample below (`searchId:
 16b16575-d6ce-4771-9863-138fc345d47b`).
+
+Path was previously documented as `.../availability/price` on `outc.in`; reconfirmed 2026-08-03
+against the live web client's own network capture — the real path has no `/price` suffix, and
+`b2c.outc.in` is the single host used end-to-end (search through block/book), matching
+`AppConstant.baseUrl`.
 
 Request body:
 
