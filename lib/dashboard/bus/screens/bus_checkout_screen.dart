@@ -6,10 +6,11 @@ import 'package:outc/core/payment_gateway.dart';
 import 'package:outc/core/theme/design_tokens.dart';
 import 'package:outc/core/widgets/app_top_bar.dart';
 import 'package:outc/core/widgets/bottom_sheet_shell.dart';
+import 'package:outc/core/widgets/travel_loading_indicator.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/models/bus_seat_model.dart';
 import 'package:outc/dashboard/bus/providers/bus_checkout_provider.dart';
-import 'package:outc/dashboard/bus/screens/bus_ticket_screen.dart';
+import 'package:outc/dashboard/bus/screens/bus_eticket_screen.dart';
 import 'package:outc/loginflow/auth_gate.dart';
 
 /// Checkout screen (spec 0009) — trip summary, price breakup, and passenger
@@ -19,7 +20,8 @@ import 'package:outc/loginflow/auth_gate.dart';
 /// `BusCheckoutProvider.blockSeats()`, routes through `paymentGatewayFor`
 /// (`lib/core/payment_gateway.dart` — the same mock-Cashfree/wallet
 /// abstraction flights already uses), and on payment success calls
-/// `confirmBooking()` and pushes `BusTicketScreen`.
+/// `confirmBooking()` and pushes `BusETicketScreen`, keyed by the booking's
+/// `referenceNo` (the same ref `ticketDetails` is fetched by).
 class BusCheckoutScreen extends StatelessWidget {
   const BusCheckoutScreen({
     super.key,
@@ -61,49 +63,93 @@ class _BusCheckoutView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<BusCheckoutProvider>(
       builder: (context, provider, _) {
-        return Scaffold(
-          backgroundColor: AppColors.panelBackground,
-          appBar: const AppTopBar(title: 'Review & Passenger Details'),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _SectionCard(child: _TripSummary(provider: provider)),
-                const SizedBox(height: 12),
-                _SectionCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Traveller Details',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      const SizedBox(height: 14),
-                      for (var i = 0; i < provider.selectedSeats.length; i++) ...[
-                        if (i > 0) ...[
+        return Stack(
+          children: [
+            Scaffold(
+              backgroundColor: AppColors.panelBackground,
+              appBar: const AppTopBar(title: 'Review & Passenger Details'),
+              body: SingleChildScrollView(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SectionCard(child: _TripSummary(provider: provider)),
+                    const SizedBox(height: 12),
+                    _SectionCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Traveller Details',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                           const SizedBox(height: 14),
-                          Divider(height: 1, color: Colors.grey.shade200),
-                          const SizedBox(height: 14),
+                          for (var i = 0; i < provider.selectedSeats.length; i++) ...[
+                            if (i > 0) ...[
+                              const SizedBox(height: 14),
+                              Divider(height: 1, color: Colors.grey.shade200),
+                              const SizedBox(height: 14),
+                            ],
+                            _PassengerForm(
+                              index: i,
+                              seatCode: provider.selectedSeats[i].seatCode,
+                              provider: provider,
+                            ),
+                          ],
                         ],
-                        _PassengerForm(
-                          index: i,
-                          seatCode: provider.selectedSeats[i].seatCode,
-                          provider: provider,
-                        ),
-                      ],
-                    ],
-                  ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _SectionCard(child: _ContactDetails(provider: provider)),
+                    const SizedBox(height: 12),
+                    _TermsRow(provider: provider),
+                    const SizedBox(height: 100),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                _SectionCard(child: _ContactDetails(provider: provider)),
-                const SizedBox(height: 12),
-                _TermsRow(provider: provider),
-                const SizedBox(height: 100),
-              ],
+              ),
+              bottomNavigationBar: _BottomBar(provider: provider),
             ),
-          ),
-          bottomNavigationBar: _BottomBar(provider: provider),
+            // Covers the passenger-details form while confirmBooking() is in
+            // flight after a successful payment — without this, the raw form
+            // flashes back on screen for the length of that network call
+            // between the payment webview closing and the ticket screen
+            // replacing this one.
+            if (provider.isBooking) const _ConfirmingBookingOverlay(),
+          ],
         );
       },
+    );
+  }
+}
+
+/// Same `TravelLoadingIndicator` used for every other async wait in the
+/// app (`LoadingState`) — dropped into its own white card rather than
+/// directly onto the dark scrim, since the indicator's dots/glyphs are
+/// tuned for a light surface and would lose contrast painted straight
+/// onto a black barrier.
+class _ConfirmingBookingOverlay extends StatelessWidget {
+  const _ConfirmingBookingOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: ColoredBox(
+        color: Colors.black.withValues(alpha: 0.45),
+        child: Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 40),
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              boxShadow: AppShadows.elevated,
+            ),
+            child: const TravelLoadingIndicator(
+              size: 180,
+              caption: 'Confirming your booking',
+              subcaption: "Please don't close this screen",
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -650,15 +696,7 @@ class _BottomBar extends StatelessWidget {
         }
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (_) => BusTicketScreen(
-              booking: result,
-              trip: provider.trip,
-              selectedSeats: provider.selectedSeats,
-              boardingPoint: provider.boardingPoint,
-              droppingPoint: provider.droppingPoint,
-              passengers: provider.passengers,
-              totalFare: provider.totalFare,
-            ),
+            builder: (_) => BusETicketScreen(refNo: result.data!.referenceNo),
           ),
         );
       },

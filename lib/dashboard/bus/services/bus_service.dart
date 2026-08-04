@@ -6,21 +6,19 @@ import 'package:outc/dashboard/bus/models/bus_booking_models.dart';
 import 'package:outc/dashboard/bus/models/bus_city_model.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/models/bus_seat_model.dart';
+import 'package:outc/dashboard/bus/models/bus_ticket_details_model.dart';
 import 'package:outc/services/app_constants.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
 
 /// The only place in the bus module that talks to the network
-/// (`docs/architecture.md` §1/§2). Search/seat-availability live on
-/// `AppConstant.busBaseUrl` (`outc.in`); block/book live on
-/// `AppConstant.baseUrl` (`b2c.outc.in`). These two hosts are NOT fully
-/// interchangeable — confirmed via direct curl that `b2c.outc.in` returns a
-/// hard 404 ("Cannot POST") for `buses/availability/price`, while `outc.in`
-/// returns real trip data for the same request. `searchBusCities` happens
-/// to work on both, but its siblings don't, so the whole search group stays
-/// on `outc.in` together rather than being split endpoint-by-endpoint.
+/// (`docs/architecture.md` §1/§2). Every endpoint — search through
+/// block/book — uses the single `AppConstant.baseUrl`, matching how the
+/// flights module does it. A previous version split search onto a separate
+/// `busBaseUrl` host; that broke block with "log not found" because the
+/// search session/log was created on a host the block call never talked to.
 class BusService {
   Future<List<BusCity>> searchCities(String query) async {
-    final url = Uri.parse('${AppConstant.busBaseUrl}api/v1/buses/searchBusCities/$query');
+    final url = Uri.parse('${AppConstant.baseUrl}api/v1/buses/searchBusCities/$query');
     final response = await http.get(url);
     if (response.statusCode != 200) return [];
     final parsed = BusCitySearchResponse.fromJson(json.decode(response.body));
@@ -28,7 +26,7 @@ class BusService {
   }
 
   Future<BusSearchResponse> searchBuses(BusSearchRequest request) async {
-    final url = Uri.parse('${AppConstant.busBaseUrl}api/v1/buses/availability/price');
+    final url = Uri.parse('${AppConstant.baseUrl}api/v1/buses/availability');
     final response = await http.post(
       url,
       headers: {
@@ -44,7 +42,7 @@ class BusService {
     required String searchId,
     required String tripId,
   }) async {
-    final url = Uri.parse('${AppConstant.busBaseUrl}api/v1/buses/tripAvailability');
+    final url = Uri.parse('${AppConstant.baseUrl}api/v1/buses/tripAvailability');
     final response = await http.post(
       url,
       headers: {
@@ -83,8 +81,9 @@ class BusService {
   }
 
   Future<BusBookResponse> bookTicket(String refNo) async {
+    // Confirmed by the backend team (2026-08-03): this is a GET, not a POST.
     final url = Uri.parse('${AppConstant.baseUrl}api/v1/buses/bookTicket?refNo=$refNo');
-    final response = await http.post(
+    final response = await http.get(
       url,
       headers: {
         'Content-Type': 'application/json',
@@ -96,5 +95,24 @@ class BusService {
       throw Exception('Could not confirm the booking (HTTP ${response.statusCode})');
     }
     return BusBookResponse.fromJson(json.decode(response.body));
+  }
+
+  /// Fetches the full e-ticket for a confirmed booking — used to render/
+  /// download/share the ticket after `bookTicket()`, and (later) to re-open
+  /// a past booking from a bookings list. Keyed by the same `refNo` as
+  /// `bookTicket` (`BusBookData.referenceNo`).
+  Future<BusTicketDetailsResponse> getTicketDetails(String refNo) async {
+    final url = Uri.parse('${AppConstant.baseUrl}api/v1/buses/ticketDetails?refNo=$refNo');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${SharedPrefServices.getjwtVerifiertoken()}',
+      },
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Could not load the ticket (HTTP ${response.statusCode})');
+    }
+    return BusTicketDetailsResponse.fromJson(json.decode(response.body));
   }
 }
