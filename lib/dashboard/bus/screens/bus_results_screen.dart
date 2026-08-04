@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:outc/core/theme/design_tokens.dart';
 import 'package:outc/core/widgets/app_top_bar.dart';
+import 'package:outc/core/widgets/feedback_states.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/providers/bus_results_provider.dart';
 import 'package:outc/dashboard/bus/screens/bus_seat_selection_screen.dart';
@@ -109,8 +110,10 @@ class _BusResultsView extends StatelessWidget {
               ),
               Expanded(
                 child: visible.isEmpty
-                    ? const Center(
-                        child: Text('No buses match the selected filters.'))
+                    ? const EmptyState(
+                        title: 'No buses match your filters',
+                        message: 'Try adjusting your filters or search a different route.',
+                      )
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 8),

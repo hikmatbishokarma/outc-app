@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:outc/core/services/connectivity_service.dart';
 import 'package:outc/dashboard/bus/models/bus_city_model.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/services/bus_service.dart';
@@ -58,6 +59,13 @@ class BusSearchProvider extends ChangeNotifier {
     isSearching = true;
     errorMessage = null;
     notifyListeners();
+
+    if (!await ConnectivityService.isOnline()) {
+      errorMessage = 'No internet connection. Check your connection and try again.';
+      isSearching = false;
+      notifyListeners();
+      return null;
+    }
 
     try {
       final request = BusSearchRequest(

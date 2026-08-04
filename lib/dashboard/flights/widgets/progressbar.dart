@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:outc/dashboard/flights/widgets/colors.dart';
-import 'package:outc/widgets/colors/colors.dart';
+import 'package:outc/core/widgets/travel_loading_indicator.dart';
 
 class Flight_ProgressBar extends StatelessWidget {
   final Widget child;
@@ -35,13 +33,8 @@ class Flight_ProgressBar extends StatelessWidget {
               color: color,
             ),
           ),
-          Center(
-            child: SpinKitSpinningLines(
-              itemCount: 5,
-              color: Flights_Colours.strongRed,
-              lineWidth: 5,
-              size: 100,
-            ),
+          const Center(
+            child: TravelLoadingIndicator(size: 220, showCaption: false),
           ),
         ],
       );

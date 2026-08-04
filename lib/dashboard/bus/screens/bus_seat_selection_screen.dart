@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:outc/core/async_state.dart';
 import 'package:outc/core/theme/design_tokens.dart';
 import 'package:outc/core/widgets/app_top_bar.dart';
 import 'package:outc/core/widgets/bottom_sheet_shell.dart';
+import 'package:outc/core/widgets/feedback_states.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/providers/bus_seat_selection_provider.dart';
 import 'package:outc/dashboard/bus/screens/bus_pickup_drop_screen.dart';
@@ -73,23 +75,16 @@ class _BusSeatSelectionView extends StatelessWidget {
   }
 
   Widget _buildBody(BuildContext context, BusSeatSelectionProvider provider) {
-    if (provider.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (provider.errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(provider.errorMessage!),
-            const SizedBox(height: 12),
-            ElevatedButton(
-                onPressed: provider.load, child: const Text('Retry')),
-          ],
-        ),
-      );
-    }
+    return switch (provider.state) {
+      AsyncLoading() => const LoadingState(label: 'Loading seats'),
+      AsyncOffline() => NoInternetState(onRetry: provider.load),
+      AsyncError(:final message) => ErrorState(message: message, onRetry: provider.load),
+      AsyncEmpty() => const EmptyState(title: 'No seats available for this trip'),
+      AsyncData() => _buildSeatMap(context, provider),
+    };
+  }
 
+  Widget _buildSeatMap(BuildContext context, BusSeatSelectionProvider provider) {
     return Column(
       children: [
         Expanded(
