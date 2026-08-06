@@ -6,11 +6,11 @@ import 'package:outc/core/payment_gateway.dart';
 import 'package:outc/core/theme/design_tokens.dart';
 import 'package:outc/core/widgets/app_top_bar.dart';
 import 'package:outc/core/widgets/bottom_sheet_shell.dart';
-import 'package:outc/core/widgets/travel_loading_indicator.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/models/bus_seat_model.dart';
 import 'package:outc/dashboard/bus/providers/bus_checkout_provider.dart';
 import 'package:outc/dashboard/bus/screens/bus_eticket_screen.dart';
+import 'package:outc/dashboard/bus/widgets/booking_step_overlay.dart';
 import 'package:outc/loginflow/auth_gate.dart';
 
 /// Checkout screen (spec 0009) — trip summary, price breakup, and passenger
@@ -107,49 +107,37 @@ class _BusCheckoutView extends StatelessWidget {
               ),
               bottomNavigationBar: _BottomBar(provider: provider),
             ),
-            // Covers the passenger-details form while confirmBooking() is in
-            // flight after a successful payment — without this, the raw form
-            // flashes back on screen for the length of that network call
-            // between the payment webview closing and the ticket screen
-            // replacing this one.
-            if (provider.isBooking) const _ConfirmingBookingOverlay(),
+            // Covers the passenger-details form during both blockSeats()
+            // (before payment) and confirmBooking() (after payment) — for
+            // the latter, this also stops the raw form flashing back on
+            // screen for the length of that network call between the
+            // payment webview closing and the ticket screen replacing this
+            // one.
+            if (provider.phase == BookingPhase.reservingSeat)
+              BookingStepOverlay(
+                icon: Icons.event_seat,
+                title: 'Reserving your seat',
+                subtitle: "We're securing your selected seats before taking you to payment.",
+                steps: provider.activeSteps,
+                currentStep: provider.currentStep,
+                footerIcon: Icons.lock_outline,
+                footerText: 'Your selected seats are being held for you. This usually takes 2–5 seconds.',
+                footerColor: Theme.of(context).colorScheme.primary,
+              )
+            else if (provider.phase == BookingPhase.bookingTrip)
+              BookingStepOverlay(
+                icon: Icons.confirmation_number,
+                title: 'Booking your trip',
+                subtitle: "Your payment was successful. We're confirming your booking.",
+                steps: provider.activeSteps,
+                currentStep: provider.currentStep,
+                footerIcon: Icons.check_circle_outline,
+                footerText: 'Your payment is safe and secure. This usually takes a few seconds.',
+                footerColor: AppColors.success,
+              ),
           ],
         );
       },
-    );
-  }
-}
-
-/// Same `TravelLoadingIndicator` used for every other async wait in the
-/// app (`LoadingState`) — dropped into its own white card rather than
-/// directly onto the dark scrim, since the indicator's dots/glyphs are
-/// tuned for a light surface and would lose contrast painted straight
-/// onto a black barrier.
-class _ConfirmingBookingOverlay extends StatelessWidget {
-  const _ConfirmingBookingOverlay();
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: ColoredBox(
-        color: Colors.black.withValues(alpha: 0.45),
-        child: Center(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 40),
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(AppRadius.md),
-              boxShadow: AppShadows.elevated,
-            ),
-            child: const TravelLoadingIndicator(
-              size: 180,
-              caption: 'Confirming your booking',
-              subcaption: "Please don't close this screen",
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
