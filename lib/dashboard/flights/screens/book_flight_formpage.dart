@@ -1,3238 +1,838 @@
-import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:country_picker/country_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:outc/dashboard/dashboard.dart';
-import 'package:outc/dashboard/flights/models/flight_price_model.dart'
-    as flightPrice;
-import 'package:outc/dashboard/flights/models/flightbalaji.dart';
-import 'package:outc/dashboard/flights/screens/ticketView.dart';
+import 'package:provider/provider.dart';
+
+import 'package:outc/core/payment_gateway.dart';
 import 'package:outc/core/theme/design_tokens.dart';
 import 'package:outc/core/widgets/app_top_bar.dart';
-import 'package:outc/dashboard/flights/widgets/progressbar.dart';
-import 'package:outc/services/api_services_list.dart';
-import 'package:outc/core/booking_context.dart';
-import 'package:outc/core/payment_gateway.dart';
+import 'package:outc/core/widgets/booking_step_overlay.dart';
+import 'package:outc/core/widgets/bottom_sheet_shell.dart';
+import 'package:outc/dashboard/flights/models/flight_checkout_draft.dart';
+import 'package:outc/dashboard/flights/models/flight_eticket_data.dart';
+import 'package:outc/dashboard/flights/providers/flight_checkout_provider.dart';
+import 'package:outc/dashboard/flights/screens/flight_eticket_screen.dart';
 import 'package:outc/loginflow/auth_gate.dart';
-
 import 'package:outc/widgets/sharedprefservices.dart';
 
-class BookFlightFormpage extends StatefulWidget {
-  String airlineLogo,
-      airlineName,
-      airlineStop,
-      airlineClass,
-      airlineRefund,
-      airlineStart,
-      airlineEnd,
-      airlineStartTime,
-      airlineEndTime,
-      traceId,
-      flightId,
-      fareId,
-      airlineDuration;
-  double adultBasefare,
-      childBasefare,
-      infantBasefare,
-      adulttaxfare,
-      childtaxfare,
-      adultCount,
-      childCount,
-      infantCount,
-      infanttaxfare;
-  BookFlightFormpage(
-      {super.key,
-      required this.airlineLogo,
-      required this.airlineName,
-      required this.airlineStop,
-      required this.airlineClass,
-      required this.airlineRefund,
-      required this.airlineStart,
-      required this.airlineEnd,
-      required this.traceId,
-      required this.flightId,
-      required this.fareId,
-      required this.airlineDuration,
-      required this.airlineStartTime,
-      required this.airlineEndTime,
-      required this.adultBasefare,
-      required this.adulttaxfare,
-      required this.childBasefare,
-      required this.childtaxfare,
-      required this.infantBasefare,
-      required this.infanttaxfare,
-      required this.adultCount,
-      required this.childCount,
-      required this.infantCount});
+/// Passenger-details + payment step for the oneway/roundtrip/multicity
+/// flight flow (spec 0013), reached from `oneway_flight_list.dart`,
+/// `fetched_roundtrip_flights.dart`, and `fetched_multicity_flights.dart`.
+/// Same public constructor as before this redesign, so none of those
+/// callers needed changes. Mirrors bus's `BusCheckoutScreen`: a
+/// `FlightCheckoutProvider` owns validation and the price -> block -> pay ->
+/// book sequence, `BookingStepOverlay` (from `lib/core/widgets/`, shared
+/// with bus) covers the form while pricing/booking is in flight, and a
+/// successful booking lands on `FlightETicketScreen` instead of the old
+/// static `TicketView`.
+class BookFlightFormpage extends StatelessWidget {
+  const BookFlightFormpage({
+    super.key,
+    required this.airlineLogo,
+    required this.airlineName,
+    required this.airlineStop,
+    required this.airlineClass,
+    required this.airlineRefund,
+    required this.airlineStart,
+    required this.airlineEnd,
+    required this.traceId,
+    required this.flightId,
+    required this.fareId,
+    required this.airlineDuration,
+    required this.airlineStartTime,
+    required this.airlineEndTime,
+    required this.adultBasefare,
+    required this.adulttaxfare,
+    required this.childBasefare,
+    required this.childtaxfare,
+    required this.infantBasefare,
+    required this.infanttaxfare,
+    required this.adultCount,
+    required this.childCount,
+    required this.infantCount,
+  });
+
+  final String airlineLogo;
+  final String airlineName;
+  final String airlineStop;
+  final String airlineClass;
+  final String airlineRefund;
+  final String airlineStart;
+  final String airlineEnd;
+  final String traceId;
+  final String flightId;
+  final String fareId;
+  final String airlineDuration;
+  final String airlineStartTime;
+  final String airlineEndTime;
+  final double adultBasefare;
+  final double adulttaxfare;
+  final double childBasefare;
+  final double childtaxfare;
+  final double infantBasefare;
+  final double infanttaxfare;
+  final double adultCount;
+  final double childCount;
+  final double infantCount;
+
   @override
-  State<BookFlightFormpage> createState() => _BookFlightFormpageState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => FlightCheckoutProvider(
+        traceId: traceId,
+        flightId: flightId,
+        fareId: fareId,
+        adultCount: adultCount.toInt(),
+        childCount: childCount.toInt(),
+        infantCount: infantCount.toInt(),
+        adultBasefare: adultBasefare,
+        adulttaxfare: adulttaxfare,
+        childBasefare: childBasefare,
+        childtaxfare: childtaxfare,
+        infantBasefare: infantBasefare,
+        infanttaxfare: infanttaxfare,
+      ),
+      child: _FormView(widget: this),
+    );
+  }
 }
 
-class _BookFlightFormpageState extends State<BookFlightFormpage> {
-  bool firstValue = false;
+class _FormView extends StatelessWidget {
+  const _FormView({required this.widget});
+  final BookFlightFormpage widget;
 
-  late FlightFormRequestModel flightFormModel;
-
-  late flightPrice.FLightPriceRequestModel flightPriceRequestModel;
-
-  late final BookingContext _bookingContext;
-
-  double basefare = 0;
-  double taxes = 0;
-  double total = 0;
-  double grandTotal = 0;
-  String bookingRefNo = "";
-
-  List adultTitile = [];
-
-  // String selectedValue = 'Mr';
-  var adult = ['MR', 'MRS', 'MS'];
-
-  List childTitile = [];
-  // String childValue = 'Mstr';
-  var child = ['MSTR', 'MS'];
-
-  List infantTitile = [];
-  // String infantValue = 'Mstr';
-  var infant = ['MSTR', 'MS'];
-
-  Country selectedCountry = Country(
-      phoneCode: "91",
-      countryCode: "IN",
-      e164Sc: 0,
-      geographic: true,
-      level: 1,
-      name: "India",
-      example: "India",
-      displayName: "India",
-      displayNameNoCountryCode: "IN",
-      e164Key: "");
-
-  // initiate controllers
-  var titleAdultControllers = [];
-  var firstnameAdultControllers = [];
-  var lastNameAdultControllers = [];
-  var dobAdultControllers = [];
-  var nationalityAdultControllers = [];
-
-  var titleChildrenControllers = [];
-  var firstnameChildrenControllers = [];
-  var lastNameChildrenControllers = [];
-  var dobChildrenControllers = [];
-  var nationalityChildrenControllers = [];
-
-  var titleInfantControllers = [];
-  var firstnameInfantControllers = [];
-  var lastNameInfantControllers = [];
-  var dobInfantControllers = [];
-  var nationalityInfantControllers = [];
-
-// initiate new list for final output. assign Passenger model class as initiation for list
-  List<Passenger> passengers = [];
-
-  List<flightPrice.SelectedFlight> selectedFlights = [];
-
-  bool isApiCallProcess = false;
-
-  String convertDateformat(String dob) {
-    if (dob.isEmpty) {
-      return "";
-    }
-
-    try {
-      final parsedDate = DateFormat('dd-MM-yyyy').parse(dob);
-      return DateFormat('yyyy-MM-dd').format(parsedDate);
-    } catch (e) {
-      return "";
-    }
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<FlightCheckoutProvider>(
+      builder: (context, provider, _) {
+        return Stack(
+          children: [
+            Scaffold(
+              backgroundColor: AppColors.panelBackground,
+              appBar: const AppTopBar(title: 'Booking Details'),
+              body: SingleChildScrollView(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SectionCard(child: _FlightSummary(widget: widget)),
+                    const SizedBox(height: 12),
+                    _SectionCard(child: _ContactDetailsCard(provider: provider)),
+                    const SizedBox(height: 12),
+                    _SectionCard(child: _PassengerSection(provider: provider)),
+                    const SizedBox(height: 12),
+                    _TermsRow(provider: provider),
+                    const SizedBox(height: 100),
+                  ],
+                ),
+              ),
+              bottomNavigationBar: _BottomBar(provider: provider, widget: widget),
+            ),
+            // Covers the form during both priceAndBlock() (before payment)
+            // and confirmBooking() (after payment) — same treatment as
+            // BusCheckoutScreen's overlay stack.
+            if (provider.phase == FlightBookingPhase.pricing)
+              BookingStepOverlay(
+                icon: Icons.confirmation_number_outlined,
+                title: 'Holding your fare',
+                subtitle: "We're confirming the latest price and holding your seat before payment.",
+                steps: provider.activeSteps,
+                currentStep: provider.currentStep,
+                footerIcon: Icons.lock_outline,
+                footerText: 'Your fare is being held for you. This usually takes a few seconds.',
+                footerColor: Theme.of(context).colorScheme.primary,
+              )
+            else if (provider.phase == FlightBookingPhase.booking)
+              BookingStepOverlay(
+                icon: Icons.flight_takeoff,
+                title: 'Booking your flight',
+                subtitle: "Your payment was successful. We're confirming your booking.",
+                steps: provider.activeSteps,
+                currentStep: provider.currentStep,
+                footerIcon: Icons.check_circle_outline,
+                footerText: 'Your payment is safe and secure. This usually takes a few seconds.',
+                footerColor: AppColors.success,
+              ),
+          ],
+        );
+      },
+    );
   }
+}
 
-// addData method used to add total controllers into the final passengers list using for LOOP
-  addData() {
-    // this for loop is to add adult controllers
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.child});
+  final Widget child;
 
-    for (int i = 0; i < widget.adultCount; i++) {
-      passengers.add(
-        Passenger(
-            title: titleAdultControllers[i],
-            firstName: firstnameAdultControllers[i].text.toString(),
-            lastName: lastNameAdultControllers[i].text.toString(),
-            // nationality: nationalityAdultControllers[i].text.toString(),
-            paxType: "ADT",
-            email: SharedPrefServices.getemail().toString(),
-            dob: convertDateformat(dobAdultControllers[i].text.toString()),
-            gender: "m",
-            mobile: SharedPrefServices.getphonenumber().toString(),
-            // passportNumber: "",
-            // passportIssuedCountry: "",
-            // passportDOE: "",
-            passengerNationality:
-                nationalityAdultControllers[i].text.toString(),
-            areaCode: "+91",
-            // addressCountryCode: "",
-            address_CountryCode: "",
-            address: "hyd",
-            additionalServicesIds: [],
-            // ffNumber: '',
-            // passportDOI: '',
-            // seatPref: '',
-            mealPref: [],
-            baggagePref: [],
-            pax: 1
-            // countryName: '',
-            // city: '',
-            ),
-      );
-    }
-
-    // this for loop is to add children controllers
-    for (int i = 0; i < widget.childCount; i++) {
-      passengers.add(
-        Passenger(
-            title: titleChildrenControllers[i],
-            firstName: firstnameChildrenControllers[i].text.toString(),
-            lastName: lastNameChildrenControllers[i].text.toString(),
-            // nationality: nationalityChildrenControllers[i].text.toString(),
-            paxType: "CHD",
-            //
-            email: SharedPrefServices.getemail().toString(),
-            dob: convertDateformat(dobChildrenControllers[i].text.toString()),
-            gender: "m",
-            mobile: SharedPrefServices.getphonenumber().toString(),
-            // passportNumber: "",
-            // passportIssuedCountry: "",
-            // passportDOE: "",
-            passengerNationality:
-                nationalityAdultControllers[i].text.toString(),
-            areaCode: "+91",
-            // addressCountryCode: "",
-            address_CountryCode: "",
-            address: "hyd",
-            additionalServicesIds: [],
-            // ffNumber: '',
-            // passportNumber: '',
-            // passportDOI: '',
-            // passportDOE: '',
-            // passportIssuedCountry: '',
-            // seatPref: '',
-            mealPref: [],
-            baggagePref: [],
-            pax: 1
-            // countryName: '',
-            // city: '',
-            ),
-      );
-    }
-
-    // this for loop is to add infants controllers
-    for (int i = 0; i < widget.infantCount; i++) {
-      passengers.add(
-        Passenger(
-            title: titleInfantControllers[i],
-            firstName: firstnameInfantControllers[i].text.toString(),
-            lastName: lastNameInfantControllers[i].text.toString(),
-            // nationality: nationalityInfantControllers[i].text.toString(),
-            paxType: "INF",
-            email: SharedPrefServices.getemail().toString(),
-            dob: convertDateformat(dobInfantControllers[i].text.toString()),
-            gender: "m",
-            mobile: SharedPrefServices.getphonenumber().toString(),
-            // passportNumber: "",
-            // passportIssuedCountry: "",
-            // passportDOE: "",
-            passengerNationality:
-                nationalityAdultControllers[i].text.toString(),
-            areaCode: "+91",
-            // addressCountryCode: "",
-            address_CountryCode: "",
-            address: "hyd",
-            additionalServicesIds: [],
-            // ffNumber: '',
-            // passportNumber: '',
-            // passportDOI: '',
-            // passportDOE: '',
-            // passportIssuedCountry: '',
-            // seatPref: '',
-            mealPref: [],
-            baggagePref: [],
-            pax: 1
-            // countryName: '',
-            // city: '',
-            ),
-      );
-    }
-
-    // print("now printing list of passangers");
-    // // now we are printing the final list after adding all the data through looping
-    // print(passengers);
-    // inspect(passengers);
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: child,
+    );
   }
+}
 
-  final emailController =
-      TextEditingController(text: SharedPrefServices.getemail());
-  final phoneController =
-      TextEditingController(text: SharedPrefServices.getphonenumber());
-  final addressController = TextEditingController();
-  // init state is used to initiate all the controller creation methods.
+class _FlightSummary extends StatelessWidget {
+  const _FlightSummary({required this.widget});
+  final BookFlightFormpage widget;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(widget.airlineName,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+            Text(widget.airlineStop, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            _InfoChip(label: widget.airlineClass, icon: Icons.event_seat_outlined),
+            const SizedBox(width: 8),
+            _InfoChip(
+              label: widget.airlineRefund,
+              icon: widget.airlineRefund.toLowerCase().contains('non')
+                  ? Icons.block
+                  : Icons.check_circle_outline,
+              color: widget.airlineRefund.toLowerCase().contains('non')
+                  ? AppColors.error
+                  : AppColors.success,
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.airlineStartTime,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  Text(widget.airlineStart,
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                ],
+              ),
+            ),
+            SizedBox(
+              width: 76,
+              child: Column(
+                children: [
+                  Text(widget.airlineDuration,
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(child: _DashedLine(color: Colors.grey.shade400)),
+                      Icon(Icons.flight, size: 14, color: primary),
+                      Expanded(child: _DashedLine(color: Colors.grey.shade400)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(widget.airlineEndTime,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  Text(widget.airlineEnd,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.label, required this.icon, this.color});
+  final String label;
+  final IconData icon;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final chipColor = color ?? Colors.grey.shade700;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: chipColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: chipColor),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(color: chipColor, fontSize: 11, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Small dashed horizontal line either side of the route icon — same
+/// approach as `FlightETicketScreen`'s private `_DashedLine` (built from
+/// boxes via `LayoutBuilder`, not a `CustomPainter`).
+class _DashedLine extends StatelessWidget {
+  const _DashedLine({required this.color});
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const dashWidth = 4.0;
+        const gap = 3.0;
+        final count = (constraints.maxWidth / (dashWidth + gap)).floor().clamp(1, 1000);
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(
+            count,
+            (_) => Container(width: dashWidth, height: 1.5, color: color),
+          ),
+        );
+      },
+    );
+  }
+}
+
+InputDecoration _fieldDecoration(BuildContext context, String label,
+    {String? prefixText, IconData? prefixIcon}) {
+  return InputDecoration(
+    labelText: label,
+    isDense: true,
+    prefixIcon: prefixIcon != null
+        ? Padding(
+            padding: const EdgeInsets.only(left: 12, right: 8),
+            child: Icon(prefixIcon, size: 20, color: Colors.grey.shade500),
+          )
+        : prefixText != null
+            ? Padding(
+                padding: const EdgeInsets.only(left: 12, right: 4),
+                child: Center(
+                  widthFactor: 1,
+                  child: Text(prefixText, style: TextStyle(fontSize: 16, color: Colors.grey.shade700)),
+                ),
+              )
+            : null,
+    prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+    enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade400)),
+    focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: BorderSide(color: Theme.of(context).colorScheme.primary)),
+    border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade400)),
+  );
+}
+
+class _ContactDetailsCard extends StatefulWidget {
+  const _ContactDetailsCard({required this.provider});
+  final FlightCheckoutProvider provider;
+
+  @override
+  State<_ContactDetailsCard> createState() => _ContactDetailsCardState();
+}
+
+class _ContactDetailsCardState extends State<_ContactDetailsCard> {
+  late final TextEditingController _phoneController;
+  late final TextEditingController _emailController;
+  late final TextEditingController _addressController;
+
   @override
   void initState() {
     super.initState();
+    _phoneController = TextEditingController(text: SharedPrefServices.getphonenumber());
+    _emailController = TextEditingController(text: SharedPrefServices.getemail());
+    _addressController = TextEditingController();
+    // Push whatever pre-filled from the saved session straight into the
+    // provider so a returning logged-in customer doesn't have to touch
+    // these fields for `validate()` to pass, matching the original screen's
+    // pre-filled-controller behavior.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.provider.setPhone(_phoneController.text);
+      widget.provider.setEmail(_emailController.text);
+    });
+  }
 
-    print(titleAdultControllers);
-    _bookingContext = BookingContext.current();
-    flightFormModel = FlightFormRequestModel(
-      pgType: _bookingContext.pgTypeValue,
-      userId: _bookingContext.userId,
-      traceId: widget.traceId,
-      currency: "INR",
-      currencyRatio: 1,
-      membership: 1,
-      promoData: "",
-      roleType: _bookingContext.roleTypeValue,
-      passengers: [],
-      gstDetails: GstDetails(
-        gstAddressLine1: " ",
-        gstAddressLine2: " ",
-        gstCity: "",
-        gstState: "",
-        gstpinCode: "",
-        gstEmailId: "",
-        gstNumber: "",
-        gstPhoneNo: "",
-        gstCompanyName: "",
-      ),
-      additionalServices: [],
-      creditCardInfo: "",
-      convienenceId: 0,
-      insuranceRequired: 0,
-      totalPrice: 0,
-      isCouponReedem: false,
-    );
-
-    flightPriceRequestModel = flightPrice.FLightPriceRequestModel(
-        userId: _bookingContext.userId,
-        roleType: _bookingContext.roleTypeValue,
-        membership: 1,
-        traceId: " ",
-        flightIds: [],
-        selectedFlights: [
-          flightPrice.SelectedFlight(
-              fareId: widget.fareId,
-              flightId: widget.flightId,
-              coupanType: 'Discount',
-              fareType: 'Economy',
-              subCabinClass: 'A'),
-        ],
-        airTravelType: 'oneWay',
-        mappingType: 'Combined',
-        itineraryViewType: '1',
-        gstDetails: flightPrice.GstDetails(
-            gstAddressLine1: '',
-            gstAddressLine2: '',
-            gstCity: '',
-            gstState: '',
-            gstpinCode: '',
-            gstEmailId: '',
-            gstNumber: '',
-            gstPhoneNo: '',
-            gstCompanyName: ''));
-
-    createtitleAdultControllers();
-    createfirstnameAdultControllers();
-    createlastNameAdultControllers();
-    createdobAdultControllers();
-    createnationalityAdultControllers();
-
-    createtitleChildrenControllers();
-    createfirstnameChildrenControllers();
-    createlastNameChildrenControllers();
-    createdobChildrenControllers();
-    createnationalityChildrenControllers();
-
-    createtitleInfantControllers();
-    createfirstnameInfantControllers();
-    createlastNameInfantControllers();
-    createdobInfantControllers();
-    createnationalityInfantControllers();
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _emailController.dispose();
+    _addressController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Flight_ProgressBar(
-      inAsyncCall: isApiCallProcess,
-      opacity: 0.3,
-      child: uiSetup(context),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Contact Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _phoneController,
+          keyboardType: TextInputType.phone,
+          maxLength: 10,
+          decoration: _fieldDecoration(context, 'Phone Number', prefixText: '+91  ').copyWith(
+            counterText: '',
+          ),
+          onChanged: widget.provider.setPhone,
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
+          decoration: _fieldDecoration(context, 'Email Address', prefixIcon: Icons.email_outlined),
+          onChanged: widget.provider.setEmail,
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _addressController,
+          maxLines: 3,
+          decoration: _fieldDecoration(context, 'Address', prefixIcon: Icons.home_outlined),
+          onChanged: widget.provider.setAddress,
+        ),
+      ],
+    );
+  }
+}
+
+class _PassengerSection extends StatelessWidget {
+  const _PassengerSection({required this.provider});
+  final FlightCheckoutProvider provider;
+
+  @override
+  Widget build(BuildContext context) {
+    final passengers = provider.passengers;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Traveller Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const SizedBox(height: 14),
+        for (var i = 0; i < passengers.length; i++) ...[
+          if (i > 0) ...[
+            const SizedBox(height: 14),
+            Divider(height: 1, color: Colors.grey.shade200),
+            const SizedBox(height: 14),
+          ],
+          Text(_passengerLabel(passengers, i),
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.grey.shade700)),
+          const SizedBox(height: 8),
+          _PassengerFormCard(index: i, provider: provider),
+        ],
+      ],
     );
   }
 
+  static String _passengerLabel(List<FlightPassengerDraft> passengers, int index) {
+    final type = passengers[index].paxType;
+    final typeLabel = switch (type) {
+      FlightPaxType.adult => 'Adult',
+      FlightPaxType.child => 'Child',
+      FlightPaxType.infant => 'Infant',
+    };
+    final ordinal = passengers.take(index + 1).where((p) => p.paxType == type).length;
+    return '$typeLabel $ordinal';
+  }
+}
+
+class _PassengerFormCard extends StatefulWidget {
+  const _PassengerFormCard({required this.index, required this.provider});
+  final int index;
+  final FlightCheckoutProvider provider;
+
   @override
-  Widget uiSetup(BuildContext context) {
-    basefare = (widget.adultCount * widget.adultBasefare) +
-        (widget.childCount * widget.childBasefare) +
-        (widget.infantCount * widget.infantBasefare);
-    taxes = (widget.adultCount * widget.adulttaxfare) +
-        (widget.childCount * widget.childtaxfare) +
-        (widget.infantCount * widget.infanttaxfare);
-    total = basefare + taxes;
-    grandTotal = total + 200;
+  State<_PassengerFormCard> createState() => _PassengerFormCardState();
+}
 
-    String finalAmount = grandTotal.toStringAsFixed(2);
+class _PassengerFormCardState extends State<_PassengerFormCard> {
+  late final TextEditingController _firstNameController;
+  late final TextEditingController _lastNameController;
+  late final TextEditingController _dobController;
+  late final TextEditingController _nationalityController;
 
-    print('adultBaseFare $basefare');
-    print('childBasefare ${widget.childBasefare}');
-    print('taxes $taxes');
-    print('grandTotal $finalAmount');
+  FlightPassengerDraft get _passenger => widget.provider.passengers[widget.index];
 
-    return Scaffold(
-      backgroundColor: AppColors.panelBackground,
-      appBar: const AppTopBar(title: 'Booking Details'),
-      body: SafeArea(
-        child: Container(
-          margin: const EdgeInsets.only(right: 10, left: 10),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(
-                  height: 25,
-                ),
-                Card(
-                    color: Colors.white,
-                    shadowColor: Colors.blue.shade50,
-                    elevation: 5,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                    child: Stack(children: [
-                      Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            color: Colors.white),
-                        child: Container(
-                            margin: const EdgeInsets.only(
-                                right: 15, left: 15, top: 25, bottom: 25),
-                            decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: AppColors.secondary)),
-                            child: Column(
-                              children: [
-                                Container(
-                                  margin: const EdgeInsets.all(5),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.start,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const SizedBox(
-                                            height: 10,
-                                          ),
-                                          // Image(
-                                          //   image: NetworkImage(
-                                          //     widget.airlineLogo,
-                                          //   ),
-                                          //   fit: BoxFit.fill,
-                                          //   height: 30.0,
-                                          //   width: 30.0,
-                                          // ),
-                                          Text(
-                                            widget.airlineName,
-                                            style: TextStyle(
-                                              fontSize: 14.0,
-                                              color: AppColors.primary,
-                                              fontFamily: 'Poppins',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.start,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.end,
-                                        children: [
-                                          Text(
-                                            widget.airlineStop,
-                                            style: const TextStyle(
-                                              fontSize: 12.0,
-                                              color: Colors.black,
-                                              fontFamily: 'Poppins',
-                                            ),
-                                          ),
-                                          Text(
-                                            widget.airlineClass,
-                                            style: const TextStyle(
-                                              fontSize: 12.0,
-                                              color: Colors.black,
-                                              fontFamily: 'Poppins',
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Text(
-                                  widget.airlineRefund,
-                                  style: TextStyle(
-                                    fontSize: 12.0,
-                                    color: AppColors.textSecondary,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Poppins',
-                                  ),
-                                ),
-                                Container(
-                                  margin: const EdgeInsets.all(5),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        widget.airlineStart,
-                                        style: const TextStyle(
-                                          fontSize: 14.0,
-                                          color: Colors.black,
-                                          fontFamily: 'Poppins',
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: 150,
-                                        child: Divider(
-                                          color: AppColors.primary,
-                                          thickness: 3,
-                                        ),
-                                      ),
-                                      Text(
-                                        widget.airlineEnd,
-                                        style: const TextStyle(
-                                          fontSize: 14.0,
-                                          color: Colors.black,
-                                          fontFamily: 'Poppins',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  margin: const EdgeInsets.all(5),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        widget.airlineStartTime,
-                                        style: const TextStyle(
-                                          fontSize: 12.0,
-                                          color: Colors.black,
-                                          fontFamily: 'Poppins',
-                                        ),
-                                      ),
-                                      Text(
-                                        widget.airlineDuration,
-                                        style: const TextStyle(
-                                          fontSize: 12.0,
-                                          color: Colors.black,
-                                          fontFamily: 'Poppins',
-                                        ),
-                                      ),
-                                      Text(
-                                        widget.airlineEndTime,
-                                        style: const TextStyle(
-                                          fontSize: 12.0,
-                                          color: Colors.black,
-                                          fontFamily: 'Poppins',
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(
-                                  height: 10,
-                                ),
-                              ],
-                            )),
-                      ),
-                      Positioned(
-                          top: 10,
-                          left: 10,
-                          child: Card(
-                              elevation: 5,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
-                              child: Container(
-                                width: 80,
-                                height: 25,
-                                decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(5),
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        AppColors.primary,
-                                        AppColors.secondary
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    )),
-                                child: Center(
-                                    child: Text("DEPART",
-                                        style: GoogleFonts.poppins(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w500))),
-                              )))
-                    ])),
-                const SizedBox(
-                  height: 15,
-                ),
-                Card(
-                    color: Colors.white,
-                    shadowColor: Colors.blue.shade50,
-                    elevation: 5,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                    child: Stack(children: [
-                      Container(
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              color: Colors.white),
-                          child: Container(
-                              margin: const EdgeInsets.only(
-                                  right: 10, left: 10, top: 20, bottom: 15),
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(5),
-                                  border:
-                                      Border.all(color: AppColors.secondary)),
-                              child: Container(
-                                margin: const EdgeInsets.only(
-                                    right: 10, left: 10, top: 10),
-                                child: Column(children: [
-                                  const SizedBox(
-                                    height: 15,
-                                  ),
-                                  Row(
-                                    children: [
-                                      const Text(
-                                        "*",
-                                        style: TextStyle(
-                                            color: Colors.red,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                      const SizedBox(
-                                        width: 5,
-                                      ),
-                                      Text("Phone number",
-                                          style: GoogleFonts.poppins(
-                                              color: Colors.black,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600)),
-                                    ],
-                                  ),
-                                  const SizedBox(
-                                    height: 10,
-                                  ),
-                                  SizedBox(
-                                    height: 40,
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                            child: TextFormField(
-                                          keyboardType: TextInputType.number,
-                                          inputFormatters: [
-                                            LengthLimitingTextInputFormatter(
-                                                10),
-                                          ],
-                                          controller: phoneController,
-                                          style: GoogleFonts.poppins(
-                                              color: Colors.black,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w500),
-                                          decoration: InputDecoration(
-                                            contentPadding:
-                                                const EdgeInsets.fromLTRB(
-                                                    10, 10, 10, 3),
-                                            border: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(5),
-                                                borderSide: const BorderSide(
-                                                    color:
-                                                        AppColors.fieldBorder)),
-                                            enabledBorder: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(5),
-                                                borderSide: const BorderSide(
-                                                    color:
-                                                        AppColors.fieldBorder)),
-                                            focusedBorder: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(5),
-                                                borderSide: const BorderSide(
-                                                    color:
-                                                        AppColors.fieldBorder)),
-                                            errorBorder: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(5),
-                                                borderSide: const BorderSide(
-                                                    color:
-                                                        AppColors.fieldBorder)),
-                                            hintText: 'Enter Mobile Number',
-                                            hintStyle: GoogleFonts.poppins(
-                                                color: AppColors.textSecondary,
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w500),
-                                            prefixIcon: Padding(
-                                              padding:
-                                                  const EdgeInsets.fromLTRB(
-                                                      12, 10, 10, 5),
-                                              child: InkWell(
-                                                onTap: () {
-                                                  showCountryPicker(
-                                                      context: context,
-                                                      countryListTheme:
-                                                          const CountryListThemeData(
-                                                              bottomSheetHeight:
-                                                                  600),
-                                                      onSelect: (value) {
-                                                        setState(() {
-                                                          selectedCountry =
-                                                              value;
-                                                        });
-                                                      });
-                                                },
-                                                child: Text(
-                                                    "${selectedCountry.flagEmoji}+${selectedCountry.phoneCode}",
-                                                    style: GoogleFonts.poppins(
-                                                        color: Colors.black,
-                                                        fontSize: 15,
-                                                        fontWeight:
-                                                            FontWeight.w500)),
-                                              ),
-                                            ),
-                                          ),
-                                        )),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    children: [
-                                      const Text(
-                                        "*",
-                                        style: TextStyle(
-                                            color: Colors.red,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                      const SizedBox(
-                                        width: 5,
-                                      ),
-                                      Text("Email",
-                                          style: GoogleFonts.poppins(
-                                              color: Colors.black,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600)),
-                                    ],
-                                  ),
-                                  const SizedBox(
-                                    height: 10,
-                                  ),
-                                  Container(
-                                      height: 40,
-                                      width: double.infinity,
-                                      decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(5),
-                                          border: Border.all(
-                                              color: AppColors.fieldBorder)),
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(
-                                            left: 10, bottom: 3),
-                                        child: TextFormField(
-                                          controller: emailController,
-                                          decoration: InputDecoration(
-                                            contentPadding:
-                                                const EdgeInsets.all(10.0),
-                                            border: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(10.0),
-                                              borderSide: const BorderSide(
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                            focusedBorder: InputBorder.none,
-                                            enabledBorder: OutlineInputBorder(
-                                              borderSide: const BorderSide(
-                                                color: Colors.white,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(10.0),
-                                            ),
-                                            hintText:
-                                                "Enter your email address",
-                                            hintStyle: const TextStyle(
-                                              fontSize: 15.0,
-                                              color: AppColors.hintText,
-                                              // fontFamily: 'Poppins',
-                                              fontWeight: FontWeight.w400,
-                                            ),
-                                          ),
-                                          style: const TextStyle(
-                                            fontSize: 15.0,
-                                            color: Colors.black,
-                                            // fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                          keyboardType:
-                                              TextInputType.emailAddress,
-                                          textInputAction: TextInputAction.next,
-                                          autofillHints: const [
-                                            AutofillHints.email
-                                          ],
-                                          onChanged: (input) {
-                                            // setState(() {
-                                            //   requestModelId.UserName = input.toLowerCase();
-                                            // });
-                                          },
-                                        ),
-                                      )),
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    children: [
-                                      const Text(
-                                        "*",
-                                        style: TextStyle(
-                                            color: Colors.red,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                      const SizedBox(
-                                        width: 5,
-                                      ),
-                                      Text("Address",
-                                          style: GoogleFonts.poppins(
-                                              color: Colors.black,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600)),
-                                    ],
-                                  ),
-                                  const SizedBox(
-                                    height: 10,
-                                  ),
-                                  Container(
-                                      width: double.infinity,
-                                      decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(5),
-                                          border: Border.all(
-                                              color: AppColors.fieldBorder)),
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(
-                                            left: 10, bottom: 3),
-                                        child: TextFormField(
-                                          controller: addressController,
-                                          maxLines: 4,
-                                          decoration: InputDecoration(
-                                            contentPadding:
-                                                const EdgeInsets.all(10.0),
-                                            border: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(10.0),
-                                              borderSide: const BorderSide(
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                            focusedBorder: InputBorder.none,
-                                            enabledBorder: OutlineInputBorder(
-                                              borderSide: const BorderSide(
-                                                color: Colors.white,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(10.0),
-                                            ),
-                                            hintText: "Enter your Address",
-                                            hintStyle: const TextStyle(
-                                              fontSize: 15.0,
-                                              color: AppColors.hintText,
-                                              // fontFamily: 'Poppins',
-                                              fontWeight: FontWeight.w400,
-                                            ),
-                                          ),
-                                          style: const TextStyle(
-                                            fontSize: 15.0,
-                                            color: Colors.black,
-                                            // fontFamily: 'Poppins',
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                          keyboardType: TextInputType.text,
-                                          textInputAction: TextInputAction.next,
-                                          autofillHints: const [
-                                            AutofillHints.email
-                                          ],
-                                          onChanged: (input) {
-                                            // setState(() {
-                                            //   requestModelId.UserName = input.toLowerCase();
-                                            // });
-                                          },
-                                        ),
-                                      )),
-                                  const SizedBox(
-                                    height: 20,
-                                  ),
-                                ]),
-                              ))),
-                      Positioned(
-                          top: 5,
-                          right: 15,
-                          left: 15,
-                          child: Card(
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
-                              child: Container(
-                                width: double.infinity,
-                                height: 25,
-                                decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(5),
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        AppColors.primary,
-                                        AppColors.secondary
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    )),
-                                child: Padding(
-                                  padding:
-                                      const EdgeInsets.only(left: 10, top: 1),
-                                  child: Text("Contact Details",
-                                      style: GoogleFonts.poppins(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500)),
-                                ),
-                              )))
-                    ])),
-                const SizedBox(
-                  height: 15,
-                ),
+  @override
+  void initState() {
+    super.initState();
+    final passenger = _passenger;
+    _firstNameController = TextEditingController(text: passenger.firstName);
+    _lastNameController = TextEditingController(text: passenger.lastName);
+    _dobController = TextEditingController(text: passenger.dob);
+    _nationalityController = TextEditingController(text: passenger.nationality);
+  }
 
-                buildAdultContainers(),
-                // const SizedBox(
-                //   height: 8,
-                // ),
-                buildChildrenContainers(),
-                // const SizedBox(
-                //   height: 8,
-                // ),
-                buildInfantContainers(),
-                // const SizedBox(
-                //   height: 8,
-                // ),
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _dobController.dispose();
+    _nationalityController.dispose();
+    super.dispose();
+  }
 
-                Card(
-                  color: Colors.white,
-                  shadowColor: Colors.blue.shade50,
-                  elevation: 5,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                  child: Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: Colors.white),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(
-                          height: 10,
-                        ),
-                        Container(
-                            margin: const EdgeInsets.only(left: 15, right: 25),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Fare Details",
-                                  style: GoogleFonts.poppins(
-                                      color: Colors.grey.shade800,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500),
-                                ),
-                                Divider(
-                                  thickness: 1.0,
-                                  color: Colors.grey.shade400,
-                                )
-                              ],
-                            )),
-                        const SizedBox(
-                          height: 5,
-                        ),
-                        Stack(children: [
-                          Container(
-                            margin: const EdgeInsets.only(
-                                right: 15, left: 15, top: 20, bottom: 15),
-                            decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(5),
-                                border: Border.all(color: AppColors.secondary)),
-                            child: Container(
-                              margin:
-                                  const EdgeInsets.only(right: 15, left: 15),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(
-                                    height: 15,
-                                  ),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text("Base Fare",
-                                          style: GoogleFonts.poppins(
-                                              color: Colors.black,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500)),
-                                      Container(
-                                          child: Row(
-                                        children: [
-                                          Text(
-                                              "INR ${basefare.toStringAsFixed(2)}",
-                                              style: GoogleFonts.poppins(
-                                                  color: Colors.black,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500)),
-                                        ],
-                                      )),
-                                    ],
-                                  ),
-                                  const SizedBox(
-                                    height: 15,
-                                  ),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text("Taxes and Fees",
-                                          style: GoogleFonts.poppins(
-                                              color: Colors.black,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500)),
-                                      Container(
-                                          child: Row(
-                                        children: [
-                                          Text(
-                                              "INR ${taxes.toStringAsFixed(2)}",
-                                              style: GoogleFonts.poppins(
-                                                  color: Colors.black,
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500)),
-                                          // const Icon(
-                                          //   Icons.question_mark,
-                                          //   color: Colors.grey,
-                                          //   size: 18,
-                                          // )
-                                        ],
-                                      )),
-                                    ],
-                                  ),
-                                  const SizedBox(
-                                    height: 15,
-                                  ),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text("Total:",
-                                          style: GoogleFonts.poppins(
-                                              color: Colors.black,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600)),
-                                      Text("INR ${total.toStringAsFixed(2)}",
-                                          style: GoogleFonts.poppins(
-                                              color: Colors.black,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold)),
-                                    ],
-                                  ),
-                                  const SizedBox(
-                                    height: 10,
-                                  ),
-                                  Text("Including all taxes and fees",
-                                      style: GoogleFonts.poppins(
-                                          color: Colors.grey,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500)),
-                                  const SizedBox(
-                                    height: 20,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                              top: 0,
-                              left: 20,
-                              child: Card(
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10)),
-                                  child: Container(
-                                    height: 25,
-                                    decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(5),
-                                        gradient: const LinearGradient(
-                                          colors: [
-                                            AppColors.primary,
-                                            AppColors.secondary
-                                          ],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        )),
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(
-                                          left: 5, top: 1, right: 5),
-                                      child: Text("Onward Trip Fare",
-                                          style: GoogleFonts.poppins(
-                                              color: Colors.white,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w500)),
-                                    ),
-                                  )))
-                        ]),
-                        Stack(children: [
-                          Container(
-                            margin: const EdgeInsets.only(
-                                right: 15, left: 15, top: 15, bottom: 15),
-                            decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(5),
-                                border: Border.all(color: AppColors.secondary)),
-                            child: Container(
-                              margin:
-                                  const EdgeInsets.only(right: 10, left: 10),
-                              child: Column(
-                                children: [
-                                  const SizedBox(
-                                    height: 15,
-                                  ),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text("Convenience Fee:",
-                                          style: GoogleFonts.poppins(
-                                              color: Colors.black,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w500)),
-                                      Text("INR 200.00",
-                                          style: GoogleFonts.poppins(
-                                              color: Colors.black,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold)),
-                                    ],
-                                  ),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text("Grand Total:",
-                                          style: GoogleFonts.poppins(
-                                              color: Colors.black,
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w500)),
-                                      Text(
-                                          "INR ${grandTotal.toStringAsFixed(2)}",
-                                          style: GoogleFonts.poppins(
-                                              color: Colors.black,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold)),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                              top: 0,
-                              left: 20,
-                              child: Card(
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10)),
-                                  child: Container(
-                                    height: 25,
-                                    decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(5),
-                                        gradient: const LinearGradient(
-                                          colors: [
-                                            AppColors.primary,
-                                            AppColors.secondary
-                                          ],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        )),
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(
-                                          left: 5, top: 1, right: 5),
-                                      child: Text("Total Fare",
-                                          style: GoogleFonts.poppins(
-                                              color: Colors.white,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w500)),
-                                    ),
-                                  )))
-                        ]),
-                        const SizedBox(
-                          height: 15,
-                        ),
-                        Stack(children: [
-                          Container(
-                            margin: const EdgeInsets.only(
-                                right: 15, left: 15, top: 15, bottom: 15),
-                            decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(5),
-                                border: Border.all(color: AppColors.secondary)),
-                            child: Container(
-                              margin:
-                                  const EdgeInsets.only(right: 10, left: 10),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(
-                                    height: 15,
-                                  ),
-                                  Text("Apply Promo",
-                                      style: GoogleFonts.poppins(
-                                          color: Colors.black,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600)),
-                                  const SizedBox(
-                                    height: 5,
-                                  ),
-                                  Row(children: [
-                                    Expanded(
-                                      child: SizedBox(
-                                        height: 40,
-                                        child: TextFormField(
-                                          keyboardType: TextInputType.text,
-                                          decoration: InputDecoration(
-                                            hintText: "Enter Your Promo code",
-                                            hintStyle: TextStyle(
-                                                color: Colors.grey.shade500,
-                                                fontSize: 15),
-                                            contentPadding:
-                                                const EdgeInsets.fromLTRB(
-                                                    12, 10, 10, 10),
-                                            border: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(3),
-                                                borderSide: const BorderSide(
-                                                    color:
-                                                        AppColors.fieldBorder)),
-                                            enabledBorder: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(3),
-                                                borderSide: const BorderSide(
-                                                    color:
-                                                        AppColors.fieldBorder)),
-                                            focusedBorder: OutlineInputBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(3),
-                                                borderSide: const BorderSide(
-                                                    color:
-                                                        AppColors.fieldBorder)),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(
-                                      width: 10,
-                                    ),
-                                    ElevatedButton(
-                                        onPressed: () {},
-                                        style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                Colors.pink.shade300,
-                                            shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(2))),
-                                        child: Text("APPLY",
-                                            style: GoogleFonts.poppins(
-                                                color: Colors.white,
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w600)))
-                                  ]),
-                                  // const SizedBox(
-                                  //   height: 15,
-                                  // ),
-                                  // DottedBorder(
-                                  //     color: Colors.green,
-                                  //     strokeWidth: 1.5,
-                                  //     dashPattern: [3, 3],
-                                  //     child: Container(
-                                  //         height: 30,
-                                  //         width: 180,
-                                  //         child: const Center(
-                                  //             child: Text(
-                                  //           "",
-                                  //           style: TextStyle(
-                                  //               fontSize: 14.0,
-                                  //               color: Colors.green),
-                                  //         )))),
-                                  const SizedBox(
-                                    height: 15,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                              top: 0,
-                              left: 20,
-                              child: Card(
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10)),
-                                  child: Container(
-                                    height: 25,
-                                    decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(5),
-                                        gradient: const LinearGradient(
-                                          colors: [
-                                            AppColors.primary,
-                                            AppColors.secondary
-                                          ],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        )),
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(
-                                          left: 5, top: 1, right: 5),
-                                      child: Text("Apply Promo",
-                                          style: GoogleFonts.poppins(
-                                              color: Colors.white,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w500)),
-                                    ),
-                                  )))
-                        ]),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(
-                  height: 15,
-                ),
-                Card(
-                    color: Colors.white,
-                    shadowColor: Colors.blue.shade50,
-                    elevation: 5,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                    child: Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            color: Colors.white),
-                        child: Container(
-                            margin: const EdgeInsets.only(right: 10, left: 10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(children: [
-                                  Checkbox(
-                                      side: BorderSide(
-                                          color: Colors.grey.shade400),
-                                      activeColor: AppColors.secondary,
-                                      value: firstValue,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          firstValue = value!;
-                                        });
-                                      },
-                                      visualDensity:
-                                          const VisualDensity(horizontal: -3)),
-                                  Expanded(
-                                      child: Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 20),
-                                          child: RichText(
-                                              text: TextSpan(children: [
-                                            TextSpan(
-                                                text: 'I Agree To All The',
-                                                style: GoogleFonts.poppins(
-                                                    color:
-                                                        AppColors.textSecondary,
-                                                    fontSize: 14,
-                                                    fontWeight:
-                                                        FontWeight.w500)),
-                                            TextSpan(
-                                                text: ' Terms & Conditions ',
-                                                style: GoogleFonts.poppins(
-                                                    color: AppColors.secondary,
-                                                    fontSize: 14,
-                                                    fontWeight:
-                                                        FontWeight.w500)),
-                                            TextSpan(
-                                                text: 'and ',
-                                                style: GoogleFonts.poppins(
-                                                    color:
-                                                        AppColors.textSecondary,
-                                                    fontSize: 14,
-                                                    fontWeight:
-                                                        FontWeight.w500)),
-                                            TextSpan(
-                                                text: ' Privacy Policy. ',
-                                                style: GoogleFonts.poppins(
-                                                    color: AppColors.secondary,
-                                                    fontSize: 14,
-                                                    fontWeight:
-                                                        FontWeight.w500)),
-                                          ]))))
-                                ]),
-                                const SizedBox(
-                                  height: 10,
-                                ),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton(
-                                    onPressed: () async {
-                                      if (phoneController.text.isEmpty ||
-                                          emailController.text.isEmpty ||
-                                          addressController.text.isEmpty ||
-                                          !firstValue) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                                'Please fill Contact Details & Accept Terms & Conditions'),
-                                          ),
-                                        );
-                                        return;
-                                      }
+  Future<void> _pickDob() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(now.year - 30),
+      firstDate: DateTime(now.year - 100),
+      lastDate: now,
+    );
+    if (picked == null || !mounted) return;
+    final formatted = DateFormat('dd-MM-yyyy').format(picked);
+    setState(() => _dobController.text = formatted);
+    widget.provider.updatePassenger(widget.index, dob: formatted);
+  }
 
-                                      for (var i = 0;
-                                          i < widget.adultCount;
-                                          i++) {
-                                        if (firstnameAdultControllers[i]
-                                                .text
-                                                .isEmpty ||
-                                            lastNameAdultControllers[i]
-                                                .text
-                                                .isEmpty ||
-                                            dobAdultControllers[i]
-                                                .text
-                                                .isEmpty ||
-                                            nationalityAdultControllers[i]
-                                                .text
-                                                .isEmpty) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                  'Please fill all required fields'),
-                                            ),
-                                          );
-                                          return;
-                                        }
-                                        DateTime dobAdult;
-                                        try {
-                                          String formattedDate =
-                                              convertDateformat(
-                                                  dobAdultControllers[i].text);
-                                          dobAdult =
-                                              DateTime.parse(formattedDate);
-
-                                          int ageInYears = DateTime.now()
-                                                  .difference(dobAdult)
-                                                  .inDays ~/
-                                              365;
-
-                                          if (DateTime.now().isBefore(DateTime(
-                                              dobAdult.year + ageInYears,
-                                              dobAdult.month,
-                                              dobAdult.day))) {
-                                            ageInYears--;
-                                          }
-
-                                          if (ageInYears < 12) {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              const SnackBar(
-                                                  content: Text(
-                                                      'Adults must be 12 years or older.')),
-                                            );
-                                            return;
-                                          }
-                                        } catch (e) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            const SnackBar(
-                                                content: Text(
-                                                    'Invalid date format. Please use DD-MM-YYYY.')),
-                                          );
-                                          return;
-                                        }
-                                      }
-
-                                      for (var i = 0;
-                                          i < widget.childCount;
-                                          i++) {
-                                        if (firstnameChildrenControllers[i]
-                                                .text
-                                                .isEmpty ||
-                                            lastNameChildrenControllers[i]
-                                                .text
-                                                .isEmpty ||
-                                            dobChildrenControllers[i]
-                                                .text
-                                                .isEmpty ||
-                                            nationalityChildrenControllers[i]
-                                                .text
-                                                .isEmpty) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                  'Please fill all required fields'),
-                                            ),
-                                          );
-                                          return;
-                                        }
-
-                                        DateTime dobChild;
-                                        try {
-                                          String formattedDate =
-                                              convertDateformat(
-                                                  dobChildrenControllers[i]
-                                                      .text);
-                                          dobChild =
-                                              DateTime.parse(formattedDate);
-
-                                          int ageInYears = DateTime.now()
-                                                  .difference(dobChild)
-                                                  .inDays ~/
-                                              365;
-
-                                          if (DateTime.now().isBefore(DateTime(
-                                              dobChild.year + ageInYears,
-                                              dobChild.month,
-                                              dobChild.day))) {
-                                            ageInYears--;
-                                          }
-
-                                          if (ageInYears < 2 ||
-                                              ageInYears > 12) {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              const SnackBar(
-                                                  content: Text(
-                                                      'Children must be between 2 and 12 years old.')),
-                                            );
-                                            return;
-                                          }
-                                        } catch (e) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            const SnackBar(
-                                                content: Text(
-                                                    'Invalid date format. Please use DD-MM-YYYY.')),
-                                          );
-                                          return;
-                                        }
-                                      }
-
-                                      for (var i = 0;
-                                          i < widget.infantCount;
-                                          i++) {
-                                        if (firstnameInfantControllers[i]
-                                                .text
-                                                .isEmpty ||
-                                            lastNameInfantControllers[i]
-                                                .text
-                                                .isEmpty ||
-                                            dobInfantControllers[i]
-                                                .text
-                                                .isEmpty ||
-                                            nationalityInfantControllers[i]
-                                                .text
-                                                .isEmpty) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                  'Please fill all required fields'),
-                                            ),
-                                          );
-                                          return;
-                                        }
-
-                                        DateTime dobInfant;
-                                        try {
-                                          String formattedDate =
-                                              convertDateformat(
-                                                  dobInfantControllers[i].text);
-                                          dobInfant =
-                                              DateTime.parse(formattedDate);
-
-                                          int ageInYears = DateTime.now()
-                                                  .difference(dobInfant)
-                                                  .inDays ~/
-                                              365;
-
-                                          if (DateTime.now().isBefore(DateTime(
-                                              dobInfant.year + ageInYears,
-                                              dobInfant.month,
-                                              dobInfant.day))) {
-                                            ageInYears--;
-                                          }
-
-                                          if (ageInYears >= 2) {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              const SnackBar(
-                                                  content: Text(
-                                                      'Infants must be under 2 years old.')),
-                                            );
-                                            return;
-                                          }
-                                        } catch (e) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            const SnackBar(
-                                                content: Text(
-                                                    'Invalid date format. Please use DD-MM-YYYY.')),
-                                          );
-                                          return;
-                                        }
-                                      }
-
-                                      addData();
-
-                                      flightFormModel.userId =
-                                          _bookingContext.userId;
-                                      flightFormModel.pgType =
-                                          _bookingContext.pgTypeValue;
-                                      flightFormModel.traceId = widget.traceId;
-                                      flightFormModel.passengers = passengers;
-                                      flightFormModel.gstDetails = GstDetails(
-                                          gstAddressLine1: "",
-                                          gstAddressLine2: '',
-                                          gstCity: '',
-                                          gstState: '',
-                                          gstpinCode: '',
-                                          gstEmailId: '',
-                                          gstNumber: '',
-                                          gstPhoneNo: '',
-                                          gstCompanyName: '');
-                                      flightFormModel.creditCardInfo = '';
-                                      flightFormModel.convienenceId = 0;
-                                      flightFormModel.promoData = '';
-                                      flightFormModel.insuranceRequired = 0;
-                                      flightFormModel.totalPrice = grandTotal;
-
-                                      flightPriceRequestModel.userId =
-                                          _bookingContext.userId;
-                                      flightPriceRequestModel.roleType =
-                                          _bookingContext.roleTypeValue;
-                                      flightPriceRequestModel.membership = 1;
-                                      flightPriceRequestModel.traceId =
-                                          widget.traceId;
-                                      flightPriceRequestModel.flightIds = [
-                                        widget.flightId
-                                      ];
-                                      flightPriceRequestModel.selectedFlights =
-                                          [
-                                        flightPrice.SelectedFlight(
-                                            fareId: widget.fareId,
-                                            flightId: widget.flightId,
-                                            coupanType: 'Discount',
-                                            fareType: 'Economy',
-                                            subCabinClass: 'A'),
-                                      ];
-                                      flightPriceRequestModel.airTravelType =
-                                          'oneWay';
-                                      flightPriceRequestModel.mappingType =
-                                          'Combined';
-                                      flightPriceRequestModel
-                                          .itineraryViewType = '1';
-                                      flightPriceRequestModel.gstDetails =
-                                          flightPrice.GstDetails(
-                                              gstAddressLine1: '',
-                                              gstAddressLine2: '',
-                                              gstCity: '',
-                                              gstState: '',
-                                              gstpinCode: '',
-                                              gstEmailId: '',
-                                              gstNumber: '',
-                                              gstPhoneNo: '',
-                                              gstCompanyName: '');
-
-                                      // need to print ...
-                                      print(flightPriceRequestModel);
-                                      inspect(flightPriceRequestModel);
-
-                                      // print(flightPriceRequestModel);
-                                      // inspect(flightPriceRequestModel);
-                                      // ......
-                                      // int.parse(grandTotal as String);
-                                      print('One way service  check');
-                                      APIService apiService = APIService();
-                                      print('Service check');
-                                      setState(() {
-                                        isApiCallProcess = true;
-                                      });
-
-                                      apiService
-                                          .flightOnewayPrice(
-                                              flightPriceRequestModel)
-                                          .then((value) async {
-                                        if (value.statusCode == 203) {
-                                          setState(() {
-                                            isApiCallProcess = false;
-                                          });
-                                        } else if (value.statusCode == 401) {
-                                          setState(() {
-                                            isApiCallProcess = false;
-                                          });
-                                        } else if (value.statusCode == 400) {
-                                          setState(() {
-                                            isApiCallProcess = false;
-                                          });
-                                        } else if (value.statusCode == 404) {
-                                          setState(() {
-                                            isApiCallProcess = false;
-                                          });
-                                        } else if (value.statusCode == 200 ||
-                                            value.statusCode == 201) {
-                                          setState(() {
-                                            isApiCallProcess = false;
-                                          });
-                                          final loggedIn =
-                                              await ensureLoggedIn(context);
-                                          if (!mounted) return;
-                                          if (!loggedIn) return;
-                                          setState(() {
-                                            isApiCallProcess = true;
-                                          });
-                                          apiService
-                                              .flightOnewayBlock(
-                                                  flightFormModel)
-                                              .then((value) async {
-                                            // bookingRefNo = value
-                                            //     .data.bookingRefNo
-                                            //     .toString();
-
-                                            print(value.statusCode);
-                                            if (value.statusCode == 203) {
-                                              setState(() {
-                                                isApiCallProcess = false;
-                                              });
-                                            } else if (value.statusCode ==
-                                                401) {
-                                              setState(() {
-                                                isApiCallProcess = false;
-                                              });
-                                            } else if (value.statusCode ==
-                                                400) {
-                                              setState(() {
-                                                isApiCallProcess = false;
-                                              });
-                                            } else if (value.statusCode ==
-                                                404) {
-                                              setState(() {
-                                                isApiCallProcess = false;
-                                              });
-                                            } else if (value.statusCode ==
-                                                    200 ||
-                                                value.statusCode == 201) {
-                                              print('balaji testing RefID');
-                                              bookingRefNo = value
-                                                  .data.bookingRefNo
-                                                  .toString();
-
-                                              // bookingRefNo = value
-                                              //     .data.bookingRefNo
-                                              //     .toString();
-                                              // setState(() {
-                                              //   // isApiCallProcess = false;
-                                              // });
-
-                                              print(
-                                                  "Block url is working perfect uday");
-
-                                              print(
-                                                  "bookingRefId $bookingRefNo");
-
-                                              if (bookingRefNo.isNotEmpty) {
-                                                setState(() {
-                                                  isApiCallProcess = false;
-                                                });
-                                                paymentGatewayFor(
-                                                        value.data.pgType)
-                                                    .open(
-                                                  context,
-                                                  PgBlockPaymentData(
-                                                    paymentLink:
-                                                        value.data.paymentLink,
-                                                    pgType: value.data.pgType,
-                                                  ),
-                                                  onResult: (pgResult) {
-                                                    if (pgResult.status !=
-                                                        PgResultStatus
-                                                            .success) {
-                                                      setState(() {
-                                                        isApiCallProcess =
-                                                            false;
-                                                      });
-                                                      return;
-                                                    }
-                                                    setState(() {
-                                                      isApiCallProcess = true;
-                                                    });
-                                                    //  book..
-                                                    apiService
-                                                        .flightOnewayBook(
-                                                            bookingRefNo)
-                                                        .then((value) async {
-                                                      if (value.statusCode ==
-                                                          203) {
-                                                        setState(() {
-                                                          isApiCallProcess =
-                                                              false;
-                                                        });
-                                                      } else if (value
-                                                              .statusCode ==
-                                                          401) {
-                                                        setState(() {
-                                                          isApiCallProcess =
-                                                              false;
-                                                        });
-                                                      } else if (value
-                                                              .statusCode ==
-                                                          400) {
-                                                        setState(() {
-                                                          isApiCallProcess =
-                                                              false;
-                                                        });
-                                                      } else if (value
-                                                              .statusCode ==
-                                                          404) {
-                                                        setState(() {
-                                                          isApiCallProcess =
-                                                              false;
-                                                        });
-                                                      } else if (value
-                                                                  .statusCode ==
-                                                              200 ||
-                                                          value.statusCode ==
-                                                              201) {
-                                                        String pnr = value
-                                                            .charges
-                                                            .ticketAllData
-                                                            .pnr
-                                                            .toString();
-                                                        String operator = value
-                                                            .charges
-                                                            .ticketAllData
-                                                            .ticketAllDataOperator
-                                                            .toString();
-                                                        String referenceNumber =
-                                                            value
-                                                                .charges
-                                                                .ticketAllData
-                                                                .referenceNumber
-                                                                .toString();
-                                                        String journeyDate =
-                                                            value
-                                                                .charges
-                                                                .ticketAllData
-                                                                .journeyDate
-                                                                .toString();
-                                                        String bookingDate =
-                                                            value
-                                                                .charges
-                                                                .ticketAllData
-                                                                .bookingDate
-                                                                .toString();
-                                                        String bookingStatus =
-                                                            value
-                                                                .charges
-                                                                .ticketAllData
-                                                                .bookingStatus
-                                                                .toString();
-                                                        final flightData = value
-                                                            .charges
-                                                            .ticketAllData
-                                                            .oneWaySegment;
-                                                        final baggageInfo = value
-                                                            .charges
-                                                            .ticketAllData
-                                                            .oneWayBaggageInfo;
-                                                        final passengerInfo =
-                                                            value
-                                                                .charges
-                                                                .ticketAllData
-                                                                .passengers;
-                                                        final fareData = value
-                                                            .charges
-                                                            .ticketAllData
-                                                            .oneWayflightFare;
-
-                                                        Navigator.of(context)
-                                                            .push(
-                                                          MaterialPageRoute(
-                                                            builder:
-                                                                (BuildContext
-                                                                    context) {
-                                                              return TicketView(
-                                                                operator:
-                                                                    operator,
-                                                                pnr: pnr,
-                                                                referenceNumber:
-                                                                    referenceNumber,
-                                                                journeyDate:
-                                                                    journeyDate,
-                                                                bookingDate:
-                                                                    bookingDate,
-                                                                bookingStatus:
-                                                                    bookingStatus,
-                                                                flightData:
-                                                                    flightData,
-                                                                baggageInfo:
-                                                                    baggageInfo,
-                                                                passengerInfo:
-                                                                    passengerInfo,
-                                                                fareData:
-                                                                    fareData,
-                                                              );
-                                                            },
-                                                          ),
-                                                        );
-                                                      } else {
-                                                        setState(() {
-                                                          isApiCallProcess =
-                                                              false;
-                                                        });
-                                                      }
-                                                    });
-                                                  },
-                                                );
-                                              } else {
-                                                print("bookingRefId is null");
-                                                setState(() {
-                                                  isApiCallProcess = false;
-                                                });
-                                              }
-                                            } else {
-                                              setState(() {
-                                                isApiCallProcess = false;
-                                              });
-                                            }
-                                          });
-                                        } else {
-                                          setState(() {
-                                            isApiCallProcess = false;
-                                          });
-                                        }
-                                      });
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.primary,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(5),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      "Continue",
-                                      style: GoogleFonts.poppins(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(
-                                  height: 10,
-                                ),
-                              ],
-                            )))),
-                const SizedBox(
-                  height: 20,
-                )
-              ],
+  @override
+  Widget build(BuildContext context) {
+    final passenger = _passenger;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 96,
+              child: DropdownButtonFormField<String>(
+                initialValue: passenger.title,
+                decoration: _fieldDecoration(context, 'Title'),
+                items: [
+                  for (final title in passenger.paxType.titleOptions)
+                    DropdownMenuItem(value: title, child: Text(title)),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  widget.provider.updatePassenger(widget.index, title: value);
+                },
+              ),
             ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: _firstNameController,
+                decoration: _fieldDecoration(context, 'First Name'),
+                onChanged: (value) =>
+                    widget.provider.updatePassenger(widget.index, firstName: value),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _lastNameController,
+          decoration: _fieldDecoration(context, 'Last Name'),
+          onChanged: (value) => widget.provider.updatePassenger(widget.index, lastName: value),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _dobController,
+                readOnly: true,
+                onTap: _pickDob,
+                decoration: _fieldDecoration(context, 'Date of Birth'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: _nationalityController,
+                decoration: _fieldDecoration(context, 'Nationality'),
+                onChanged: (value) =>
+                    widget.provider.updatePassenger(widget.index, nationality: value),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _TermsRow extends StatelessWidget {
+  const _TermsRow({required this.provider});
+  final FlightCheckoutProvider provider;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Checkbox(
+          value: provider.termsAccepted,
+          activeColor: Theme.of(context).colorScheme.primary,
+          onChanged: (value) => provider.setTermsAccepted(value ?? false),
+        ),
+        Expanded(
+          child: Wrap(
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const Text('I agree to all the '),
+              _LegalLink(
+                  label: 'Terms & Conditions',
+                  onTap: () => _showLegalSheet(context, 'Terms & Conditions')),
+              const Text(' and '),
+              _LegalLink(
+                  label: 'Privacy Policy',
+                  onTap: () => _showLegalSheet(context, 'Privacy Policy')),
+            ],
           ),
+        ),
+      ],
+    );
+  }
+
+  void _showLegalSheet(BuildContext context, String title) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => BottomSheetShell(
+        title: title,
+        primaryActionLabel: 'Close',
+        primaryActionColor: Theme.of(context).colorScheme.primary,
+        onPrimaryAction: () => Navigator.of(context).pop(),
+        body: Text(
+          '$title content will appear here once available.',
+          style: TextStyle(color: Colors.grey.shade700),
+        ),
+      ),
+    );
+  }
+}
+
+class _LegalLink extends StatelessWidget {
+  const _LegalLink({required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Text(
+        label,
+        style: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.w700,
+            decoration: TextDecoration.underline),
+      ),
+    );
+  }
+}
+
+/// Fare Summary — reached via the small info icon next to the price in the
+/// bottom bar, same "not shown inline in the main scroll" pattern bus's
+/// `_FareSummarySheet` uses. Also carries the (decorative, non-functional —
+/// same as before this redesign) promo-code field.
+class _FareSummarySheet extends StatelessWidget {
+  const _FareSummarySheet({required this.provider});
+  final FlightCheckoutProvider provider;
+
+  @override
+  Widget build(BuildContext context) {
+    return BottomSheetShell(
+      title: 'Fare Summary',
+      primaryActionLabel: 'Close',
+      primaryActionColor: Theme.of(context).colorScheme.primary,
+      onPrimaryAction: () => Navigator.of(context).pop(),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _fareLine('Base Fare', provider.basefare),
+          const SizedBox(height: 6),
+          _fareLine('Taxes and Fees', provider.taxes),
+          const SizedBox(height: 6),
+          _fareLine('Convenience Fee', FlightCheckoutProvider.convenienceFee),
+          const Divider(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Grand Total', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(
+                'INR ${provider.grandTotal.toStringAsFixed(2)}',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Theme.of(context).colorScheme.primary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Text('Apply Promo', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  decoration: _fieldDecoration(context, 'Enter Your Promo Code'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              ElevatedButton(
+                // Same as before this redesign: no promo backend exists yet,
+                // so this stays a decorative no-op.
+                onPressed: () {},
+                child: const Text('APPLY'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _fareLine(String label, double amount) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(color: Colors.grey.shade700)),
+        Text('INR ${amount.toStringAsFixed(2)}'),
+      ],
+    );
+  }
+}
+
+class _BottomBar extends StatelessWidget {
+  const _BottomBar({required this.provider, required this.widget});
+  final FlightCheckoutProvider provider;
+  final BookFlightFormpage widget;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 6, offset: const Offset(0, -2)),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () => showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => _FareSummarySheet(provider: provider),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'INR ${provider.grandTotal.toStringAsFixed(2)}',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: Theme.of(context).colorScheme.primary),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.info_outline, size: 16, color: Colors.grey.shade600),
+                  ],
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              ),
+              onPressed: provider.isBooking ? null : () => _submit(context, provider),
+              child: provider.isBooking
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Proceed', style: TextStyle(color: Colors.white)),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  void bookigRef() {
-    APIService apiService = APIService();
+  Future<void> _submit(BuildContext context, FlightCheckoutProvider provider) async {
+    final validationError = provider.validate();
+    if (validationError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(validationError)));
+      return;
+    }
 
-    setState(() {
-      isApiCallProcess = true;
-    });
+    final loggedIn = await ensureLoggedIn(context);
+    if (!context.mounted) return;
+    if (!loggedIn) return;
 
-    apiService.flightOnewayBook(bookingRefNo).then((value) async {
-      if (value.statusCode == 203 ||
-          value.statusCode == 401 ||
-          value.statusCode == 400 ||
-          value.statusCode == 404) {
-        setState(() {
-          isApiCallProcess = false;
-        });
-      } else if (value.statusCode == 200 || value.statusCode == 201) {
-        Navigator.of(context).push(
+    final blockData = await provider.priceAndBlock();
+    if (!context.mounted) return;
+    if (blockData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(provider.errorMessage ?? 'Booking failed. Please try again.')),
+      );
+      return;
+    }
+
+    paymentGatewayFor(blockData.pgType).open(
+      context,
+      PgBlockPaymentData(paymentLink: blockData.paymentLink, pgType: blockData.pgType),
+      onResult: (pgResult) async {
+        if (pgResult.status != PgResultStatus.success) return;
+
+        final bookResponse = await provider.confirmBooking();
+        if (!context.mounted) return;
+        if (bookResponse == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(provider.errorMessage ?? 'Booking failed. Please try again.')),
+          );
+          return;
+        }
+
+        Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (BuildContext context) {
-              return Dashboard();
-            },
+            builder: (_) => FlightETicketScreen(
+              data: FlightETicketData(
+                ticketAllData: bookResponse.charges.ticketAllData,
+                cabinClass: widget.airlineClass,
+                refundPolicy: widget.airlineRefund,
+              ),
+            ),
           ),
         );
-      } else {
-        setState(() {
-          isApiCallProcess = false;
-        });
-      }
-    }).catchError((e) {
-      print("An error occurred: $e");
-      setState(() {
-        isApiCallProcess = false;
-      });
-    });
+      },
+    );
   }
-
-  //  void bookigRef(){
-  //    APIService apiService = APIService();
-  //           apiService
-  //         .flightOnewayBook(
-  //             bookingRefNo)
-  //         .then((value) async {
-  //       if (value.statusCode == 203) {
-  //         setState(() {
-  //           isApiCallProcess = false;
-  //         });
-  //       } else if (value.statusCode ==
-  //           401) {
-  //         setState(() {
-  //           isApiCallProcess = false;
-  //         });
-  //       } else if (value.statusCode ==
-  //           400) {
-  //         setState(() {
-  //           isApiCallProcess = false;
-  //         });
-  //       } else if (value.statusCode ==
-  //           404) {
-  //         setState(() {
-  //           isApiCallProcess = false;
-  //         });
-  //       } else if (value.statusCode ==
-  //               200 ||
-  //           value.statusCode == 201) {
-  //         Navigator.of(context).push(
-  //           MaterialPageRoute(
-  //             builder: (BuildContext
-  //                 context) {
-  //               return Dashboard();
-  //             },
-  //           ),
-  //         );
-  //       } else {
-  //         setState(() {
-  //           isApiCallProcess = false;
-  //         });
-  //       }
-  //     });
-  //   } else {
-  //     print("bookingRefId is null");
-  //     setState(() {
-  //       isApiCallProcess = false;
-  //     });
-  //   }
-
-// this buildAdultContainers widget is to create adult containers dynamic
-
-  Widget buildAdultContainers() {
-    List<Widget> adultContainers = [];
-    for (int i = 0; i < widget.adultCount; i++) {
-      adultContainers.add(
-        Column(
-          children: [
-            Card(
-              color: Colors.white,
-              shadowColor: Colors.blue.shade50,
-              elevation: 5,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    color: Colors.white),
-                child: Container(
-                  margin: const EdgeInsets.only(right: 5, left: 5, top: 5),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Adult",
-                          style: GoogleFonts.poppins(
-                              color: AppColors.primary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600)),
-                      Container(
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Row(
-                              children: [
-                                const Text(
-                                  "*",
-                                  style: TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Text("Title",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.black,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            SizedBox(
-                              height: 40,
-                              width: double.infinity,
-                              child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(5),
-                                    border: Border.all(
-                                        color: AppColors.fieldBorder),
-                                  ),
-                                  child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<String>(
-                                    icon: const Icon(
-                                      Icons.keyboard_arrow_down,
-                                      color: Colors.grey,
-                                      size: 35,
-                                    ),
-                                    value: adultTitile[i],
-                                    onChanged: (newValue) {
-                                      setState(() {
-                                        adultTitile[i] = newValue!;
-                                        titleAdultControllers[i] = newValue;
-                                      });
-                                    },
-                                    items: adult.map((String items) {
-                                      return DropdownMenuItem<String>(
-                                          value: items,
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(
-                                                bottom: 3, left: 10),
-                                            child: Text(
-                                              items,
-                                              style: const TextStyle(
-                                                color: Colors.black,
-                                                fontSize: 15,
-                                              ),
-                                            ),
-                                          ));
-                                    }).toList(),
-                                  ))),
-                            ),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Row(
-                              children: [
-                                const Text(
-                                  "*",
-                                  style: TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Text("First Name",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.black,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Container(
-                                height: 40,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(5),
-                                    border: Border.all(
-                                        color: AppColors.fieldBorder)),
-                                child: Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 10, bottom: 14),
-                                  child: TextFormField(
-                                    keyboardType: TextInputType.text,
-                                    textInputAction: TextInputAction.next,
-                                    style: const TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500),
-                                    controller: firstnameAdultControllers[i],
-                                    decoration: const InputDecoration(
-                                        border: InputBorder.none),
-                                    //
-                                  ),
-                                )),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Row(
-                              children: [
-                                const Text(
-                                  "*",
-                                  style: TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Text("Last Name",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.black,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Container(
-                                height: 40,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(5),
-                                    border: Border.all(
-                                        color: AppColors.fieldBorder)),
-                                child: Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 10, bottom: 14),
-                                    child: TextFormField(
-                                      keyboardType: TextInputType.text,
-                                      textInputAction: TextInputAction.next,
-                                      style: const TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500),
-                                      controller: lastNameAdultControllers[i],
-                                      decoration: const InputDecoration(
-                                          border: InputBorder.none),
-                                    ))),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Row(
-                              children: [
-                                const Text(
-                                  "*",
-                                  style: TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Text("Date Of Birth",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.black,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Container(
-                                height: 40,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(5),
-                                    border: Border.all(
-                                        color: AppColors.fieldBorder)),
-                                child: Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 10, bottom: 14),
-                                    child: TextFormField(
-                                      keyboardType: TextInputType.text,
-                                      textInputAction: TextInputAction.next,
-                                      style: const TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500),
-                                      controller: dobAdultControllers[i],
-                                      decoration: const InputDecoration(
-                                          border: InputBorder.none),
-                                      readOnly: true,
-                                      onTap: () async {
-                                        DateTime? pickedDate =
-                                            await showDatePicker(
-                                          context: context,
-                                          initialDate: DateTime.now(),
-                                          firstDate: DateTime(1950),
-                                          lastDate: DateTime(2101),
-                                        );
-
-                                        if (pickedDate != null) {
-                                          String formattedDate =
-                                              DateFormat('dd-MM-yyyy')
-                                                  .format(pickedDate);
-
-                                          setState(() {
-                                            dobAdultControllers[i].text =
-                                                formattedDate;
-                                          });
-                                        }
-                                      },
-                                    ))),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Row(
-                              children: [
-                                const Text(
-                                  "*",
-                                  style: TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Text("Passenger Nationality",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.black,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Container(
-                                height: 40,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(5),
-                                    border: Border.all(
-                                        color: AppColors.fieldBorder)),
-                                child: Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 10, bottom: 14),
-                                    child: TextFormField(
-                                      keyboardType: TextInputType.text,
-                                      textInputAction: TextInputAction.next,
-                                      style: const TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500),
-                                      controller:
-                                          nationalityAdultControllers[i],
-                                      decoration: const InputDecoration(
-                                          border: InputBorder.none),
-                                    ))),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                          ])),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(
-              height: 5,
-            )
-          ],
-        ),
-      );
-    }
-    return Column(children: adultContainers);
-  }
-
-// this buildChildrenContainers widget is to create children containers dynamic
-  Widget buildChildrenContainers() {
-    List<Widget> childrenContainers = [];
-    for (int i = 0; i < widget.childCount; i++) {
-      childrenContainers.add(
-        Column(children: [
-          Card(
-            color: Colors.white,
-            shadowColor: Colors.blue.shade50,
-            elevation: 5,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10), color: Colors.white),
-              child: Container(
-                margin: const EdgeInsets.only(right: 5, left: 5, top: 5),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Child",
-                        style: GoogleFonts.poppins(
-                            color: AppColors.primary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600)),
-                    Container(
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          Row(
-                            children: [
-                              const Text(
-                                "*",
-                                style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(
-                                width: 5,
-                              ),
-                              Text("Title",
-                                  style: GoogleFonts.poppins(
-                                      color: Colors.black,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          SizedBox(
-                            height: 40,
-                            width: double.infinity,
-                            child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(5),
-                                  border:
-                                      Border.all(color: AppColors.fieldBorder),
-                                ),
-                                child: DropdownButtonHideUnderline(
-                                    child: DropdownButton<String>(
-                                  icon: const Icon(
-                                    Icons.keyboard_arrow_down,
-                                    color: Colors.grey,
-                                    size: 35,
-                                  ),
-                                  value: childTitile[i],
-                                  onChanged: (newValue) {
-                                    setState(() {
-                                      childTitile[i] = newValue!;
-                                      titleChildrenControllers[i] = newValue;
-                                    });
-                                  },
-                                  items: child.map((String items) {
-                                    return DropdownMenuItem<String>(
-                                        value: items,
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(
-                                              bottom: 3, left: 10),
-                                          child: Text(
-                                            items,
-                                            style: const TextStyle(
-                                                color: Colors.black,
-                                                fontSize: 15),
-                                          ),
-                                        ));
-                                  }).toList(),
-                                ))),
-                          ),
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          Row(
-                            children: [
-                              const Text(
-                                "*",
-                                style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(
-                                width: 5,
-                              ),
-                              Text("First Name",
-                                  style: GoogleFonts.poppins(
-                                      color: Colors.black,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          Container(
-                              height: 40,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(5),
-                                  border:
-                                      Border.all(color: AppColors.fieldBorder)),
-                              child: Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 10, bottom: 14),
-                                  child: TextFormField(
-                                    keyboardType: TextInputType.text,
-                                    textInputAction: TextInputAction.next,
-                                    style: const TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500),
-                                    controller: firstnameChildrenControllers[i],
-                                    decoration: const InputDecoration(
-                                        border: InputBorder.none),
-                                  ))),
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          Row(
-                            children: [
-                              const Text(
-                                "*",
-                                style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(
-                                width: 5,
-                              ),
-                              Text("Last Name",
-                                  style: GoogleFonts.poppins(
-                                      color: Colors.black,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          Container(
-                              height: 40,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(5),
-                                  border:
-                                      Border.all(color: AppColors.fieldBorder)),
-                              child: Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 10, bottom: 14),
-                                  child: TextFormField(
-                                    keyboardType: TextInputType.text,
-                                    textInputAction: TextInputAction.next,
-                                    style: const TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500),
-                                    controller: lastNameChildrenControllers[i],
-                                    decoration: const InputDecoration(
-                                        border: InputBorder.none),
-                                  ))),
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          Row(
-                            children: [
-                              const Text(
-                                "*",
-                                style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(
-                                width: 5,
-                              ),
-                              Text("Date Of Birth",
-                                  style: GoogleFonts.poppins(
-                                      color: Colors.black,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          Container(
-                              height: 40,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(5),
-                                  border:
-                                      Border.all(color: AppColors.fieldBorder)),
-                              child: Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 10, bottom: 14),
-                                  child: TextFormField(
-                                    keyboardType: TextInputType.text,
-                                    textInputAction: TextInputAction.next,
-                                    style: const TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500),
-                                    controller: dobChildrenControllers[i],
-                                    decoration: const InputDecoration(
-                                        border: InputBorder.none),
-                                    readOnly: true,
-                                    onTap: () async {
-                                      DateTime? pickedDate =
-                                          await showDatePicker(
-                                        context: context,
-                                        initialDate: DateTime.now(),
-                                        firstDate: DateTime(1950),
-                                        lastDate: DateTime(2101),
-                                      );
-
-                                      if (pickedDate != null) {
-                                        String formattedDate =
-                                            DateFormat('dd-MM-yyyy')
-                                                .format(pickedDate);
-
-                                        setState(() {
-                                          dobChildrenControllers[i].text =
-                                              formattedDate;
-                                        });
-                                      }
-                                    },
-                                  ))),
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          Row(
-                            children: [
-                              const Text(
-                                "*",
-                                style: TextStyle(
-                                    color: Colors.red,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(
-                                width: 5,
-                              ),
-                              Text("Passenger Nationality",
-                                  style: GoogleFonts.poppins(
-                                      color: Colors.black,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                          const SizedBox(
-                            height: 10,
-                          ),
-                          Container(
-                              height: 40,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(5),
-                                  border:
-                                      Border.all(color: AppColors.fieldBorder)),
-                              child: Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 10, bottom: 14),
-                                  child: TextFormField(
-                                    keyboardType: TextInputType.text,
-                                    textInputAction: TextInputAction.next,
-                                    style: const TextStyle(
-                                        color: Colors.black,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w500),
-                                    controller:
-                                        nationalityChildrenControllers[i],
-                                    decoration: const InputDecoration(
-                                        border: InputBorder.none),
-                                  ))),
-                          const SizedBox(
-                            height: 10,
-                          ),
-                        ])),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(
-            height: 5,
-          )
-        ]),
-      );
-    }
-    return Column(children: childrenContainers);
-  }
-
-// this buildInfantContainers widget is to create Infant containers dynamic
-  Widget buildInfantContainers() {
-    List<Widget> infantContainers = [];
-    for (int i = 0; i < widget.infantCount; i++) {
-      infantContainers.add(
-        Column(
-          children: [
-            Card(
-              color: Colors.white,
-              shadowColor: Colors.blue.shade50,
-              elevation: 5,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(10),
-                    color: Colors.white),
-                child: Container(
-                  margin: const EdgeInsets.only(right: 5, left: 5, top: 5),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Infant",
-                          style: GoogleFonts.poppins(
-                              color: AppColors.primary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600)),
-                      Container(
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Row(
-                              children: [
-                                const Text(
-                                  "*",
-                                  style: TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Text("Title",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.black,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            SizedBox(
-                              height: 40,
-                              width: double.infinity,
-                              child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(5),
-                                    border: Border.all(
-                                        color: AppColors.fieldBorder),
-                                  ),
-                                  child: DropdownButtonHideUnderline(
-                                      child: DropdownButton<String>(
-                                    icon: const Icon(
-                                      Icons.keyboard_arrow_down,
-                                      color: Colors.grey,
-                                      size: 35,
-                                    ),
-                                    value: infantTitile[i],
-                                    onChanged: (newValue) {
-                                      setState(() {
-                                        infantTitile[i] = newValue!;
-                                        titleInfantControllers[i] = newValue;
-                                      });
-                                    },
-                                    items: infant.map((String items) {
-                                      return DropdownMenuItem<String>(
-                                          value: items,
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(
-                                                bottom: 3, left: 10),
-                                            child: Text(
-                                              items,
-                                              style: const TextStyle(
-                                                  color: Colors.black,
-                                                  fontSize: 15),
-                                            ),
-                                          ));
-                                    }).toList(),
-                                  ))),
-                            ),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Row(
-                              children: [
-                                const Text(
-                                  "*",
-                                  style: TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Text("First Name",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.black,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Container(
-                                height: 40,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(5),
-                                    border: Border.all(
-                                        color: AppColors.fieldBorder)),
-                                child: Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 10, bottom: 14),
-                                    child: TextFormField(
-                                      keyboardType: TextInputType.text,
-                                      textInputAction: TextInputAction.next,
-                                      style: const TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500),
-                                      controller: firstnameInfantControllers[i],
-                                      decoration: const InputDecoration(
-                                          border: InputBorder.none),
-                                    ))),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Row(
-                              children: [
-                                const Text(
-                                  "*",
-                                  style: TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Text("Last Name",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.black,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Container(
-                                height: 40,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(5),
-                                    border: Border.all(
-                                        color: AppColors.fieldBorder)),
-                                child: Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 10, bottom: 14),
-                                    child: TextFormField(
-                                      keyboardType: TextInputType.text,
-                                      textInputAction: TextInputAction.next,
-                                      style: const TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500),
-                                      controller: lastNameInfantControllers[i],
-                                      decoration: const InputDecoration(
-                                          border: InputBorder.none),
-                                    ))),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Row(
-                              children: [
-                                const Text(
-                                  "*",
-                                  style: TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Text("Date Of Birth",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.black,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Container(
-                                height: 40,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(5),
-                                    border: Border.all(
-                                        color: AppColors.fieldBorder)),
-                                child: Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 10, bottom: 14),
-                                    child: TextFormField(
-                                      keyboardType: TextInputType.text,
-                                      textInputAction: TextInputAction.next,
-                                      style: const TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500),
-                                      controller: dobInfantControllers[i],
-                                      decoration: const InputDecoration(
-                                          border: InputBorder.none),
-                                      readOnly: true,
-                                      onTap: () async {
-                                        DateTime? pickedDate =
-                                            await showDatePicker(
-                                          context: context,
-                                          initialDate: DateTime.now(),
-                                          firstDate: DateTime(1950),
-                                          lastDate: DateTime(2101),
-                                        );
-
-                                        if (pickedDate != null) {
-                                          String formattedDate =
-                                              DateFormat('dd-MM-yyyy')
-                                                  .format(pickedDate);
-
-                                          setState(() {
-                                            dobInfantControllers[i].text =
-                                                formattedDate;
-                                          });
-                                        }
-                                      },
-                                    ))),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Row(
-                              children: [
-                                const Text(
-                                  "*",
-                                  style: TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Text("Passenger Nationality",
-                                    style: GoogleFonts.poppins(
-                                        color: Colors.black,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600)),
-                              ],
-                            ),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Container(
-                                height: 40,
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(5),
-                                    border: Border.all(
-                                        color: AppColors.fieldBorder)),
-                                child: Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 10, bottom: 14),
-                                    child: TextFormField(
-                                      keyboardType: TextInputType.text,
-                                      textInputAction: TextInputAction.next,
-                                      style: const TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500),
-                                      controller:
-                                          nationalityInfantControllers[i],
-                                      decoration: const InputDecoration(
-                                          border: InputBorder.none),
-                                    ))),
-                            const SizedBox(
-                              height: 10,
-                            ),
-                          ])),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(
-              height: 5,
-            )
-          ],
-        ),
-      );
-    }
-    return Column(children: infantContainers);
-  }
-
-// all the below methods are used to create dynamic controllers
-  createtitleAdultControllers() {
-    titleAdultControllers = [];
-
-    for (var i = 0; i < widget.adultCount; i++) {
-      titleAdultControllers.add('MR');
-      adultTitile.add('MR');
-    }
-  }
-
-  createfirstnameAdultControllers() {
-    firstnameAdultControllers = [];
-    for (var i = 0; i < widget.adultCount; i++) {
-      firstnameAdultControllers.add(TextEditingController());
-    }
-  }
-
-  createlastNameAdultControllers() {
-    lastNameAdultControllers = [];
-    for (var i = 0; i < widget.adultCount; i++) {
-      lastNameAdultControllers.add(TextEditingController());
-    }
-  }
-
-  createnationalityAdultControllers() {
-    nationalityAdultControllers = [];
-    for (var i = 0; i < widget.adultCount; i++) {
-      nationalityAdultControllers.add(TextEditingController());
-    }
-  }
-
-  createdobAdultControllers() {
-    dobAdultControllers = [];
-    for (var i = 0; i < widget.adultCount; i++) {
-      dobAdultControllers.add(TextEditingController());
-    }
-  }
-
-  createtitleChildrenControllers() {
-    titleChildrenControllers = [];
-    for (var i = 0; i < widget.childCount; i++) {
-      titleChildrenControllers.add('MSTR');
-      childTitile.add('MSTR');
-    }
-  }
-
-  createfirstnameChildrenControllers() {
-    firstnameChildrenControllers = [];
-    for (var i = 0; i < widget.childCount; i++) {
-      firstnameChildrenControllers.add(TextEditingController());
-    }
-  }
-
-  createlastNameChildrenControllers() {
-    lastNameChildrenControllers = [];
-    for (var i = 0; i < widget.childCount; i++) {
-      lastNameChildrenControllers.add(TextEditingController());
-    }
-  }
-
-  createnationalityChildrenControllers() {
-    nationalityChildrenControllers = [];
-    for (var i = 0; i < widget.childCount; i++) {
-      nationalityChildrenControllers.add(TextEditingController());
-    }
-  }
-
-  createdobChildrenControllers() {
-    dobChildrenControllers = [];
-    for (var i = 0; i < widget.childCount; i++) {
-      dobChildrenControllers.add(TextEditingController());
-    }
-  }
-
-  createtitleInfantControllers() {
-    titleInfantControllers = [];
-    for (var i = 0; i < widget.infantCount; i++) {
-      titleInfantControllers.add('MSTR');
-      infantTitile.add('MSTR');
-    }
-  }
-
-  createfirstnameInfantControllers() {
-    firstnameInfantControllers = [];
-    for (var i = 0; i < widget.infantCount; i++) {
-      firstnameInfantControllers.add(TextEditingController());
-    }
-  }
-
-  createlastNameInfantControllers() {
-    lastNameInfantControllers = [];
-    for (var i = 0; i < widget.infantCount; i++) {
-      lastNameInfantControllers.add(TextEditingController());
-    }
-  }
-
-  createnationalityInfantControllers() {
-    nationalityInfantControllers = [];
-    for (var i = 0; i < widget.infantCount; i++) {
-      nationalityInfantControllers.add(TextEditingController());
-    }
-  }
-
-  createdobInfantControllers() {
-    dobInfantControllers = [];
-    for (var i = 0; i < widget.infantCount; i++) {
-      dobInfantControllers.add(TextEditingController());
-    }
-  }
-
-  // Future<FlightsblockResponse> flightBlock() async {
-  //   String url = "http://anjmal.i2space.in/api/v1/flights/airBlock";
-  //   print(url);
-  //   // print("response.body FlightBlockrequestModel ${flightFormModel.toJson()}");
-  //   Map<String, String> airBlockheaders = {
-  //     "Content-Type": "application/json",
-  //   };
-  //   Map jsonBody = {
-  //     "traceId": "138837507375704620000\$tr",
-  //     "userId": 1,
-  //     "roleType": 4,
-  //     "membership": 1,
-  //     "passengers": passengers,
-
-  //     // [
-  //     //   {
-  //     //     "title": "MR",
-  //     //     "firstName": "dabl",
-  //     //     "lastName": "bk",
-  //     //     "paxType": "ADT",
-  //     //     "pax": 1,
-  //     //     "email": "mailto:db@i2space.com",
-  //     //     "dob": "2000-02-02",
-  //     //     "gender": "m",
-  //     //     "mobile": "7981895061",
-  //     //     "passengerNationality": "India",
-  //     //     "areaCode": "+93",
-  //     //     "address_CountryCode": "",
-  //     //     "address": "hyd",
-  //     //     "additionalServicesIds": []
-  //     //   }
-  //     // ],
-  //     "additional_services": [],
-  //     "creditCardInfo": "",
-  //     "insuranceRequired": 0,
-  //     "promoCode": "",
-  //     "convienenceId": 51,
-  //     "pgType": 1,
-  //     "totalPrice": 8491.3,
-  //     "isCouponReedem": false,
-  //     "currency": "INR"
-  //   };
-  //   try {
-  //     final response = await http.post(Uri.parse(url),
-  //         body: jsonEncode(jsonBody), headers: airBlockheaders);
-
-  //     print("response.body FlightBlockrequestPOST ${response.body}");
-  //     print("response.body statusCode ${response.statusCode}");
-
-  //     if (response.statusCode == 200) {
-  //       showToast("Flight Block Done Successfully");
-  //     } else if (response.statusCode == 201 ||
-  //         response.statusCode == 203 ||
-  //         response.statusCode == 400 ||
-  //         response.statusCode == 401) {
-  //       showToast("Flight Block Done Successfully");
-  //       return flightsblockResponseFromJson(response.body);
-  //     }
-  //   } catch (e) {
-  //     print(e.toString());
-  //   }
-
-  //   throw Exception('Failed to load Data');
-  // }
 }
-
-// model class for the final list of passangers
-// class Passenger {
-//   String title;
-//   String firstName;
-//   String lastName;
-//   // String nationality;
-//   int pax;
-//   String paxType;
-
-//   String email;
-//   String dob;
-//   String gender;
-//   String mobile;
-//   // String passportIssuedCountry;
-//   // String passportDOE;
-//   // String passportNumber;
-//   String passengerNationality;
-//   String areaCode;
-//   String address_CountryCode;
-//   String address;
-//   List additionalServicesIds;
-
-//   Passenger(
-//       {required this.title,
-//       required this.firstName,
-//       required this.lastName,
-//       // required this.nationality,
-//       required this.pax,
-//       required this.paxType,
-//       required this.email,
-//       required this.dob,
-//       required this.gender,
-//       required this.mobile,
-//       // required this.passportIssuedCountry,
-//       // required this.passportDOE,
-//       // required this.passportNumber,
-//       required this.passengerNationality,
-//       required this.areaCode,
-//       required this.address_CountryCode,
-//       required this.address,
-//       required this.additionalServicesIds});
-// }
