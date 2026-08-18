@@ -7,7 +7,7 @@ import 'package:outc/dashboard/bus/models/bus_passenger_model.dart';
 import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/models/bus_seat_model.dart';
 import 'package:outc/dashboard/bus/services/bus_service.dart';
-import 'package:outc/dashboard/bus/widgets/booking_step_overlay.dart';
+import 'package:outc/core/widgets/booking_step_overlay.dart';
 
 /// Which of the two booking-step overlays (if any) should be showing.
 enum BookingPhase { none, reservingSeat, bookingTrip }

@@ -9,20 +9,22 @@ class BookingStep {
   final String subtitle;
 }
 
-/// The "please wait" card shown over the checkout screen while a booking
-/// step (reserving seats, then confirming the booking) is in flight —
-/// deliberately a step-by-step checklist rather than the app's usual
-/// `TravelLoadingIndicator`, since this is the one moment in the app where
-/// showing concrete progress ("your seat is held", "payment confirmed")
-/// matters more than a calming animation. `TravelLoadingIndicator` keeps
-/// serving every other loading state.
+/// The "please wait" card shown over a checkout screen while a booking step
+/// (block, then confirm/book) is in flight — deliberately a step-by-step
+/// checklist rather than the app's usual `TravelLoadingIndicator`, since
+/// this is the one moment in the app where showing concrete progress ("your
+/// seat is held", "payment confirmed") matters more than a calming
+/// animation. `TravelLoadingIndicator` keeps serving every other loading
+/// state.
 ///
 /// [currentStep] is the 0-based index of the step currently in progress
 /// (spinning); steps before it read as done, steps after as pending. The
-/// step list itself has no real per-step signal from the backend — both
-/// `blockTicket` and `bookTicket` are single atomic calls — so the caller
-/// (`BusCheckoutProvider`) paces `currentStep` on a timer while the real
-/// call runs underneath.
+/// step list itself has no real per-step signal from the backend — the
+/// underlying block/book calls are each a single atomic call — so the
+/// caller's provider (`BusCheckoutProvider`, `FlightCheckoutProvider`) paces
+/// `currentStep` on a timer while the real call runs underneath. Lives in
+/// `lib/core/widgets/` (not a module folder) since both bus and flights
+/// checkout screens use it — see `docs/architecture.md` §1.
 class BookingStepOverlay extends StatelessWidget {
   const BookingStepOverlay({
     super.key,

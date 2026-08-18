@@ -216,11 +216,17 @@ class APIService {
     String url = "${AppConstant.baseUrl}api/v1/flights/airSearch";
 
     try {
-      final response = await http.post(
-        Uri.parse(url),
-        body: data,
-        headers: {"Content-Type": "application/json"},
-      );
+      // Without a timeout, a dropped/stalled connection left the caller's
+      // Future pending forever — since `search_flights.dart` only flips its
+      // full-screen loading state off inside the eventual `.then()`, that
+      // meant the "Searching best flights for you" screen never went away.
+      final response = await http
+          .post(
+            Uri.parse(url),
+            body: data,
+            headers: {"Content-Type": "application/json"},
+          )
+          .timeout(const Duration(seconds: 25));
       print(url);
       print("triggered service");
       print(response.statusCode);
@@ -250,11 +256,13 @@ class APIService {
     // var body = data;
     // body["customer"] = customerID;
     try {
-      final response = await http.post(
-        Uri.parse(url),
-        body: data,
-        headers: {"Content-Type": "application/json"},
-      );
+      final response = await http
+          .post(
+            Uri.parse(url),
+            body: data,
+            headers: {"Content-Type": "application/json"},
+          )
+          .timeout(const Duration(seconds: 25));
       print(url);
       if (response.statusCode == 200) {
         return flightRoundtripModelFromJson(response.body);
@@ -282,11 +290,13 @@ class APIService {
     // var body = data;
     // body["customer"] = customerID;
     try {
-      final response = await http.post(
-        Uri.parse(url),
-        body: data,
-        headers: {"Content-Type": "application/json"},
-      );
+      final response = await http
+          .post(
+            Uri.parse(url),
+            body: data,
+            headers: {"Content-Type": "application/json"},
+          )
+          .timeout(const Duration(seconds: 25));
       print(url);
       if (response.statusCode == 200) {
         return flightDomesticRoundtripModelFromJson(response.body);

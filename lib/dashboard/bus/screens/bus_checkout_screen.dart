@@ -10,7 +10,7 @@ import 'package:outc/dashboard/bus/models/bus_search_models.dart';
 import 'package:outc/dashboard/bus/models/bus_seat_model.dart';
 import 'package:outc/dashboard/bus/providers/bus_checkout_provider.dart';
 import 'package:outc/dashboard/bus/screens/bus_eticket_screen.dart';
-import 'package:outc/dashboard/bus/widgets/booking_step_overlay.dart';
+import 'package:outc/core/widgets/booking_step_overlay.dart';
 import 'package:outc/loginflow/auth_gate.dart';
 
 /// Checkout screen (spec 0009) — trip summary, price breakup, and passenger

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:outc/core/theme/design_tokens.dart';
 import 'package:outc/core/widgets/travel_loading_indicator.dart';
@@ -107,7 +108,7 @@ class ErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _FeedbackScaffold(
-      body: const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+      body: SvgPicture.asset('images/illustrations/error.svg', height: 160, width: 160),
       title: title,
       message: message,
       actionLabel: onRetry == null ? null : retryLabel,
@@ -167,7 +168,7 @@ class NoInternetState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _FeedbackScaffold(
-      body: const Icon(Icons.wifi_off, size: 64, color: AppColors.warning),
+      body: SvgPicture.asset('images/illustrations/no_internet.svg', height: 160, width: 160),
       title: title,
       message: message,
       actionLabel: onRetry == null ? null : retryLabel,

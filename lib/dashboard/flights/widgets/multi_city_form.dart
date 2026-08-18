@@ -135,7 +135,11 @@ class MultiCityFormCard extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 20),
-              SearchButton(onPressed: isSearching ? null : onSearch, isLoading: isSearching),
+              // isLoading deliberately not tied to isSearching — see the
+              // matching comment in one_way_round_trip_form.dart. The
+              // full-screen Flight_ProgressBar overlay already shows the
+              // loading animation; onPressed still disables the tap.
+              SearchButton(onPressed: isSearching ? null : onSearch),
             ],
           ),
         ),

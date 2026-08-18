@@ -47,6 +47,15 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
       adulttaxfare,
       childtaxfare,
       infanttaxfare;
+
+  /// The Filters panel used to read `widget.filterData!.stops![0]`/`[1]`
+  /// assuming the API always returns exactly a "Direct" and a "1 Stop (s)"
+  /// entry, in that order — crashes with a RangeError whenever `stops`
+  /// comes back shorter than that (e.g. empty, as happens for an
+  /// all-direct route). Looked up by label instead of position so a
+  /// missing/reordered/empty `stops` list just hides that chip.
+  bool _hasStopFilter(String label) =>
+      widget.filterData?.stops?.any((stop) => stop.label == label) ?? false;
   RangeValues _currentRangeValues = const RangeValues(0, 0);
   double _startValue = 0;
   double _endValue = 0;
@@ -1130,8 +1139,7 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
                                       children: [
-                                        widget.filterData!.stops![0].label ==
-                                                "Direct"
+                                        _hasStopFilter("Direct")
                                             ? Padding(
                                                 padding:
                                                     const EdgeInsets.all(4.0),
@@ -1179,8 +1187,7 @@ class _FetchedMulticityFlightsState extends State<FetchedMulticityFlights> {
                                                 ),
                                               )
                                             : Container(),
-                                        widget.filterData!.stops![1].label ==
-                                                "1 Stop (s)"
+                                        _hasStopFilter("1 Stop (s)")
                                             ? Padding(
                                                 padding:
                                                     const EdgeInsets.all(4.0),

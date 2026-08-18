@@ -173,7 +173,13 @@ class OneWayRoundTripFormCard extends StatelessWidget {
             },
           ),
           const SizedBox(height: 20),
-          SearchButton(onPressed: isSearching ? null : onSearch, isLoading: isSearching),
+          // isLoading is deliberately not tied to isSearching here — the
+          // screen already covers itself with Flight_ProgressBar's full-
+          // screen TravelLoadingIndicator overlay while a search is in
+          // flight, so also swapping this button's own content for a
+          // spinner produced two loaders on screen at once. onPressed still
+          // disables the tap.
+          SearchButton(onPressed: isSearching ? null : onSearch),
         ],
       ),
     );
