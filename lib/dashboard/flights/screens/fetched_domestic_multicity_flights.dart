@@ -51,6 +51,16 @@ class _FetchedDomesticMulticityFlightsState
   bool flightDetailsFlag = false;
   // String traceId = "";
 
+  /// The Filters panels (onward and return) used to read
+  /// `widget.filterData!.stops![0]`/`[1]` assuming the API always returns
+  /// exactly a "Direct" and a "1 Stop (s)" entry, in that order — crashes
+  /// with a RangeError whenever `stops` comes back shorter than that (e.g.
+  /// empty, as happens for an all-direct route). Looked up by label instead
+  /// of position so a missing/reordered/empty `stops` list just hides that
+  /// chip.
+  bool _hasStopFilter(String label) =>
+      widget.filterData?.stops?.any((stop) => stop.label == label) ?? false;
+
   double amtDepature = 0;
 
   double? adultfare,
@@ -1033,9 +1043,7 @@ class _FetchedDomesticMulticityFlightsState
                                                   MainAxisAlignment
                                                       .spaceBetween,
                                               children: [
-                                                widget.filterData!.stops![0]
-                                                            .label ==
-                                                        "Direct"
+                                                _hasStopFilter("Direct")
                                                     ? Padding(
                                                         padding:
                                                             const EdgeInsets
@@ -1087,9 +1095,7 @@ class _FetchedDomesticMulticityFlightsState
                                                         ),
                                                       )
                                                     : Container(),
-                                                widget.filterData!.stops![1]
-                                                            .label ==
-                                                        "1 Stop (s)"
+                                                _hasStopFilter("1 Stop (s)")
                                                     ? Padding(
                                                         padding:
                                                             const EdgeInsets
@@ -3131,9 +3137,7 @@ class _FetchedDomesticMulticityFlightsState
                                                   MainAxisAlignment
                                                       .spaceBetween,
                                               children: [
-                                                widget.filterData!.stops![0]
-                                                            .label ==
-                                                        "Direct"
+                                                _hasStopFilter("Direct")
                                                     ? Padding(
                                                         padding:
                                                             const EdgeInsets
@@ -3185,9 +3189,7 @@ class _FetchedDomesticMulticityFlightsState
                                                         ),
                                                       )
                                                     : Container(),
-                                                widget.filterData!.stops![1]
-                                                            .label ==
-                                                        "1 Stop (s)"
+                                                _hasStopFilter("1 Stop (s)")
                                                     ? Padding(
                                                         padding:
                                                             const EdgeInsets
