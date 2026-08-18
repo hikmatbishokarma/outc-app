@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import 'package:outc/core/widgets/app_top_bar.dart';
+import 'package:outc/core/widgets/feedback_states.dart';
 import 'package:outc/core/widgets/segmented_control.dart';
 import 'package:outc/dashboard/flights/models/flights_search_payloadmodel.dart';
 import 'package:outc/dashboard/flights/models/get_cities_by_search_model.dart';
@@ -38,6 +41,30 @@ class FlightsListPage extends StatefulWidget {
 
 class _FlightsListPageState extends State<FlightsListPage> {
   bool isApiCallProcess = false;
+
+  /// Set instead of showing a SnackBar when a search request fails (timeout,
+  /// dropped connection, etc.) — a toast read as a broken/half-finished
+  /// "web" error on a full-screen mobile flow. Rendered as a proper
+  /// full-screen `ErrorState` (spec 0012's illustrated error/no-data/no-
+  /// internet states) over the same slot the loading animation used,
+  /// with a "Go Back to Search" action that just dismisses it — the form
+  /// underneath is untouched and ready to retry.
+  String? searchErrorMessage;
+
+  /// Maps a caught exception to an honest, specific message instead of
+  /// always blaming "your connection" — a `TimeoutException`/`SocketException`
+  /// genuinely is a connectivity problem, but a `TypeError` (e.g. the null-
+  /// check-operator crashes this screen used to have when a 200/201
+  /// response's `data` came back null) is a client-side bug, and telling the
+  /// customer to check their Wi-Fi doesn't help them and hides the real
+  /// cause from us in bug reports.
+  String _describeSearchError(Object e) {
+    if (e is TimeoutException || e is SocketException) {
+      return 'Please check your connection and try again.';
+    }
+    return 'Something went wrong while loading flights. Please try again.';
+  }
+
   List dest = [];
 
   DateTime raw_dep_date = DateTime.now();
@@ -59,12 +86,38 @@ class _FlightsListPageState extends State<FlightsListPage> {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => FlightSearchFormProvider(),
-      child: Flight_ProgressBar(
-        inAsyncCall: isApiCallProcess,
-        opacity: 0.3,
-        child: Consumer<FlightSearchFormProvider>(
-          builder: (context, form, _) => uiSetup(context, form),
-        ),
+      child: Stack(
+        children: [
+          Flight_ProgressBar(
+            inAsyncCall: isApiCallProcess,
+            caption: 'Searching best flights for you',
+            child: Consumer<FlightSearchFormProvider>(
+              builder: (context, form, _) => uiSetup(context, form),
+            ),
+          ),
+          if (searchErrorMessage != null)
+            Positioned.fill(
+              // This overlay sits as a sibling of `Flight_ProgressBar`'s
+              // Scaffold in the Stack above, not a descendant of it — without
+              // its own Material ancestor here, text/ink rendering picks up
+              // debug-mode fallback styling (a stray underline under every
+              // line of text). Same fix as `BookingStepOverlay`.
+              child: Material(
+                type: MaterialType.transparency,
+                child: ColoredBox(
+                  color: AppColors.panelBackground,
+                  child: SafeArea(
+                    child: ErrorState(
+                      title: 'Could not fetch flights',
+                      message: searchErrorMessage!,
+                      onRetry: () => setState(() => searchErrorMessage = null),
+                      retryLabel: 'Go Back to Search',
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -543,14 +596,16 @@ class _FlightsListPageState extends State<FlightsListPage> {
     try {
       APIService apiService = APIService();
       apiService.matchingFlightsList(sendingdata).then((value) async {
-        const invalidsnackbar = SnackBar(
-          content: Text('Data fetched. one way'),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
         inspect(value.statusCode);
-        print(value.data!.flightDetails!);
-        inspect(value.data!.flightDetails!);
         print("StatusCode ${value.statusCode} ");
+        // Both branches below used to force-unwrap `value.data!.flightDetails!`
+        // with no null check — both fields are nullable on the wire (see
+        // flights_list_model.dart), and a 200/201 response with a null
+        // `data` or `flightDetails` (a "no results" shape some responses
+        // apparently use instead of the 203 status code) crashed with
+        // "Null check operator used on a null value" here, which the
+        // catchError below then misreported as a network/connection error.
+        final flightDetails = value.data?.flightDetails;
         if (value.statusCode == 203) {
           setState(() {
             isApiCallProcess = false;
@@ -567,12 +622,12 @@ class _FlightsListPageState extends State<FlightsListPage> {
           });
 
           // showToast('Data found successfully.');
-          if (value.data!.flightDetails!.isEmpty) {
+          if (flightDetails == null || flightDetails.isEmpty) {
             const invalidsnackbar = SnackBar(
               content: Text('No Flights available. try again'),
             );
             ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
-          } else if (value.data!.flightDetails!.isNotEmpty) {
+          } else {
             // print(value.data!.flightDetails!);
             // inspect(value.data!.flightDetails);
 
@@ -602,12 +657,12 @@ class _FlightsListPageState extends State<FlightsListPage> {
           });
 
           // showToast('Data found successfully.');
-          if (value.data!.flightDetails!.isEmpty) {
+          if (flightDetails == null || flightDetails.isEmpty) {
             const invalidsnackbar = SnackBar(
               content: Text('No Flights available. try again'),
             );
             ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
-          } else if (value.data!.flightDetails!.isNotEmpty) {
+          } else {
             print(value.data!.flightDetails!);
             inspect(value.data!.flightDetails);
 
@@ -635,15 +690,29 @@ class _FlightsListPageState extends State<FlightsListPage> {
 
           showToast('Data NOT found');
         } else {
+          // `value.message` here is whatever the backend's own error text
+          // was for this status code — on at least one live search this was
+          // a raw, unsanitized server-side stack-trace-style string (a
+          // Node.js "X is not iterable" crash), not something to show a
+          // customer verbatim. Logged for our own debugging; the customer
+          // sees the same illustrated error state as every other failure.
+          print('Search failed with status ${value.statusCode}: ${value.message}');
           setState(() {
             isApiCallProcess = false;
+            searchErrorMessage = 'Something went wrong while loading flights. Please try again.';
           });
-          final snackbar = SnackBar(
-            content: Text("${value.message}"),
-          );
-
-          ScaffoldMessenger.of(context).showSnackBar(snackbar);
         }
+      }).catchError((e) {
+        // Without this, any failure from matchingFlightsList (a network
+        // timeout, a dropped connection, a parse error) left `.then()`'s
+        // body never called, so `isApiCallProcess` never flipped back to
+        // false and the full-screen "Searching..." loader never went away.
+        print(e);
+        if (!mounted) return;
+        setState(() {
+          isApiCallProcess = false;
+          searchErrorMessage = _describeSearchError(e);
+        });
       });
     } catch (e) {
       print(e);
@@ -688,12 +757,13 @@ class _FlightsListPageState extends State<FlightsListPage> {
             });
 
             // showToast('Data found successfully.');
-            if (value.data!.flightDetails!.isEmpty) {
+            final flightDetails = value.data?.flightDetails;
+            if (flightDetails == null || flightDetails.isEmpty) {
               const invalidsnackbar = SnackBar(
                 content: Text('No Flights available. try again'),
               );
               ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
-            } else if (value.data!.flightDetails!.isNotEmpty) {
+            } else {
               print('Round Trip Testing');
               print(value.data!.flightDetails!);
               inspect(value.data!.flightDetails!);
@@ -724,15 +794,19 @@ class _FlightsListPageState extends State<FlightsListPage> {
 
             showToast('Data NOT found');
           } else {
+            print('Search failed with status ${value.statusCode}: ${value.message}');
             setState(() {
               isApiCallProcess = false;
+              searchErrorMessage = 'Something went wrong while loading flights. Please try again.';
             });
-            final snackbar = SnackBar(
-              content: Text("${value.message}"),
-            );
-
-            ScaffoldMessenger.of(context).showSnackBar(snackbar);
           }
+        }).catchError((e) {
+          print(e);
+          if (!mounted) return;
+          setState(() {
+            isApiCallProcess = false;
+            searchErrorMessage = _describeSearchError(e);
+          });
         });
       } catch (e) {
         print(e);
@@ -763,13 +837,15 @@ class _FlightsListPageState extends State<FlightsListPage> {
             });
 
             // showToast('Data found successfully.');
-            if (value.data!.flightDetails!.isEmpty) {
+            final flightDetails = value.data?.flightDetails;
+            final innerFlightDetails =
+                (flightDetails != null && flightDetails.isNotEmpty) ? flightDetails[0].flightDetails : null;
+            if (innerFlightDetails == null || innerFlightDetails.isEmpty) {
               const invalidsnackbar = SnackBar(
                 content: Text('No Flights available. try again'),
               );
               ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
-            } else if (value
-                .data!.flightDetails![0].flightDetails!.isNotEmpty) {
+            } else {
               print(value.data!.flightDetails![0].flightDetails!);
               inspect(value.data!.flightDetails![0].flightDetails!);
               Navigator.of(context).push(
@@ -799,15 +875,19 @@ class _FlightsListPageState extends State<FlightsListPage> {
 
             showToast('Data NOT found');
           } else {
+            print('Search failed with status ${value.statusCode}: ${value.message}');
             setState(() {
               isApiCallProcess = false;
+              searchErrorMessage = 'Something went wrong while loading flights. Please try again.';
             });
-            final snackbar = SnackBar(
-              content: Text("${value.message}"),
-            );
-
-            ScaffoldMessenger.of(context).showSnackBar(snackbar);
           }
+        }).catchError((e) {
+          print(e);
+          if (!mounted) return;
+          setState(() {
+            isApiCallProcess = false;
+            searchErrorMessage = _describeSearchError(e);
+          });
         });
       } catch (e) {
         print(e);

@@ -415,7 +415,6 @@ class _BookDomesticFlightState extends State<BookDomesticFlight> {
   Widget build(BuildContext context) {
     return Flight_ProgressBar(
       inAsyncCall: isApiCallProcess,
-      opacity: 0.3,
       child: uiSetup(context),
     );
   }
