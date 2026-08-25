@@ -16,6 +16,7 @@ import 'package:outc/dashboard/flights/providers/flight_search_form_provider.dar
 import 'package:outc/dashboard/flights/screens/airport_search_screen.dart';
 import 'package:outc/dashboard/flights/screens/fetched_domestic_multicity_flights.dart';
 import 'package:outc/dashboard/flights/screens/fetched_multicity_flights.dart';
+import 'package:outc/dashboard/flights/screens/fetched_multicity_results.dart';
 import 'package:outc/dashboard/flights/screens/oneway_flight_list.dart';
 import 'package:outc/dashboard/flights/widgets/calendar/flight_calendar_screen.dart';
 import 'package:outc/dashboard/flights/widgets/calendar/flight_single_date_calendar_screen.dart';
@@ -33,7 +34,17 @@ import 'package:outc/widgets/components/toast.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
 
 class FlightsListPage extends StatefulWidget {
-  const FlightsListPage({super.key});
+  const FlightsListPage({super.key, this.isModifyMode = false});
+
+  /// True when this screen was pushed *on top of* an existing results list
+  /// (via that list's "Edit" bar) rather than opened fresh from Home/the
+  /// Flights tab. Changes the chrome to a "Modify Flight Search" sheet with
+  /// a close (X) button instead of the plain "Flights" tab root — and,
+  /// critically, that close button just pops back to the results screen
+  /// still sitting underneath (already fetched, untouched) instead of
+  /// re-running the search. Submitting a modified search still pushes a new
+  /// results page as normal, same as a fresh search.
+  final bool isModifyMode;
 
   @override
   State<FlightsListPage> createState() => _FlightsListPageState();
@@ -50,6 +61,27 @@ class _FlightsListPageState extends State<FlightsListPage> {
   /// with a "Go Back to Search" action that just dismisses it — the form
   /// underneath is untouched and ready to retry.
   String? searchErrorMessage;
+
+  /// Set when a search genuinely succeeds but comes back with zero results
+  /// (backend 203/404, or a 200/201 with an empty flight list) — previously
+  /// each of these cases showed its own slightly different SnackBar
+  /// ("Data not Found. try again" / "No Flights available. try again" /
+  /// "Data NOT found"), which reads as a broken toast on a full-screen
+  /// mobile flow and vanishes before most people finish reading it, with no
+  /// way back except backing out blind. Shown as the same full-screen
+  /// illustrated treatment spec 0012 already defines for this exact
+  /// situation (`EmptyState`, distinct from `ErrorState`'s "something broke"
+  /// framing) — one consistent "no flights for this search" message, with a
+  /// "Go Back to Search" action that just dismisses it onto the still-filled
+  /// form, same as the error overlay below.
+  String? searchEmptyMessage;
+
+  void _showNoFlightsFound() {
+    setState(() {
+      isApiCallProcess = false;
+      searchEmptyMessage = 'No flights found for this search. Try different dates, airports, or filters.';
+    });
+  }
 
   /// Maps a caught exception to an honest, specific message instead of
   /// always blaming "your connection" — a `TimeoutException`/`SocketException`
@@ -95,7 +127,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
               builder: (context, form, _) => uiSetup(context, form),
             ),
           ),
-          if (searchErrorMessage != null)
+          if (searchErrorMessage != null || searchEmptyMessage != null)
             Positioned.fill(
               // This overlay sits as a sibling of `Flight_ProgressBar`'s
               // Scaffold in the Stack above, not a descendant of it — without
@@ -107,12 +139,19 @@ class _FlightsListPageState extends State<FlightsListPage> {
                 child: ColoredBox(
                   color: AppColors.panelBackground,
                   child: SafeArea(
-                    child: ErrorState(
-                      title: 'Could not fetch flights',
-                      message: searchErrorMessage!,
-                      onRetry: () => setState(() => searchErrorMessage = null),
-                      retryLabel: 'Go Back to Search',
-                    ),
+                    child: searchErrorMessage != null
+                        ? ErrorState(
+                            title: 'Could not fetch flights',
+                            message: searchErrorMessage!,
+                            onRetry: () => setState(() => searchErrorMessage = null),
+                            retryLabel: 'Go Back to Search',
+                          )
+                        : EmptyState(
+                            title: 'No flights found',
+                            message: searchEmptyMessage,
+                            actionLabel: 'Go Back to Search',
+                            onAction: () => setState(() => searchEmptyMessage = null),
+                          ),
                   ),
                 ),
               ),
@@ -126,17 +165,28 @@ class _FlightsListPageState extends State<FlightsListPage> {
     return Scaffold(
       backgroundColor: AppColors.panelBackground,
       appBar: AppTopBar(
-        title: 'Flights',
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.wallet),
-            onPressed: () => _showWalletDialog(context),
-          ),
-          IconButton(
-            icon: const ImageIcon(AssetImage("images/notifybell.png")),
-            onPressed: () {},
-          ),
-        ],
+        title: widget.isModifyMode ? 'Modify Flight Search' : 'Flights',
+        leading: widget.isModifyMode
+            ? IconButton(
+                // Cancel: just pop back to the results screen underneath —
+                // it's still fully populated from the original search, so
+                // there's nothing to re-fetch.
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+              )
+            : null,
+        actions: widget.isModifyMode
+            ? null
+            : [
+                IconButton(
+                  icon: const Icon(Icons.wallet),
+                  onPressed: () => _showWalletDialog(context),
+                ),
+                IconButton(
+                  icon: const ImageIcon(AssetImage("images/notifybell.png")),
+                  onPressed: () {},
+                ),
+              ],
       ),
       body: SafeArea(
         child: Column(
@@ -174,8 +224,17 @@ class _FlightsListPageState extends State<FlightsListPage> {
                               ),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    const MarketingSection(),
+                    // Marketing content (Best Price Guaranteed / 24*7
+                    // Support / promo banner) belongs on the "Flights" tab
+                    // root, not in the compact "Modify Flight Search" sheet
+                    // opened over an existing results list — there it's just
+                    // dead space the user has to scroll past to get back to
+                    // the results underneath.
+                    if (!widget.isModifyMode) ...[
+                      const SizedBox(height: 20),
+                      const MarketingSection(),
+                    ] else
+                      const SizedBox(height: 12),
                   ],
                 ),
               ),
@@ -224,6 +283,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
           _applyTravellerSelection(form, selection),
       onSearch: () => _onSearchOneWayRoundTrip(form),
       isSearching: isApiCallProcess,
+      searchButtonLabel: widget.isModifyMode ? 'MODIFY SEARCH' : 'SEARCH FLIGHTS',
     );
   }
 
@@ -247,6 +307,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
       onSearch: () => _onSearchMultiCity(form),
       isSearching: isApiCallProcess,
       minSegments: FlightSearchFormProvider.minMultiCitySegments,
+      searchButtonLabel: widget.isModifyMode ? 'MODIFY SEARCH' : 'SEARCH FLIGHTS',
     );
   }
 
@@ -586,7 +647,74 @@ class _FlightsListPageState extends State<FlightsListPage> {
     setState(() {
       isApiCallProcess = true;
     });
-    getFlightsMulticityListmethod(list);
+    getMultiCitySearchResults(list);
+  }
+
+  /// Multi-city always uses the *combo* response shape
+  /// (`matchingFlightRoundtripList` → `FlightRoundtripModel.Data.flightDetails:
+  /// List<DataFlightDetail>`, each combo bundling N legs under one shared
+  /// fare) — confirmed live against the backend for spec 0016, including
+  /// with an all-domestic (India→India) route, so unlike
+  /// `getFlightsMulticityListmethod` (round trip) this never branches on
+  /// origin/destination country. `FetchedMulticityResults` renders however
+  /// many legs each combo actually has — no 2-leg assumption here either.
+  Future getMultiCitySearchResults(var data) async {
+    print(json.encode(data.toJson()));
+    var sendingdata = json.encode(data.toJson());
+    try {
+      APIService apiService = APIService();
+      apiService.matchingFlightRoundtripList(sendingdata).then((value) async {
+        inspect(value.statusCode);
+        print("StatusCode ${value.statusCode} ");
+        final itineraries = value.data?.flightDetails;
+        if (value.statusCode == 203) {
+          _showNoFlightsFound();
+        } else if (value.statusCode == 200 || value.statusCode == 201) {
+          setState(() {
+            isApiCallProcess = false;
+          });
+          if (itineraries == null || itineraries.isEmpty) {
+            _showNoFlightsFound();
+          } else {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (BuildContext context) {
+                  return FetchedMulticityResults(
+                    originalData: itineraries,
+                    filterData: value.data!.filtersObj,
+                    traceId: value.data!.traceId!,
+                    adultcount: adultcount,
+                    childcount: children,
+                    infantcount: infants,
+                  );
+                },
+              ),
+            );
+          }
+        } else if (value.statusCode == 404) {
+          _showNoFlightsFound();
+        } else {
+          print('Search failed with status ${value.statusCode}: ${value.message}');
+          setState(() {
+            isApiCallProcess = false;
+            searchErrorMessage = 'Something went wrong while loading flights. Please try again.';
+          });
+        }
+      }).catchError((e) {
+        print(e);
+        if (!mounted) return;
+        setState(() {
+          isApiCallProcess = false;
+          searchErrorMessage = _describeSearchError(e);
+        });
+      });
+    } catch (e) {
+      print(e);
+      setState(() {
+        isApiCallProcess = false;
+      });
+      rethrow;
+    }
   }
 
   Future getFlightsListmethod(var data) async {
@@ -607,15 +735,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
         // catchError below then misreported as a network/connection error.
         final flightDetails = value.data?.flightDetails;
         if (value.statusCode == 203) {
-          setState(() {
-            isApiCallProcess = false;
-          });
-          const invalidsnackbar = SnackBar(
-            content: Text('Data not Found. try again'),
-          );
-          ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
-
-          // print(value.data);
+          _showNoFlightsFound();
         } else if (value.statusCode == 200) {
           setState(() {
             isApiCallProcess = false;
@@ -623,10 +743,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
 
           // showToast('Data found successfully.');
           if (flightDetails == null || flightDetails.isEmpty) {
-            const invalidsnackbar = SnackBar(
-              content: Text('No Flights available. try again'),
-            );
-            ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
+            _showNoFlightsFound();
           } else {
             // print(value.data!.flightDetails!);
             // inspect(value.data!.flightDetails);
@@ -658,10 +775,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
 
           // showToast('Data found successfully.');
           if (flightDetails == null || flightDetails.isEmpty) {
-            const invalidsnackbar = SnackBar(
-              content: Text('No Flights available. try again'),
-            );
-            ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
+            _showNoFlightsFound();
           } else {
             print(value.data!.flightDetails!);
             inspect(value.data!.flightDetails);
@@ -684,11 +798,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
             );
           }
         } else if (value.statusCode == 404) {
-          setState(() {
-            isApiCallProcess = false;
-          });
-
-          showToast('Data NOT found');
+          _showNoFlightsFound();
         } else {
           // `value.message` here is whatever the backend's own error text
           // was for this status code — on at least one live search this was
@@ -742,15 +852,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
           print(sendingdata);
           print("StatusCode ${value.statusCode} ");
           if (value.statusCode == 203) {
-            setState(() {
-              isApiCallProcess = false;
-            });
-            const invalidsnackbar = SnackBar(
-              content: Text('Data not Found. try again'),
-            );
-            ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
-
-            // print(value.data);
+            _showNoFlightsFound();
           } else if (value.statusCode == 200 || value.statusCode == 201) {
             setState(() {
               isApiCallProcess = false;
@@ -759,10 +861,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
             // showToast('Data found successfully.');
             final flightDetails = value.data?.flightDetails;
             if (flightDetails == null || flightDetails.isEmpty) {
-              const invalidsnackbar = SnackBar(
-                content: Text('No Flights available. try again'),
-              );
-              ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
+              _showNoFlightsFound();
             } else {
               print('Round Trip Testing');
               print(value.data!.flightDetails!);
@@ -788,11 +887,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
               );
             }
           } else if (value.statusCode == 404) {
-            setState(() {
-              isApiCallProcess = false;
-            });
-
-            showToast('Data NOT found');
+            _showNoFlightsFound();
           } else {
             print('Search failed with status ${value.statusCode}: ${value.message}');
             setState(() {
@@ -822,15 +917,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
           inspect(value.statusCode);
           print("StatusCode ${value.statusCode} ");
           if (value.statusCode == 203) {
-            setState(() {
-              isApiCallProcess = false;
-            });
-            const invalidsnackbar = SnackBar(
-              content: Text('Data not Found. try again'),
-            );
-            ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
-
-            // print(value.data);
+            _showNoFlightsFound();
           } else if (value.statusCode == 200 || value.statusCode == 201) {
             setState(() {
               isApiCallProcess = false;
@@ -841,10 +928,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
             final innerFlightDetails =
                 (flightDetails != null && flightDetails.isNotEmpty) ? flightDetails[0].flightDetails : null;
             if (innerFlightDetails == null || innerFlightDetails.isEmpty) {
-              const invalidsnackbar = SnackBar(
-                content: Text('No Flights available. try again'),
-              );
-              ScaffoldMessenger.of(context).showSnackBar(invalidsnackbar);
+              _showNoFlightsFound();
             } else {
               print(value.data!.flightDetails![0].flightDetails!);
               inspect(value.data!.flightDetails![0].flightDetails!);
@@ -869,11 +953,7 @@ class _FlightsListPageState extends State<FlightsListPage> {
               );
             }
           } else if (value.statusCode == 404) {
-            setState(() {
-              isApiCallProcess = false;
-            });
-
-            showToast('Data NOT found');
+            _showNoFlightsFound();
           } else {
             print('Search failed with status ${value.statusCode}: ${value.message}');
             setState(() {
