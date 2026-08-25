@@ -60,7 +60,15 @@ class FlightDateField extends StatelessWidget {
                   const SizedBox(height: 2),
                 ],
                 Text(
-                  hasDate ? DateFormat.yMMMEd().format(date!) : placeholder,
+                  // Compact mode (multi-city's 3-column FROM/TO/DATE row)
+                  // only gets a third of the row's width — the full
+                  // "Fri, Aug 28, 2026" format truncated to "Fri, Aug …"
+                  // before the day number even rendered, so the field
+                  // couldn't actually tell you which date was picked.
+                  // Weekday/year aren't essential here; day+month is.
+                  hasDate
+                      ? (compact ? DateFormat('dd MMM').format(date!) : DateFormat.yMMMEd().format(date!))
+                      : placeholder,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
