@@ -1,19 +1,58 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+
 import 'package:outc/dashboard/flights/models/flight_domestic_roundtrip_model.dart';
+import 'package:outc/dashboard/flights/models/flights_list_model.dart' as shared;
+import 'package:outc/dashboard/flights/models/get_cities_by_search_model.dart' show Datum;
 import 'package:outc/dashboard/flights/screens/book_domestic_flight.dart';
+import 'package:outc/dashboard/flights/screens/search_flights.dart';
 
 import 'package:outc/core/theme/design_tokens.dart';
-import 'package:outc/core/widgets/app_top_bar.dart';
-import 'package:outc/dashboard/flights/widgets/ticketdesign.dart';
+import 'package:outc/dashboard/flights/providers/airport_name_cache.dart';
+import 'package:outc/dashboard/flights/widgets/flight_filters_sheet.dart';
+import 'package:outc/dashboard/flights/widgets/flight_quick_filter_bar.dart';
+import 'package:outc/dashboard/flights/widgets/flight_result_card.dart';
+import 'package:outc/dashboard/flights/widgets/flight_trip_summary_bar.dart';
 
-import 'package:outc/widgets/components/components.dart';
-import 'package:outc/widgets/components/dialogtabsview.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
 
+/// Round-trip results — domestic only (spec 0015; international round trip
+/// via `FetchedRoundtripFlights`/`FetchedMulticityFlights` is a separate,
+/// not-yet-done follow-up, per the spec's Out of scope section).
+///
+/// Previously this screen showed onward and return as two *sequential*
+/// full-screen lists (`view1` toggled between them, and tapping a return
+/// card booked immediately using whatever onward card had been tapped
+/// earlier) — there was no way to see both legs, compare, or change a pick
+/// without starting over. This is now a two-pane horizontally-draggable
+/// view: onward fills most of the width, return peeks in from the right
+/// edge as a column of compact mini-cards (and vice versa once you've
+/// dragged to the return pane) — tapping a card *selects* it for that leg
+/// (no immediate booking), and a bottom bar shows the combined total with
+/// one Book action once both legs are picked.
+///
+/// `originalData`/`returnFlightDetails`/`filterData` arrive typed against
+/// `flight_domestic_roundtrip_model.dart` (that's what
+/// `matchingDomesticFlightRoundtripList` parses into, and changing that
+/// shared API/model file is out of scope here) — but every shared widget
+/// built for spec 0015 (`FlightResultCard`, `AirportNameCache`,
+/// `applyFlightFilters`, `FlightFiltersSheet`) is typed against
+/// `flights_list_model.dart`'s near-identical `FlightDetail`/`FiltersObj`
+/// (confirmed field-for-field equivalent — both are generated from the same
+/// backend shape). Rather than fork another copy of those widgets for a
+/// second nominal type, `initState` converts once via a JSON round-trip
+/// (`shared.FlightDetail.fromJson(domesticFlight.toJson())`), and the rest
+/// of this screen works entirely in the shared type.
+///
+/// One field doesn't survive the round-trip with real data:
+/// `FareFamily.isRefundable` is commented out (never parsed) on the
+/// domestic model, so it comes through as null on the shared side too —
+/// this screen never reads it (only the flight-level `isRefundable`, which
+/// *is* on both models), but if a future pass reuses `FlightFaresSheet`
+/// (which does read the per-fare-family flag) for domestic round trip, fix
+/// `flight_domestic_roundtrip_model.dart`'s `FareFamily` first or that
+/// sheet's refundable tag will read wrong here.
 class FetchedDomesticMulticityFlights extends StatefulWidget {
-  // List<FlightDomesticRoundtripModel>? fulldata;
   FiltersObj? filterData;
   List<FlightDetail>? originalData;
   List<FlightDetail>? returnFlightDetails;
@@ -33,4386 +72,793 @@ class FetchedDomesticMulticityFlights extends StatefulWidget {
       required this.traceId});
 
   @override
-  State<FetchedDomesticMulticityFlights> createState() =>
-      _FetchedDomesticMulticityFlightsState();
+  State<FetchedDomesticMulticityFlights> createState() => _FetchedDomesticMulticityFlightsState();
 }
 
-class _FetchedDomesticMulticityFlightsState
-    extends State<FetchedDomesticMulticityFlights> {
-  bool view1 = true;
+class _FetchedDomesticMulticityFlightsState extends State<FetchedDomesticMulticityFlights> {
+  late final List<shared.FlightDetail> _onwardAll;
+  late final List<shared.FlightDetail> _returnAll;
 
-  List<FlightDetail>? dataFlightDetails = [];
+  List<shared.FlightDetail> _onwardFiltered = [];
+  List<shared.FlightDetail> _returnFiltered = [];
 
-  List<FlightDetail>? returnDataFlightDetails = [];
+  shared.FlightDetail? _selectedOnward;
+  shared.FlightDetail? _selectedReturn;
 
-  FlightDetail? selectedDepartureFlight;
+  // Onward and return each filter their own results independently — an
+  // earlier version of this screen shared one filter selection across both
+  // panes (matching spec 0015's original text), but that meant e.g. picking
+  // "Direct" while looking at onward also silently hid connecting *return*
+  // flights you hadn't even looked at yet. Each leg now gets its own
+  // `_LegFilterState`, its own options (derived from that leg's own flights,
+  // not a single shared `FiltersObj` — the backend doesn't actually send a
+  // return-specific one), and its own "N Filters" indicator; the filter
+  // icon in the AppBar acts on whichever pane is currently focused.
+  final _LegFilterState _onwardFilters = _LegFilterState();
+  final _LegFilterState _returnFilters = _LegFilterState();
+  int _focusedLeg = 0; // 0 = onward, 1 = return
 
-  bool filterIcon = false;
-  bool flightDetailsFlag = false;
-  // String traceId = "";
+  Datum? _originLookup;
+  Datum? _destLookup;
 
-  /// The Filters panels (onward and return) used to read
-  /// `widget.filterData!.stops![0]`/`[1]` assuming the API always returns
-  /// exactly a "Direct" and a "1 Stop (s)" entry, in that order — crashes
-  /// with a RangeError whenever `stops` comes back shorter than that (e.g.
-  /// empty, as happens for an all-direct route). Looked up by label instead
-  /// of position so a missing/reordered/empty `stops` list just hides that
-  /// chip.
-  bool _hasStopFilter(String label) =>
-      widget.filterData?.stops?.any((stop) => stop.label == label) ?? false;
-
-  double amtDepature = 0;
-
-  double? adultfare,
-      childfare,
-      infantfare,
-      adulttaxfare,
-      childtaxfare,
-      infanttaxfare;
-
-  double? departureAdultFare,
-      departureAdultTaxFare,
-      departureChildFare,
-      departureChildTaxFare,
-      departureInfantFare,
-      departureInfantTaxFare;
-
-  double? returnAdultFare,
-      returnAdultTaxFare,
-      returnChildFare,
-      returnChildTaxFare,
-      returnInfantFare,
-      returnInfantTaxFare;
-
-  RangeValues _currentRangeValues = const RangeValues(0, 0);
-  double _startValue = 0;
-  double _endValue = 0;
-  bool directStop = false;
-  bool oneStop = false;
-  bool depOne = false;
-  bool depTwo = false;
-  bool depThree = false;
-  bool depFour = false;
-  bool arvlOne = false;
-  bool arvlTwo = false;
-  bool arvlThree = false;
-  bool arvlFour = false;
-  bool refund = false;
-  bool nonrefund = false;
-
-  // List of checkbox models
-  List<ConnectingLocationsCheckboxModel> _connectingLocationcheckboxList = [];
-  List<AirlinesCheckboxModel> _airLinescheckboxList = [];
   @override
   void initState() {
     super.initState();
-    updateData();
-    _currentRangeValues = RangeValues(
-        double.parse(widget.filterData!.price!.minPrice.toString()),
-        double.parse(widget.filterData!.price!.maxPrice.toString()));
-    fillConnectingLocationList();
-    fillAirLinesList();
+    _onwardAll = (widget.originalData ?? const <FlightDetail>[])
+        .map((f) => shared.FlightDetail.fromJson(f.toJson()))
+        .toList();
+    _returnAll = (widget.returnFlightDetails ?? const <FlightDetail>[])
+        .map((f) => shared.FlightDetail.fromJson(f.toJson()))
+        .toList();
+
+    _fillFilterOptions(_onwardFilters, _onwardAll);
+    _fillFilterOptions(_returnFilters, _returnAll);
+    _updateFilterFor(true);
+    _updateFilterFor(false);
+    _resolveTripSummaryNames();
   }
 
-  @override
-  void dispose() {
-    super.dispose();
+  shared.FlightDetail? get _firstOnward => _onwardAll.isNotEmpty ? _onwardAll.first : null;
+  shared.FlightDetail? get _firstReturn => _returnAll.isNotEmpty ? _returnAll.first : null;
+
+  String _tripSummarySubtitle() {
+    final departureDate =
+        _firstOnward?.flightSegments?.isNotEmpty == true ? _firstOnward!.flightSegments!.first.departureDateTime : null;
+    final returnDate =
+        _firstReturn?.flightSegments?.isNotEmpty == true ? _firstReturn!.flightSegments!.first.departureDateTime : null;
+    final travellerCount = widget.adultcount + widget.childcount + widget.infantcount;
+    return [
+      if (departureDate != null)
+        '${DateFormat('dd MMM').format(departureDate)}${returnDate != null ? ' – ${DateFormat('dd MMM yyyy').format(returnDate)}' : ''}',
+      '$travellerCount Traveller${travellerCount == 1 ? '' : 's'}',
+      'Economy',
+    ].join(' · ');
+  }
+
+  Future<void> _resolveTripSummaryNames() async {
+    if (_onwardAll.isEmpty) return;
+    final first = _onwardAll.first;
+    final results = await Future.wait([
+      AirportNameCache.resolve(first.origin),
+      AirportNameCache.resolve(first.destination),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _originLookup = results[0];
+      _destLookup = results[1];
+    });
+  }
+
+  // Fallback price bounds computed straight from a leg's own flights — no
+  // per-leg price range comes back from the backend (only one combined
+  // `FiltersObj` for the whole search), so rather than reuse that one
+  // object for both legs' sliders, each leg's bounds are derived from what
+  // it actually has, same fallback spirit as the oneway screen's
+  // `_priceBounds()`.
+  (double, double) _priceBoundsFor(List<shared.FlightDetail> flights) {
+    final currency = _currency;
+    final fares = flights.map((f) => f.fareFamilies!.fareFamilies![0].adultPublishFare! * currency).toList();
+    if (fares.isEmpty) return (0, 1);
+    final min = fares.reduce((a, b) => a < b ? a : b);
+    final max = fares.reduce((a, b) => a > b ? a : b);
+    return (min, max > min ? max : min + 1);
+  }
+
+  bool _hasDirect(List<shared.FlightDetail> flights) => flights.any((f) => (f.flightSegments?.length ?? 0) <= 1);
+  bool _hasOneStop(List<shared.FlightDetail> flights) => flights.any((f) => (f.flightSegments?.length ?? 0) == 2);
+
+  static bool _isUsableLabel(String? value) =>
+      value != null && value.trim().isNotEmpty && value.trim().toLowerCase() != 'null';
+
+  List<String> _connectingLabelsFor(List<shared.FlightDetail> flights) {
+    final labels = <String>{};
+    for (final flight in flights) {
+      final segments = flight.flightSegments ?? const [];
+      if (segments.length <= 1) continue;
+      final name = segments.first.destinationName;
+      if (_isUsableLabel(name)) labels.add(name!);
+    }
+    return labels.toList()..sort();
+  }
+
+  List<String> _airlineLabelsFor(List<shared.FlightDetail> flights) {
+    final labels = <String>{};
+    for (final flight in flights) {
+      if (_isUsableLabel(flight.airLineName)) labels.add(flight.airLineName!);
+    }
+    return labels.toList()..sort();
+  }
+
+  void _fillFilterOptions(_LegFilterState state, List<shared.FlightDetail> flights) {
+    state.connecting = [for (final label in _connectingLabelsFor(flights)) ConnectingLocationsCheckboxModel(title: label)];
+    state.airlines = [for (final label in _airlineLabelsFor(flights)) AirlinesCheckboxModel(title: label)];
+    final bounds = _priceBoundsFor(flights);
+    state.range = RangeValues(bounds.$1, bounds.$2);
+  }
+
+  void _updateFilterFor(bool isOnward) {
+    final state = isOnward ? _onwardFilters : _returnFilters;
+    final source = isOnward ? _onwardAll : _returnAll;
+    final filtered = applyFlightFilters(
+      source,
+      adapter: flightDetailFilterAdapter,
+      range: state.range,
+      directStop: state.directStop,
+      oneStop: state.oneStop,
+      dep: (state.dep1, state.dep2, state.dep3, state.dep4),
+      arv: (state.arv1, state.arv2, state.arv3, state.arv4),
+      refund: state.refund,
+      nonrefund: state.nonrefund,
+      connectingLocations: state.connecting.where((f) => f.isChecked).map((f) => f.title).toSet(),
+      airlines: state.airlines.where((f) => f.isChecked).map((f) => f.title).toSet(),
+      currency: _currency,
+      sort: state.sort,
+    );
+    setState(() {
+      if (isOnward) {
+        _onwardFiltered = filtered;
+      } else {
+        _returnFiltered = filtered;
+      }
+    });
+  }
+
+  void _showFiltersSheetFor(BuildContext context, bool isOnward) {
+    final state = isOnward ? _onwardFilters : _returnFilters;
+    final source = isOnward ? _onwardAll : _returnAll;
+    final currency = _currency;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => FlightFiltersSheet<shared.FlightDetail>(
+        title: isOnward ? 'Onward Filters' : 'Return Filters',
+        originalData: source,
+        adapter: flightDetailFilterAdapter,
+        hasDirect: _hasDirect(source),
+        hasOneStop: _hasOneStop(source),
+        connectingLocationLabels: [for (final loc in state.connecting) loc.title],
+        airlineLabels: [for (final airline in state.airlines) airline.title],
+        priceBounds: _priceBoundsFor(source),
+        initialRange: state.range,
+        initialSort: state.sort,
+        initialDirectStop: state.directStop,
+        initialOneStop: state.oneStop,
+        initialDep: (state.dep1, state.dep2, state.dep3, state.dep4),
+        initialArv: (state.arv1, state.arv2, state.arv3, state.arv4),
+        initialRefund: state.refund,
+        initialNonrefund: state.nonrefund,
+        initialConnecting: [for (final loc in state.connecting) loc.isChecked],
+        initialAirlines: [for (final airline in state.airlines) airline.isChecked],
+        currency: currency,
+        onApply: (result) {
+          setState(() {
+            state.range = result.range;
+            state.sort = result.sort;
+            state.directStop = result.directStop;
+            state.oneStop = result.oneStop;
+            state.dep1 = result.dep.$1;
+            state.dep2 = result.dep.$2;
+            state.dep3 = result.dep.$3;
+            state.dep4 = result.dep.$4;
+            state.arv1 = result.arv.$1;
+            state.arv2 = result.arv.$2;
+            state.arv3 = result.arv.$3;
+            state.arv4 = result.arv.$4;
+            state.refund = result.refund;
+            state.nonrefund = result.nonrefund;
+            for (var i = 0; i < state.connecting.length; i++) {
+              state.connecting[i].isChecked = result.connecting[i];
+            }
+            for (var i = 0; i < state.airlines.length; i++) {
+              state.airlines[i].isChecked = result.airlines[i];
+            }
+          });
+          _updateFilterFor(isOnward);
+        },
+      ),
+    );
+  }
+
+  void _toggleOnward(shared.FlightDetail flight) {
+    setState(() => _selectedOnward = identical(_selectedOnward, flight) ? null : flight);
+  }
+
+  void _toggleReturn(shared.FlightDetail flight) {
+    setState(() => _selectedReturn = identical(_selectedReturn, flight) ? null : flight);
+  }
+
+  double get _currency => double.tryParse(SharedPrefServices.getcurrencyAmount().toString()) ?? 1;
+
+  double _fareOf(shared.FlightDetail? flight) {
+    if (flight == null) return 0;
+    return (flight.fareFamilies?.fareFamilies?.first.totalPublishFare ?? 0) * _currency;
+  }
+
+  /// Ports the original selection-time fare math verbatim (same fields,
+  /// same "return leg's adult tax is always zeroed" quirk the legacy code
+  /// had) — this is a UI-structure change, not a fare-calculation change,
+  /// so the numbers going into `BookDomesticFlight` stay exactly as they
+  /// were for a given picked onward+return pair.
+  _LegFare _legFare(shared.FlightDetail flight, {required bool zeroAdultTax}) {
+    final ff = flight.fareFamilies!.fareFamilies![0];
+    return _LegFare(
+      basefare: (ff.totalPublishFare ?? 0) * _currency,
+      adultTaxFare: zeroAdultTax ? 0 : (double.tryParse(ff.markup.toString()) ?? 0),
+      childFare: double.tryParse(ff.childNetFare.toString()) ?? 0,
+      infantFare: double.tryParse(ff.infantNetFare.toString()) ?? 0,
+    );
+  }
+
+  _LegBookingFields _legFields(shared.FlightDetail flight) {
+    final segments = flight.flightSegments ?? const [];
+    final first = segments.isNotEmpty ? segments.first : null;
+    return _LegBookingFields(
+      name: '${flight.airLineName} (${flight.airLine}-${first?.flightNumber})',
+      stop: segments.length <= 1 ? 'Direct' : '${segments.length - 1} Stop',
+      refund: flight.isRefundable == true ? 'Refundable' : 'Non Refundable',
+      start: flight.originCity.toString(),
+      end: flight.destinationCity.toString(),
+      startTime: first?.departureDateTime != null ? DateFormat('HH:mm').format(first!.departureDateTime!) : '--:--',
+      endTime: first?.arrivalDateTime != null ? DateFormat('HH:mm').format(first!.arrivalDateTime!) : '--:--',
+      duration: flight.duration.toString(),
+    );
+  }
+
+  void _proceedToBooking() {
+    final onward = _selectedOnward;
+    final returnFlight = _selectedReturn;
+    if (onward == null || returnFlight == null) return;
+
+    final onwardFields = _legFields(onward);
+    final returnFields = _legFields(returnFlight);
+    final onwardFare = _legFare(onward, zeroAdultTax: false);
+    final returnFare = _legFare(returnFlight, zeroAdultTax: true);
+
+    // Legacy quirk kept as-is: `adultBasefare` is round-tripped through
+    // shared prefs rather than passed straight through — some other part of
+    // the booking flow may still read `getdomesticAmount()` later, so the
+    // write stays even though the value used below is the same number.
+    SharedPrefServices.setdomesticAmount(onwardFare.basefare.toStringAsFixed(2));
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => BookDomesticFlight(
+          traceId1: widget.traceId,
+          flightId1: onward.flightId.toString(),
+          fareId1: onward.fareFamilies!.fareFamilies![0].fareId.toString(),
+          airlineLogo1: onward.airLineLogo ?? '',
+          airlineName1: onwardFields.name,
+          airlineStop1: onwardFields.stop,
+          airlineClass1: 'Economy',
+          airlineRefund1: onwardFields.refund,
+          airlineStart1: onwardFields.start,
+          airlineEnd1: onwardFields.end,
+          airlineStartTime1: onwardFields.startTime,
+          airlineEndTime1: onwardFields.endTime,
+          airlineDuration1: onwardFields.duration,
+          traceId2: widget.traceId,
+          flightId2: returnFlight.flightId.toString(),
+          fareId2: returnFlight.fareFamilies!.fareFamilies![0].fareId.toString(),
+          airlineLogo2: returnFlight.airLineLogo ?? '',
+          airlineName2: returnFields.name,
+          airlineStop2: returnFields.stop,
+          airlineClass2: 'Economy',
+          airlineRefund2: returnFields.refund,
+          airlineStart2: returnFields.start,
+          airlineEnd2: returnFields.end,
+          airlineStartTime2: returnFields.startTime,
+          airlineEndTime2: returnFields.endTime,
+          airlineDuration2: returnFields.duration,
+          adultBasefare: onwardFare.basefare,
+          adulttaxfare: onwardFare.adultTaxFare,
+          childBasefare: onwardFare.childFare,
+          childtaxfare: 0,
+          infantBasefare: onwardFare.infantFare,
+          infanttaxfare: 0,
+          returnAdultBasefare: returnFare.basefare,
+          returnAdultTaxfare: returnFare.adultTaxFare,
+          returnChildBasefare: returnFare.childFare,
+          returnChildTaxfare: 0,
+          returnInfantBasefare: returnFare.infantFare,
+          returnInfantTaxfare: 0,
+          adultCount: widget.adultcount.toDouble(),
+          childCount: widget.childcount.toDouble(),
+          infantCount: widget.infantcount.toDouble(),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    print(widget.filterData);
-    print('Testing Round Trip Data');
-    print(widget.adultcount);
-    print(widget.childcount);
-    print(widget.infantcount);
-    _startValue = double.parse(widget.filterData!.price!.minPrice.toString());
-    _endValue = double.parse(widget.filterData!.price!.maxPrice.toString());
+    final canBook = _selectedOnward != null && _selectedReturn != null;
 
-    RangeLabels labels = RangeLabels(
-        _currentRangeValues.start.round().toString(),
-        _currentRangeValues.end.round().toString());
+    final focusedFilters = _focusedLeg == 0 ? _onwardFilters : _returnFilters;
 
     return Scaffold(
-        backgroundColor: AppColors.panelBackground,
-        appBar: AppTopBar(
-          title: view1 ? 'Flight Results' : 'Return Flights',
-          subtitle: view1
-              ? null
-              : 'Selected departure: ${SharedPrefServices.getdomesticAmount()}',
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.filter_alt),
-              onPressed: () => setState(() => filterIcon = true),
+      backgroundColor: AppColors.panelBackground,
+      // No separate "Flight Results" app-bar — see the same call on the
+      // oneway results screen.
+      body: SafeArea(
+        child: Column(
+          children: [
+            FlightTripSummaryBar(
+              routeLabel: '${placeLabel(_firstOnward?.origin, _originLookup)} ⇄ '
+                  '${placeLabel(_firstOnward?.destination, _destLookup)}',
+              subtitle: _tripSummarySubtitle(),
+              onBack: () => Navigator.of(context).pop(),
+              onEdit: () => showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                useSafeArea: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => FractionallySizedBox(
+                  heightFactor: 0.94,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    child: const FlightsListPage(isModifyMode: true),
+                  ),
+                ),
+              ),
+            ),
+            FlightQuickFilterBar(
+              key: ValueKey(_focusedLeg), // fresh chip state per leg on swap
+              isCheapestFirstActive: focusedFilters.sort == FlightSortOption.priceLowToHigh,
+              onToggleCheapestFirst: () {
+                setState(() {
+                  focusedFilters.sort = focusedFilters.sort == FlightSortOption.priceLowToHigh
+                      ? null
+                      : FlightSortOption.priceLowToHigh;
+                });
+                _updateFilterFor(_focusedLeg == 0);
+              },
+              isNonStopActive: focusedFilters.directStop,
+              onToggleNonStop: () {
+                setState(() => focusedFilters.directStop = !focusedFilters.directStop);
+                _updateFilterFor(_focusedLeg == 0);
+              },
+              activeFilterCount: focusedFilters.activeFilterCount,
+              onTapFilters: () => _showFiltersSheetFor(context, _focusedLeg == 0),
+            ),
+            Expanded(
+              child: _DualPaneFlights(
+                onward: _onwardFiltered,
+                returnFlights: _returnFiltered,
+                selectedOnward: _selectedOnward,
+                selectedReturn: _selectedReturn,
+                onSelectOnward: _toggleOnward,
+                onSelectReturn: _toggleReturn,
+                currency: _currency,
+                onFocusChanged: (leg) => setState(() => _focusedLeg = leg),
+              ),
+            ),
+            _BookingBar(
+              onwardFare: _fareOf(_selectedOnward),
+              returnFare: _fareOf(_selectedReturn),
+              canBook: canBook,
+              onBook: _proceedToBooking,
             ),
           ],
         ),
-        body: view1
-            ? SafeArea(
-                child: Column(
-                  children: [
-                    dataFlightDetails!.isEmpty
-                        ? Center(
-                            child: Text(
-                              "No Flights Available",
-                              style: TextStyle(
-                                fontSize: 16.0,
-                                color: AppColors.primary,
-                                fontFamily: 'Poppins',
-                              ),
-                            ),
-                          )
-                        : Expanded(
-                            child: ListView.builder(
-                                itemCount: dataFlightDetails!.length,
-                                itemBuilder: (context, index) {
-                                  double amtDepature = dataFlightDetails![index]
-                                          .fareFamilies!
-                                          .fareFamilies![0]
-                                          .totalPublishFare! *
-                                      double.parse(
-                                          SharedPrefServices.getcurrencyAmount()
-                                              .toString());
-
-                                  return TicketDesign(
-                                    width: double.infinity,
-                                    // height: 350,
-                                    isCornerRounded: true,
-                                    color: Colors.grey.shade300,
-                                    padding: const EdgeInsets.all(10),
-                                    child: Container(
-                                      child: Column(
-                                        children: [
-                                          Container(
-                                            margin: const EdgeInsets.all(5),
-                                            width: double.infinity,
-                                            decoration: BoxDecoration(
-                                                border: Border.all(
-                                                  color: AppColors.primary,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                                color: Colors.grey.shade100),
-                                            child: Column(
-                                              children: [
-                                                Container(
-                                                  margin:
-                                                      const EdgeInsets.all(5),
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Column(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .start,
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          // Image(
-                                                          //   image: NetworkImage(
-                                                          //     widget.dataFlightDetails![index]
-                                                          // .flightDetails![0]
-                                                          //         .airLineLogo!,
-                                                          //   ),
-                                                          //   fit: BoxFit.fill,
-                                                          //   height: 30.0,
-                                                          //   width: 30.0,
-                                                          // ),
-
-                                                          Text(
-                                                            "${dataFlightDetails![index].airLineName} (${dataFlightDetails![index].airLine}-${dataFlightDetails![index].flightSegments![0].flightNumber})",
-                                                            style: TextStyle(
-                                                              fontSize: 14.0,
-                                                              color: AppColors
-                                                                  .primary,
-                                                              fontFamily:
-                                                                  'Poppins',
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      Column(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .start,
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .end,
-                                                        children: [
-                                                          Text(
-                                                            dataFlightDetails![
-                                                                            index]
-                                                                        .flightSegments!
-                                                                        .length ==
-                                                                    1
-                                                                ? "Direct"
-                                                                : "${dataFlightDetails![index].flightSegments!.length - 1} Stop",
-                                                            style:
-                                                                const TextStyle(
-                                                              fontSize: 12.0,
-                                                              color:
-                                                                  Colors.black,
-                                                              fontFamily:
-                                                                  'Poppins',
-                                                            ),
-                                                          ),
-                                                          const Text(
-                                                            "Class: Economy",
-                                                            style: TextStyle(
-                                                              fontSize: 12.0,
-                                                              color:
-                                                                  Colors.black,
-                                                              fontFamily:
-                                                                  'Poppins',
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-
-                                                // works below
-                                                Container(
-                                                  margin: const EdgeInsets.only(
-                                                      left: 5, right: 5),
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Icon(
-                                                        Icons.flight_takeoff,
-                                                        size: 30,
-                                                        color:
-                                                            AppColors.primary,
-                                                      ),
-                                                      Text(
-                                                        dataFlightDetails![
-                                                                        index]
-                                                                    .isRefundable ==
-                                                                true
-                                                            ? "Refundable"
-                                                            : "Non Refundable",
-                                                        style: TextStyle(
-                                                          fontSize: 12.0,
-                                                          color: AppColors
-                                                              .textSecondary,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          fontFamily: 'Poppins',
-                                                        ),
-                                                      ),
-                                                      Icon(
-                                                        Icons.flight_land,
-                                                        size: 30,
-                                                        color:
-                                                            AppColors.primary,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                Container(
-                                                  margin:
-                                                      const EdgeInsets.all(5),
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Text(
-                                                        dataFlightDetails![
-                                                                index]
-                                                            .originCity
-                                                            .toString(),
-                                                        style: const TextStyle(
-                                                          fontSize: 14.0,
-                                                          color: Colors.black,
-                                                          fontFamily: 'Poppins',
-                                                        ),
-                                                      ),
-                                                      SizedBox(
-                                                        width: 150,
-                                                        child: Divider(
-                                                          color:
-                                                              AppColors.primary,
-                                                          thickness: 3,
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        dataFlightDetails![
-                                                                index]
-                                                            .destinationCity
-                                                            .toString(),
-                                                        style: const TextStyle(
-                                                          fontSize: 14.0,
-                                                          color: Colors.black,
-                                                          fontFamily: 'Poppins',
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                Container(
-                                                  margin:
-                                                      const EdgeInsets.all(5),
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Text(
-                                                        DateFormat('HH:mm').format(
-                                                            dataFlightDetails![
-                                                                        index]
-                                                                    .flightSegments![
-                                                                        0]
-                                                                    .departureDateTime ??
-                                                                DateTime.now()),
-                                                        style: const TextStyle(
-                                                          fontSize: 12.0,
-                                                          color: Colors.black,
-                                                          fontFamily: 'Poppins',
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        "${dataFlightDetails![index].duration}",
-                                                        style: const TextStyle(
-                                                          fontSize: 12.0,
-                                                          color: Colors.black,
-                                                          fontFamily: 'Poppins',
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        DateFormat('HH:mm').format(
-                                                            dataFlightDetails![
-                                                                        index]
-                                                                    .flightSegments![
-                                                                        0]
-                                                                    .arrivalDateTime ??
-                                                                DateTime.now()),
-                                                        style: const TextStyle(
-                                                          fontSize: 12.0,
-                                                          color: Colors.black,
-                                                          fontFamily: 'Poppins',
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Container(
-                                            margin: const EdgeInsets.all(8),
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                GestureDetector(
-                                                  onTap: () {
-                                                    showDialog(
-                                                        context: context,
-                                                        builder: (BuildContext
-                                                            context) {
-                                                          return AlertDialog(
-                                                            content: Wrap(
-                                                              // height: 150,
-                                                              children: [
-                                                                Row(
-                                                                  mainAxisAlignment:
-                                                                      MainAxisAlignment
-                                                                          .spaceAround,
-                                                                  children: [
-                                                                    Text(
-                                                                      "Baggage Details",
-                                                                      style:
-                                                                          TextStyle(
-                                                                        fontSize:
-                                                                            14.0,
-                                                                        color: AppColors
-                                                                            .primary,
-                                                                        fontWeight:
-                                                                            FontWeight.bold,
-                                                                        fontFamily:
-                                                                            'Poppins',
-                                                                      ),
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                                Divider(
-                                                                  color: Colors
-                                                                      .grey
-                                                                      .shade400,
-                                                                  thickness:
-                                                                      1.0,
-                                                                ),
-                                                                Column(
-                                                                  mainAxisAlignment:
-                                                                      MainAxisAlignment
-                                                                          .start,
-                                                                  children: [
-                                                                    const SizedBox(
-                                                                      height:
-                                                                          10,
-                                                                    ),
-                                                                    Row(
-                                                                      mainAxisAlignment:
-                                                                          MainAxisAlignment
-                                                                              .spaceAround,
-                                                                      children: [
-                                                                        Row(
-                                                                          children: [
-                                                                            Icon(
-                                                                              Icons.flight_takeoff,
-                                                                              color: AppColors.primary,
-                                                                            ),
-                                                                          ],
-                                                                        ),
-                                                                        Text(
-                                                                          "${dataFlightDetails![index].origin} - ${dataFlightDetails![index].destination}",
-                                                                          style:
-                                                                              TextStyle(
-                                                                            fontSize:
-                                                                                14.0,
-                                                                            color:
-                                                                                AppColors.primary,
-                                                                            fontWeight:
-                                                                                FontWeight.bold,
-                                                                            fontFamily:
-                                                                                'Poppins',
-                                                                          ),
-                                                                        ),
-                                                                        Text(
-                                                                          "${dataFlightDetails![index].airLineName} - ${dataFlightDetails![index].airLine}",
-                                                                          style:
-                                                                              TextStyle(
-                                                                            fontSize:
-                                                                                14.0,
-                                                                            color:
-                                                                                AppColors.textSecondary,
-                                                                            fontWeight:
-                                                                                FontWeight.bold,
-                                                                            fontFamily:
-                                                                                'Poppins',
-                                                                          ),
-                                                                        ),
-                                                                      ],
-                                                                    ),
-                                                                    const SizedBox(
-                                                                      height:
-                                                                          10,
-                                                                    ),
-                                                                    Row(
-                                                                      children: [
-                                                                        Icon(
-                                                                          Icons
-                                                                              .luggage_outlined,
-                                                                          color:
-                                                                              AppColors.secondary,
-                                                                        ),
-                                                                        Text(
-                                                                          "${dataFlightDetails![index].flightSegments![0].checkInBaggage} CheckedIn Baggage",
-                                                                          style:
-                                                                              TextStyle(
-                                                                            fontSize:
-                                                                                14.0,
-                                                                            color:
-                                                                                AppColors.secondary,
-                                                                            fontWeight:
-                                                                                FontWeight.bold,
-                                                                            fontFamily:
-                                                                                'Poppins',
-                                                                          ),
-                                                                        ),
-                                                                      ],
-                                                                    ),
-                                                                    Row(
-                                                                      children: [
-                                                                        Icon(
-                                                                          Icons
-                                                                              .luggage_outlined,
-                                                                          color:
-                                                                              AppColors.secondary,
-                                                                        ),
-                                                                        Text(
-                                                                          dataFlightDetails![index].flightSegments![0].cabinBaggage!.isEmpty
-                                                                              ? "7 kgs Cabin Baggage"
-                                                                              : "${dataFlightDetails![index].flightSegments![0].cabinBaggage} Cabin Baggage",
-                                                                          style:
-                                                                              TextStyle(
-                                                                            fontSize:
-                                                                                14.0,
-                                                                            color:
-                                                                                AppColors.secondary,
-                                                                            fontWeight:
-                                                                                FontWeight.bold,
-                                                                            fontFamily:
-                                                                                'Poppins',
-                                                                          ),
-                                                                        ),
-                                                                      ],
-                                                                    ),
-                                                                    Divider(
-                                                                      color: Colors
-                                                                          .grey
-                                                                          .shade400,
-                                                                      thickness:
-                                                                          1.0,
-                                                                    ),
-                                                                  ],
-                                                                )
-                                                              ],
-                                                            ),
-                                                          );
-                                                        });
-                                                  },
-                                                  child: Card(
-                                                    elevation: 0.0,
-                                                    shape:
-                                                        RoundedRectangleBorder(
-                                                      side: BorderSide(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              10),
-                                                    ),
-                                                    child: Padding(
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                              8.0),
-                                                      child: Column(
-                                                        children: [
-                                                          Text(
-                                                            "Baggage",
-                                                            style:
-                                                                textStyleHeading(),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    showDialog(
-                                                      context: context,
-                                                      builder: (BuildContext
-                                                          context) {
-                                                        return MultiDomesticTabView(
-                                                          dataFlightDetails:
-                                                              dataFlightDetails,
-                                                          index: index,
-                                                        );
-                                                      },
-                                                    );
-                                                  },
-                                                  child: Card(
-                                                    elevation: 0.0,
-                                                    shape:
-                                                        RoundedRectangleBorder(
-                                                      side: BorderSide(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              10),
-                                                    ),
-                                                    child: Padding(
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                              8.0),
-                                                      child: Column(
-                                                        children: [
-                                                          Text(
-                                                            "flight details",
-                                                            style:
-                                                                textStyleHeading(),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Container(
-                                              margin: const EdgeInsets.only(
-                                                left: 5,
-                                                right: 5,
-                                                bottom: 5,
-                                              ),
-                                              child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Row(
-                                                    children: [
-                                                      Text(
-                                                          SharedPrefServices
-                                                                  .getcurrencycode()
-                                                              .toString(),
-                                                          style: TextStyle(
-                                                            fontSize: 14.0,
-                                                            color: AppColors
-                                                                .primary,
-                                                            fontWeight:
-                                                                FontWeight.w700,
-                                                            fontFamily:
-                                                                'poppins',
-                                                          )),
-                                                      const SizedBox(
-                                                        width: 5,
-                                                      ),
-                                                      Text(
-                                                          amtDepature
-                                                              .toStringAsFixed(
-                                                                  2),
-                                                          style: TextStyle(
-                                                            fontSize: 14.0,
-                                                            color: AppColors
-                                                                .primary,
-                                                            fontWeight:
-                                                                FontWeight.w700,
-                                                            fontFamily:
-                                                                'poppins',
-                                                          )),
-                                                    ],
-                                                  ),
-                                                  ElevatedButton(
-                                                      onPressed: () {
-                                                        setState(() {
-                                                          selectedDepartureFlight =
-                                                              dataFlightDetails![
-                                                                  index];
-
-                                                          departureAdultFare =
-                                                              dataFlightDetails![
-                                                                      index]
-                                                                  .fareFamilies!
-                                                                  .fareFamilies![
-                                                                      0]
-                                                                  .adultFare;
-                                                          departureAdultTaxFare =
-                                                              double.parse(dataFlightDetails![
-                                                                      index]
-                                                                  .fareFamilies!
-                                                                  .fareFamilies![
-                                                                      0]
-                                                                  .markup
-                                                                  .toString());
-
-                                                          amtDepature = dataFlightDetails![
-                                                                      index]
-                                                                  .fareFamilies!
-                                                                  .fareFamilies![
-                                                                      0]
-                                                                  .totalPublishFare! *
-                                                              double.parse(
-                                                                  SharedPrefServices
-                                                                          .getcurrencyAmount()
-                                                                      .toString());
-
-                                                          departureChildFare = double.parse(
-                                                              dataFlightDetails![
-                                                                      index]
-                                                                  .fareFamilies!
-                                                                  .fareFamilies![
-                                                                      0]
-                                                                  .childNetFare
-                                                                  .toString());
-
-                                                          departureChildTaxFare =
-                                                              0;
-
-                                                          selectedDepartureFlight!
-                                                              .fareFamilies!
-                                                              .fareId![0]
-                                                              .toString();
-
-                                                          departureInfantFare = double.parse(
-                                                              dataFlightDetails![
-                                                                      index]
-                                                                  .fareFamilies!
-                                                                  .fareFamilies![
-                                                                      0]
-                                                                  .infantNetFare
-                                                                  .toString());
-                                                          departureInfantTaxFare =
-                                                              0;
-                                                          view1 = false;
-                                                        });
-
-                                                        SharedPrefServices
-                                                            .setdomesticAmount(
-                                                                amtDepature
-                                                                    .toStringAsFixed(
-                                                                        2));
-
-                                                        print(
-                                                            "amtDepature: $amtDepature");
-
-                                                        print(SharedPrefServices
-                                                                .getdomesticAmount()
-                                                            .toString());
-
-                                                        print(
-                                                            'testing flight one way  ids');
-                                                        print(
-                                                          selectedDepartureFlight!
-                                                              .flightId
-                                                              .toString(),
-                                                        );
-
-                                                        print(
-                                                            'testing fare depature ids');
-                                                        print(
-                                                            selectedDepartureFlight!
-                                                                .fareFamilies!
-                                                                .fareFamilies![
-                                                                    0]
-                                                                .fareId
-                                                                .toString()
-
-                                                            //       dataFlightDetails![index]
-                                                            // .fareFamilies!
-                                                            // .fareFamilies![0]
-                                                            // .fareId
-                                                            // .toString()
-                                                            );
-                                                        //   selectedDepartureFlight!
-                                                        //       .fareFamilies!
-                                                        //       .fareId![0]
-                                                        //       .toString(),
-                                                        // );
-                                                      },
-                                                      style: ElevatedButton
-                                                          .styleFrom(
-                                                              backgroundColor:
-                                                                  AppColors
-                                                                      .primary,
-                                                              shape:
-                                                                  RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            10),
-                                                              )),
-                                                      child: Text("Book Now",
-                                                          style: GoogleFonts
-                                                              .poppins(
-                                                            color: Colors.white,
-                                                            fontSize: 14,
-                                                          )))
-                                                ],
-                                              ))
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }),
-                          ),
-                    filterIcon
-                        ? Expanded(
-                            child: SingleChildScrollView(
-                              child: Container(
-                                color: Colors.green[100],
-                                child: Column(
-                                  children: [
-                                    const SizedBox(
-                                      height: 30,
-                                    ),
-                                    Container(
-                                      width: double.infinity,
-                                      margin: const EdgeInsets.only(
-                                          right: 15, left: 15),
-                                      decoration: BoxDecoration(
-                                          color: Colors.grey[300],
-                                          borderRadius:
-                                              BorderRadius.circular(3),
-                                          border: Border.all(
-                                              color: AppColors.primary)),
-                                      child: Container(
-                                        margin: const EdgeInsets.only(
-                                            right: 15, left: 15),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const SizedBox(
-                                              height: 20,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Filters",
-                                                  style: GoogleFonts.poppins(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      directStop = oneStop = depOne =
-                                                          depTwo = depThree = depFour =
-                                                              arvlOne = arvlTwo =
-                                                                  arvlThree = arvlFour =
-                                                                      refund =
-                                                                          nonrefund =
-                                                                              false;
-                                                      turnOffLocations();
-
-                                                      _currentRangeValues =
-                                                          RangeValues(
-                                                              double.parse(widget
-                                                                  .filterData!
-                                                                  .price!
-                                                                  .minPrice
-                                                                  .toString()),
-                                                              double.parse(widget
-                                                                  .filterData!
-                                                                  .price!
-                                                                  .maxPrice
-                                                                  .toString()));
-                                                    });
-                                                  },
-                                                  child: Text(
-                                                    "Clear all",
-                                                    style: GoogleFonts.poppins(
-                                                        color:
-                                                            AppColors.secondary,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(
-                                              height: 15,
-                                            ),
-                                            Divider(
-                                              thickness: 1.0,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Price Range",
-                                                  style: GoogleFonts.poppins(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      _currentRangeValues =
-                                                          RangeValues(
-                                                              double.parse(widget
-                                                                  .filterData!
-                                                                  .price!
-                                                                  .minPrice
-                                                                  .toString()),
-                                                              double.parse(widget
-                                                                  .filterData!
-                                                                  .price!
-                                                                  .maxPrice
-                                                                  .toString()));
-                                                    });
-                                                  },
-                                                  child: Text(
-                                                    "Clear",
-                                                    style: GoogleFonts.poppins(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  '${_currentRangeValues.start.toStringAsFixed(2)} INR',
-                                                  style: TextStyle(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14),
-                                                ),
-                                                Text(
-                                                  '${_currentRangeValues.end.toStringAsFixed(2)} INR',
-                                                  style: TextStyle(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(
-                                              height: 12,
-                                            ),
-                                            SliderTheme(
-                                              data: SliderThemeData(
-                                                  rangeThumbShape:
-                                                      const RoundRangeSliderThumbShape(
-                                                          enabledThumbRadius:
-                                                              7),
-                                                  overlayShape:
-                                                      const RoundSliderOverlayShape(
-                                                    overlayRadius: 5.0,
-                                                  ),
-                                                  trackHeight: 2,
-                                                  inactiveTrackColor:
-                                                      AppColors.textSecondary),
-                                              child: RangeSlider(
-                                                activeColor: AppColors.primary,
-                                                values: _currentRangeValues,
-                                                divisions: 10,
-                                                labels: labels,
-                                                min: _startValue,
-                                                max: _endValue,
-                                                onChanged:
-                                                    (RangeValues values) {
-                                                  setState(() {
-                                                    _currentRangeValues =
-                                                        values;
-                                                  });
-                                                },
-                                              ),
-                                            ),
-                                            Divider(
-                                              thickness: 1.0,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Stops",
-                                                  style: GoogleFonts.poppins(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      directStop =
-                                                          oneStop = false;
-                                                    });
-                                                  },
-                                                  child: Text(
-                                                    "Clear",
-                                                    style: GoogleFonts.poppins(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                _hasStopFilter("Direct")
-                                                    ? Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .all(4.0),
-                                                        child: InkWell(
-                                                          onTap: () {
-                                                            setState(() {
-                                                              directStop =
-                                                                  !directStop;
-                                                              // arrivalthree
-                                                              //     ? arrivalthree = false
-                                                              //     : arrivalthree = true;
-                                                            });
-                                                          },
-                                                          child: Card(
-                                                            color: directStop
-                                                                ? Colors.blue
-                                                                : Colors.white,
-                                                            shape:
-                                                                RoundedRectangleBorder(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          3),
-                                                            ),
-                                                            child: Center(
-                                                              child: Row(
-                                                                children: [
-                                                                  Padding(
-                                                                    padding:
-                                                                        const EdgeInsets
-                                                                            .all(
-                                                                            4.0),
-                                                                    child: Text(
-                                                                      "Direct",
-                                                                      style: GoogleFonts.poppins(
-                                                                          color: Colors
-                                                                              .black,
-                                                                          fontSize:
-                                                                              12,
-                                                                          fontWeight:
-                                                                              FontWeight.w500),
-                                                                    ),
-                                                                  )
-                                                                ],
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      )
-                                                    : Container(),
-                                                _hasStopFilter("1 Stop (s)")
-                                                    ? Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .all(4.0),
-                                                        child: InkWell(
-                                                          onTap: () {
-                                                            setState(() {
-                                                              oneStop =
-                                                                  !oneStop;
-                                                              // arrivalthree
-                                                              //     ? arrivalthree = false
-                                                              //     : arrivalthree = true;
-                                                            });
-                                                          },
-                                                          child: Card(
-                                                            color: oneStop
-                                                                ? Colors.blue
-                                                                : Colors.white,
-                                                            shape:
-                                                                RoundedRectangleBorder(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          3),
-                                                            ),
-                                                            child: Center(
-                                                              child: Row(
-                                                                children: [
-                                                                  Padding(
-                                                                    padding:
-                                                                        const EdgeInsets
-                                                                            .all(
-                                                                            4.0),
-                                                                    child: Text(
-                                                                      "1 Stop (s)",
-                                                                      style: GoogleFonts.poppins(
-                                                                          color: Colors
-                                                                              .black,
-                                                                          fontSize:
-                                                                              12,
-                                                                          fontWeight:
-                                                                              FontWeight.w500),
-                                                                    ),
-                                                                  )
-                                                                ],
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      )
-                                                    : Container(),
-                                              ],
-                                            ),
-                                            Divider(
-                                              thickness: 1.0,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Departure Time",
-                                                  style: GoogleFonts.poppins(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      depOne = depTwo =
-                                                          depThree =
-                                                              depFour = false;
-                                                    });
-                                                  },
-                                                  child: Text(
-                                                    "Clear",
-                                                    style: GoogleFonts.poppins(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        depOne = !depOne;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: depOne
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Column(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      top: 4,
-                                                                      left: 4,
-                                                                      right: 4),
-                                                              child: Icon(
-                                                                Icons.sunny,
-                                                                color: AppColors
-                                                                    .primary,
-                                                              ),
-                                                            ),
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "00-06",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        depTwo = !depTwo;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: depTwo
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Column(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      top: 4,
-                                                                      left: 4,
-                                                                      right: 4),
-                                                              child: Icon(
-                                                                Icons.sunny,
-                                                                color: AppColors
-                                                                    .primary,
-                                                              ),
-                                                            ),
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "06-12",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        depThree = !depThree;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: depThree
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Column(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      top: 4,
-                                                                      left: 4,
-                                                                      right: 4),
-                                                              child: Icon(
-                                                                Icons.sunny,
-                                                                color: AppColors
-                                                                    .primary,
-                                                              ),
-                                                            ),
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "12-18",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        depFour = !depFour;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: depFour
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Column(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      top: 4,
-                                                                      left: 4,
-                                                                      right: 4),
-                                                              child: Icon(
-                                                                Icons.sunny,
-                                                                color: AppColors
-                                                                    .primary,
-                                                              ),
-                                                            ),
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "18-23",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                )
-                                              ],
-                                            ),
-                                            Divider(
-                                              thickness: 1.0,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Arrival Time",
-                                                  style: GoogleFonts.poppins(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      arvlOne = arvlTwo =
-                                                          arvlThree =
-                                                              arvlFour = false;
-                                                    });
-                                                  },
-                                                  child: Text(
-                                                    "Clear",
-                                                    style: GoogleFonts.poppins(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        arvlOne = !arvlOne;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: arvlOne
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Column(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      top: 4,
-                                                                      left: 4,
-                                                                      right: 4),
-                                                              child: Icon(
-                                                                Icons.sunny,
-                                                                color: AppColors
-                                                                    .primary,
-                                                              ),
-                                                            ),
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "00-06",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        arvlTwo = !arvlTwo;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: arvlTwo
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Column(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      top: 4,
-                                                                      left: 4,
-                                                                      right: 4),
-                                                              child: Icon(
-                                                                Icons.sunny,
-                                                                color: AppColors
-                                                                    .primary,
-                                                              ),
-                                                            ),
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "06-12",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        arvlThree = !arvlThree;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: arvlThree
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Column(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      top: 4,
-                                                                      left: 4,
-                                                                      right: 4),
-                                                              child: Icon(
-                                                                Icons.sunny,
-                                                                color: AppColors
-                                                                    .primary,
-                                                              ),
-                                                            ),
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "12-18",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        arvlFour = !arvlFour;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: arvlFour
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Column(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      top: 4,
-                                                                      left: 4,
-                                                                      right: 4),
-                                                              child: Icon(
-                                                                Icons.sunny,
-                                                                color: AppColors
-                                                                    .primary,
-                                                              ),
-                                                            ),
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "18-23",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                )
-                                              ],
-                                            ),
-                                            Divider(
-                                              thickness: 1.0,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Fire Type",
-                                                  style: GoogleFonts.poppins(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      refund =
-                                                          nonrefund = false;
-                                                    });
-                                                  },
-                                                  child: Text(
-                                                    "Clear",
-                                                    style: GoogleFonts.poppins(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        refund = !refund;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: refund
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Row(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "Refundable",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        nonrefund = !nonrefund;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: nonrefund
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Row(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "Non Refundable",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Divider(
-                                              thickness: 1.0,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Connecting Locations",
-                                                  style: GoogleFonts.poppins(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      // refund = nonrefund = false;
-                                                      for (var loc
-                                                          in _connectingLocationcheckboxList) {
-                                                        loc.isChecked = false;
-                                                      }
-                                                    });
-                                                  },
-                                                  child: Text(
-                                                    "Clear",
-                                                    style: GoogleFonts.poppins(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            SizedBox(
-                                              height: 32 *
-                                                  double.parse(widget
-                                                      .filterData!
-                                                      .connect!
-                                                      .length
-                                                      .toString()),
-                                              child: ListView.builder(
-                                                  itemCount:
-                                                      _connectingLocationcheckboxList
-                                                          .length,
-                                                  itemBuilder:
-                                                      (context, index) {
-                                                    return _buildCheckboxListTile(
-                                                        _connectingLocationcheckboxList[
-                                                            index]);
-                                                  }),
-                                            ),
-                                            Divider(
-                                              thickness: 1.0,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Air Lines",
-                                                  style: GoogleFonts.poppins(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      for (var airLine
-                                                          in _airLinescheckboxList) {
-                                                        airLine.isChecked =
-                                                            false;
-                                                      }
-                                                    });
-                                                  },
-                                                  child: Text(
-                                                    "Clear",
-                                                    style: GoogleFonts.poppins(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            SizedBox(
-                                              height: 32 *
-                                                  double.parse(widget
-                                                      .filterData!
-                                                      .airlines!
-                                                      .length
-                                                      .toString()),
-                                              child: ListView.builder(
-                                                  itemCount:
-                                                      _airLinescheckboxList
-                                                          .length,
-                                                  itemBuilder:
-                                                      (context, index) {
-                                                    return _buildAirlinesCheckboxListTile(
-                                                        _airLinescheckboxList[
-                                                            index]);
-                                                  }),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    Divider(
-                                      color: Colors.grey.shade400,
-                                      thickness: 1.2,
-                                    ),
-                                    Align(
-                                      alignment: Alignment.bottomRight,
-                                      child: Container(
-                                        margin:
-                                            const EdgeInsets.only(right: 15),
-                                        height: 40,
-                                        width: 100,
-                                        child: ElevatedButton(
-                                            onPressed: () {
-                                              setState(() {
-                                                updateFilterData();
-                                                filterIcon = false;
-                                              });
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    AppColors.primary,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                )),
-                                            child: Text("Apply",
-                                                style: GoogleFonts.poppins(
-                                                    color: Colors.white,
-                                                    fontSize: 16,
-                                                    fontWeight:
-                                                        FontWeight.w500))),
-                                      ),
-                                    ),
-                                    const SizedBox(
-                                      height: 10,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          )
-                        : Container()
-                  ],
-                ),
-              )
-            : SafeArea(
-                child: Column(
-                  children: [
-                    returnDataFlightDetails!.isEmpty
-                        ? Center(
-                            child: Text(
-                              "No Flights Available",
-                              style: TextStyle(
-                                fontSize: 16.0,
-                                color: AppColors.primary,
-                                fontFamily: 'Poppins',
-                              ),
-                            ),
-                          )
-                        : Expanded(
-                            child: ListView.builder(
-                                itemCount: returnDataFlightDetails!.length,
-                                itemBuilder: (context, index) {
-                                  double amtArrival = returnDataFlightDetails![
-                                              index]
-                                          .fareFamilies!
-                                          .fareFamilies![0]
-                                          .totalPublishFare! *
-                                      double.parse(
-                                          SharedPrefServices.getcurrencyAmount()
-                                              .toString());
-
-                                  return TicketDesign(
-                                    width: double.infinity,
-                                    // height: 350,
-                                    isCornerRounded: true,
-                                    color: Colors.grey.shade300,
-                                    padding: const EdgeInsets.all(10),
-                                    child: Container(
-                                      child: Column(
-                                        children: [
-                                          Container(
-                                            margin: const EdgeInsets.all(5),
-                                            width: double.infinity,
-                                            decoration: BoxDecoration(
-                                                border: Border.all(
-                                                  color: AppColors.primary,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                                color: Colors.grey.shade100),
-                                            child: Column(
-                                              children: [
-                                                Container(
-                                                  margin:
-                                                      const EdgeInsets.all(5),
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Column(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .start,
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          // Image(
-                                                          //   image: NetworkImage(
-                                                          //     widget.returnDataFlightDetails![index]
-                                                          //
-                                                          //         .airLineLogo!,
-                                                          //   ),
-                                                          //   fit: BoxFit.fill,
-                                                          //   height: 30.0,
-                                                          //   width: 30.0,
-                                                          // ),
-
-                                                          Text(
-                                                            "${returnDataFlightDetails![index].airLineName} (${returnDataFlightDetails![index].airLine}-${returnDataFlightDetails![index].flightSegments![0].flightNumber})",
-                                                            style: TextStyle(
-                                                              fontSize: 14.0,
-                                                              color: AppColors
-                                                                  .primary,
-                                                              fontFamily:
-                                                                  'Poppins',
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      Column(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .start,
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .end,
-                                                        children: [
-                                                          Text(
-                                                            returnDataFlightDetails![
-                                                                            index]
-                                                                        .flightSegments!
-                                                                        .length ==
-                                                                    1
-                                                                ? "Direct"
-                                                                : "${returnDataFlightDetails![index].flightSegments!.length - 1} Stop",
-                                                            style:
-                                                                const TextStyle(
-                                                              fontSize: 12.0,
-                                                              color:
-                                                                  Colors.black,
-                                                              fontFamily:
-                                                                  'Poppins',
-                                                            ),
-                                                          ),
-                                                          const Text(
-                                                            "Class: Economy",
-                                                            style: TextStyle(
-                                                              fontSize: 12.0,
-                                                              color:
-                                                                  Colors.black,
-                                                              fontFamily:
-                                                                  'Poppins',
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-
-                                                // works below
-                                                Container(
-                                                  margin: const EdgeInsets.only(
-                                                      left: 5, right: 5),
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Icon(
-                                                        Icons.flight_takeoff,
-                                                        size: 30,
-                                                        color:
-                                                            AppColors.primary,
-                                                      ),
-                                                      Text(
-                                                        returnDataFlightDetails![
-                                                                        index]
-                                                                    .isRefundable ==
-                                                                true
-                                                            ? "Refundable"
-                                                            : "Non Refundable",
-                                                        style: TextStyle(
-                                                          fontSize: 12.0,
-                                                          color: AppColors
-                                                              .textSecondary,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          fontFamily: 'Poppins',
-                                                        ),
-                                                      ),
-                                                      Icon(
-                                                        Icons.flight_land,
-                                                        size: 30,
-                                                        color:
-                                                            AppColors.primary,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                Container(
-                                                  margin:
-                                                      const EdgeInsets.all(5),
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Text(
-                                                        returnDataFlightDetails![
-                                                                index]
-                                                            .originCity
-                                                            .toString(),
-                                                        style: const TextStyle(
-                                                          fontSize: 14.0,
-                                                          color: Colors.black,
-                                                          fontFamily: 'Poppins',
-                                                        ),
-                                                      ),
-                                                      SizedBox(
-                                                        width: 150,
-                                                        child: Divider(
-                                                          color:
-                                                              AppColors.primary,
-                                                          thickness: 3,
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        returnDataFlightDetails![
-                                                                index]
-                                                            .destinationCity
-                                                            .toString(),
-                                                        style: const TextStyle(
-                                                          fontSize: 14.0,
-                                                          color: Colors.black,
-                                                          fontFamily: 'Poppins',
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                Container(
-                                                  margin:
-                                                      const EdgeInsets.all(5),
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Text(
-                                                        DateFormat('HH:mm').format(
-                                                            returnDataFlightDetails![
-                                                                        index]
-                                                                    .flightSegments![
-                                                                        0]
-                                                                    .departureDateTime ??
-                                                                DateTime.now()),
-                                                        style: const TextStyle(
-                                                          fontSize: 12.0,
-                                                          color: Colors.black,
-                                                          fontFamily: 'Poppins',
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        "${returnDataFlightDetails![index].duration}",
-                                                        style: const TextStyle(
-                                                          fontSize: 12.0,
-                                                          color: Colors.black,
-                                                          fontFamily: 'Poppins',
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        DateFormat('HH:mm').format(
-                                                            returnDataFlightDetails![
-                                                                        index]
-                                                                    .flightSegments![
-                                                                        0]
-                                                                    .arrivalDateTime ??
-                                                                DateTime.now()),
-                                                        style: const TextStyle(
-                                                          fontSize: 12.0,
-                                                          color: Colors.black,
-                                                          fontFamily: 'Poppins',
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Container(
-                                            margin: const EdgeInsets.all(8),
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                GestureDetector(
-                                                  onTap: () {
-                                                    showDialog(
-                                                        context: context,
-                                                        builder: (BuildContext
-                                                            context) {
-                                                          return AlertDialog(
-                                                            content: Wrap(
-                                                              // height: 150,
-                                                              children: [
-                                                                Row(
-                                                                  mainAxisAlignment:
-                                                                      MainAxisAlignment
-                                                                          .spaceAround,
-                                                                  children: [
-                                                                    Text(
-                                                                      "Baggage Details",
-                                                                      style:
-                                                                          TextStyle(
-                                                                        fontSize:
-                                                                            14.0,
-                                                                        color: AppColors
-                                                                            .primary,
-                                                                        fontWeight:
-                                                                            FontWeight.bold,
-                                                                        fontFamily:
-                                                                            'Poppins',
-                                                                      ),
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                                Divider(
-                                                                  color: Colors
-                                                                      .grey
-                                                                      .shade400,
-                                                                  thickness:
-                                                                      1.0,
-                                                                ),
-                                                                Column(
-                                                                  mainAxisAlignment:
-                                                                      MainAxisAlignment
-                                                                          .start,
-                                                                  children: [
-                                                                    const SizedBox(
-                                                                      height:
-                                                                          10,
-                                                                    ),
-                                                                    Row(
-                                                                      mainAxisAlignment:
-                                                                          MainAxisAlignment
-                                                                              .spaceAround,
-                                                                      children: [
-                                                                        Row(
-                                                                          children: [
-                                                                            Icon(
-                                                                              Icons.flight_takeoff,
-                                                                              color: AppColors.primary,
-                                                                            ),
-                                                                          ],
-                                                                        ),
-                                                                        Text(
-                                                                          "${returnDataFlightDetails![index].origin} - ${returnDataFlightDetails![index].destination}",
-                                                                          style:
-                                                                              TextStyle(
-                                                                            fontSize:
-                                                                                14.0,
-                                                                            color:
-                                                                                AppColors.primary,
-                                                                            fontWeight:
-                                                                                FontWeight.bold,
-                                                                            fontFamily:
-                                                                                'Poppins',
-                                                                          ),
-                                                                        ),
-                                                                        Text(
-                                                                          "${returnDataFlightDetails![index].airLineName} - ${returnDataFlightDetails![index].airLine}",
-                                                                          style:
-                                                                              TextStyle(
-                                                                            fontSize:
-                                                                                14.0,
-                                                                            color:
-                                                                                AppColors.textSecondary,
-                                                                            fontWeight:
-                                                                                FontWeight.bold,
-                                                                            fontFamily:
-                                                                                'Poppins',
-                                                                          ),
-                                                                        ),
-                                                                      ],
-                                                                    ),
-                                                                    const SizedBox(
-                                                                      height:
-                                                                          10,
-                                                                    ),
-                                                                    Row(
-                                                                      children: [
-                                                                        Icon(
-                                                                          Icons
-                                                                              .luggage_outlined,
-                                                                          color:
-                                                                              AppColors.secondary,
-                                                                        ),
-                                                                        Text(
-                                                                          "${returnDataFlightDetails![index].flightSegments![0].checkInBaggage} CheckedIn Baggage",
-                                                                          style:
-                                                                              TextStyle(
-                                                                            fontSize:
-                                                                                14.0,
-                                                                            color:
-                                                                                AppColors.secondary,
-                                                                            fontWeight:
-                                                                                FontWeight.bold,
-                                                                            fontFamily:
-                                                                                'Poppins',
-                                                                          ),
-                                                                        ),
-                                                                      ],
-                                                                    ),
-                                                                    Row(
-                                                                      children: [
-                                                                        Icon(
-                                                                          Icons
-                                                                              .luggage_outlined,
-                                                                          color:
-                                                                              AppColors.secondary,
-                                                                        ),
-                                                                        Text(
-                                                                          returnDataFlightDetails![index].flightSegments![0].cabinBaggage!.isEmpty
-                                                                              ? "7 kgs Cabin Baggage"
-                                                                              : "${returnDataFlightDetails![index].flightSegments![0].cabinBaggage} Cabin Baggage",
-                                                                          style:
-                                                                              TextStyle(
-                                                                            fontSize:
-                                                                                14.0,
-                                                                            color:
-                                                                                AppColors.secondary,
-                                                                            fontWeight:
-                                                                                FontWeight.bold,
-                                                                            fontFamily:
-                                                                                'Poppins',
-                                                                          ),
-                                                                        ),
-                                                                      ],
-                                                                    ),
-                                                                    Divider(
-                                                                      color: Colors
-                                                                          .grey
-                                                                          .shade400,
-                                                                      thickness:
-                                                                          1.0,
-                                                                    ),
-                                                                  ],
-                                                                )
-                                                              ],
-                                                            ),
-                                                          );
-                                                        });
-                                                  },
-                                                  child: Card(
-                                                    elevation: 0.0,
-                                                    shape:
-                                                        RoundedRectangleBorder(
-                                                      side: BorderSide(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              10),
-                                                    ),
-                                                    child: Padding(
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                              8.0),
-                                                      child: Column(
-                                                        children: [
-                                                          Text(
-                                                            "Baggage",
-                                                            style:
-                                                                textStyleHeading(),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                // need to create returndataflightdetails below tabview
-                                                InkWell(
-                                                  onTap: () {
-                                                    showDialog(
-                                                      context: context,
-                                                      builder: (BuildContext
-                                                          context) {
-                                                        return ReturnFlight(
-                                                          returnFlightDetails:
-                                                              returnDataFlightDetails,
-                                                          index: index,
-                                                        );
-                                                      },
-                                                    );
-                                                  },
-                                                  child: Card(
-                                                    elevation: 0.0,
-                                                    shape:
-                                                        RoundedRectangleBorder(
-                                                      side: BorderSide(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              10),
-                                                    ),
-                                                    child: Padding(
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                              8.0),
-                                                      child: Column(
-                                                        children: [
-                                                          Text(
-                                                            "flight details",
-                                                            style:
-                                                                textStyleHeading(),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Container(
-                                              margin: const EdgeInsets.only(
-                                                left: 5,
-                                                right: 5,
-                                                bottom: 5,
-                                              ),
-                                              child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Row(
-                                                    children: [
-                                                      Text(
-                                                          SharedPrefServices
-                                                                  .getcurrencycode()
-                                                              .toString(),
-                                                          style: TextStyle(
-                                                            fontSize: 14.0,
-                                                            color: AppColors
-                                                                .primary,
-                                                            fontWeight:
-                                                                FontWeight.w700,
-                                                            fontFamily:
-                                                                'poppins',
-                                                          )),
-                                                      const SizedBox(
-                                                        width: 5,
-                                                      ),
-                                                      Text(
-                                                          amtArrival
-                                                              .toStringAsFixed(
-                                                                  2),
-                                                          style: TextStyle(
-                                                            fontSize: 14.0,
-                                                            color: AppColors
-                                                                .primary,
-                                                            fontWeight:
-                                                                FontWeight.w700,
-                                                            fontFamily:
-                                                                'poppins',
-                                                          )),
-                                                    ],
-                                                  ),
-                                                  ElevatedButton(
-                                                      onPressed: () async {
-                                                        setState(() {
-                                                          returnAdultFare =
-                                                              returnDataFlightDetails![
-                                                                      index]
-                                                                  .fareFamilies!
-                                                                  .fareFamilies![
-                                                                      0]
-                                                                  .adultFare;
-                                                          returnAdultTaxFare = double.parse(
-                                                              returnDataFlightDetails![
-                                                                      index]
-                                                                  .fareFamilies!
-                                                                  .fareFamilies![
-                                                                      0]
-                                                                  .markup
-                                                                  .toString());
-
-                                                          returnChildFare = double.parse(
-                                                              returnDataFlightDetails![
-                                                                      index]
-                                                                  .fareFamilies!
-                                                                  .fareFamilies![
-                                                                      0]
-                                                                  .childNetFare
-                                                                  .toString());
-
-                                                          returnAdultTaxFare =
-                                                              0;
-                                                          returnInfantFare = double.parse(
-                                                              returnDataFlightDetails![
-                                                                      index]
-                                                                  .fareFamilies!
-                                                                  .fareFamilies![
-                                                                      0]
-                                                                  .infantNetFare
-                                                                  .toString());
-                                                          returnChildTaxFare =
-                                                              0;
-
-                                                          final flightData = {
-                                                            "traceId1":
-                                                                widget.traceId,
-
-                                                            'flightId1':
-                                                                selectedDepartureFlight!
-                                                                    .flightId
-                                                                    .toString(),
-                                                            'fareId1':
-                                                                selectedDepartureFlight!
-                                                                    .fareFamilies!
-                                                                    .fareFamilies![
-                                                                        0]
-                                                                    .fareId
-                                                                    .toString(),
-
-                                                            "airlineLogo1":
-                                                                selectedDepartureFlight!
-                                                                    .airLineLogo!,
-                                                            "airlineName1":
-                                                                "${selectedDepartureFlight!.airLineName} (${selectedDepartureFlight!.airLine}-${selectedDepartureFlight!.flightSegments![0].flightNumber})",
-                                                            "airlineStop1": selectedDepartureFlight!
-                                                                        .flightSegments!
-                                                                        .length ==
-                                                                    1
-                                                                ? "Direct"
-                                                                : "${selectedDepartureFlight!.flightSegments!.length - 1} Stop",
-                                                            "airlineClass1":
-                                                                "Economy",
-                                                            "airlineRefund1":
-                                                                selectedDepartureFlight!
-                                                                            .isRefundable ==
-                                                                        true
-                                                                    ? "Refundable"
-                                                                    : "Non Refundable",
-                                                            "airlineStart1":
-                                                                selectedDepartureFlight!
-                                                                    .originCity
-                                                                    .toString(),
-                                                            "airlineEnd1":
-                                                                selectedDepartureFlight!
-                                                                    .destinationCity
-                                                                    .toString(),
-                                                            "airlineStartTime1": DateFormat(
-                                                                    'HH:mm')
-                                                                .format(selectedDepartureFlight!
-                                                                        .flightSegments![
-                                                                            0]
-                                                                        .departureDateTime ??
-                                                                    DateTime
-                                                                        .now()),
-                                                            "airlineEndTime1": DateFormat(
-                                                                    'HH:mm')
-                                                                .format(selectedDepartureFlight!
-                                                                        .flightSegments![
-                                                                            0]
-                                                                        .arrivalDateTime ??
-                                                                    DateTime
-                                                                        .now()),
-                                                            "airlineDuration1":
-                                                                selectedDepartureFlight!
-                                                                    .duration
-                                                                    .toString(),
-                                                            "traceId2":
-                                                                widget.traceId,
-                                                            'flightId2':
-                                                                returnDataFlightDetails![
-                                                                        index]
-                                                                    .flightId
-                                                                    .toString(),
-                                                            'fareId2':
-                                                                returnDataFlightDetails![
-                                                                        index]
-                                                                    .fareFamilies!
-                                                                    .fareFamilies![
-                                                                        0]
-                                                                    .fareId
-                                                                    .toString(),
-                                                            "airlineLogo2":
-                                                                returnDataFlightDetails![
-                                                                        index]
-                                                                    .airLineLogo!,
-                                                            "airlineName2":
-                                                                "${returnDataFlightDetails![index].airLineName} (${returnDataFlightDetails![index].airLine}-${returnDataFlightDetails![index].flightSegments![0].flightNumber})",
-                                                            "airlineStop2": returnDataFlightDetails![
-                                                                            index]
-                                                                        .flightSegments!
-                                                                        .length ==
-                                                                    1
-                                                                ? "Direct"
-                                                                : "${returnDataFlightDetails![index].flightSegments!.length - 1} Stop",
-                                                            "airlineClass2":
-                                                                "Economy",
-                                                            "airlineRefund2":
-                                                                returnDataFlightDetails![index]
-                                                                            .isRefundable ==
-                                                                        true
-                                                                    ? "Refundable"
-                                                                    : "Non Refundable",
-                                                            "airlineStart2":
-                                                                returnDataFlightDetails![
-                                                                        index]
-                                                                    .originCity
-                                                                    .toString(),
-                                                            "airlineEnd2":
-                                                                returnDataFlightDetails![
-                                                                        index]
-                                                                    .destinationCity
-                                                                    .toString(),
-                                                            "airlineStartTime2": DateFormat(
-                                                                    'HH:mm')
-                                                                .format(returnDataFlightDetails![
-                                                                            index]
-                                                                        .flightSegments![
-                                                                            0]
-                                                                        .departureDateTime ??
-                                                                    DateTime
-                                                                        .now()),
-                                                            "airlineEndTime2": DateFormat(
-                                                                    'HH:mm')
-                                                                .format(returnDataFlightDetails![
-                                                                            index]
-                                                                        .flightSegments![
-                                                                            0]
-                                                                        .arrivalDateTime ??
-                                                                    DateTime
-                                                                        .now()),
-                                                            "airlineDuration2":
-                                                                returnDataFlightDetails![
-                                                                        index]
-                                                                    .duration
-                                                                    .toString(),
-                                                            "adultBasefare":
-                                                                double.parse(
-                                                                    SharedPrefServices
-                                                                            .getdomesticAmount() ??
-                                                                        '0.0'),
-                                                            // SharedPrefServices.getdomesticAmount().toString(),
-                                                            "adulttaxfare":
-                                                                departureAdultTaxFare ??
-                                                                    0,
-                                                            "childBasefare":
-                                                                departureChildFare ??
-                                                                    0,
-                                                            "childtaxfare":
-                                                                departureChildTaxFare ??
-                                                                    0,
-                                                            "infantBasefare":
-                                                                departureInfantFare ??
-                                                                    0,
-                                                            "infanttaxfare":
-                                                                departureInfantTaxFare ??
-                                                                    0,
-                                                            "returnAdultBasefare":
-                                                                amtArrival,
-                                                            "returnAdultTaxfare":
-                                                                returnAdultTaxFare ??
-                                                                    0,
-                                                            "returnChildBasefare":
-                                                                returnChildFare ??
-                                                                    0,
-                                                            "returnChildTaxfare":
-                                                                returnChildTaxFare ??
-                                                                    0,
-                                                            "returnInfantBasefare":
-                                                                returnInfantFare ??
-                                                                    0,
-                                                            "returnInfantTaxfare":
-                                                                returnInfantTaxFare ??
-                                                                    0,
-                                                            "adultCount": widget
-                                                                .adultcount
-                                                                .toDouble(),
-                                                            "childCount": widget
-                                                                .childcount
-                                                                .toDouble(),
-                                                            "infantCount":
-                                                                widget
-                                                                    .infantcount
-                                                                    .toDouble(),
-                                                          };
-
-                                                          // Print the collected data
-                                                          print(
-                                                              "Flight Data: $flightData");
-
-                                                          print(
-                                                              'Print Trace Id');
-
-                                                          print(widget.traceId);
-
-                                                          print(
-                                                              'Print Fare Id depature ');
-                                                          print(
-                                                              selectedDepartureFlight!
-                                                                  .fareFamilies!
-                                                                  .fareFamilies![
-                                                                      0]
-                                                                  .fareId
-                                                                  .toString());
-
-                                                          print(
-                                                              'Print Fare Id Arrival  ');
-                                                          print(
-                                                            returnDataFlightDetails![
-                                                                    index]
-                                                                .fareFamilies!
-                                                                .fareFamilies![
-                                                                    0]
-                                                                .fareId
-                                                                .toString(),
-                                                          );
-
-                                                          Navigator.of(context)
-                                                              .push(
-                                                            MaterialPageRoute(
-                                                              builder:
-                                                                  (BuildContext
-                                                                      context) {
-                                                                // airlineLogo,
-
-                                                                return BookDomesticFlight(
-                                                                    traceId1: widget
-                                                                        .traceId,
-                                                                    flightId1: selectedDepartureFlight!
-                                                                        .flightId
-                                                                        .toString(),
-                                                                    fareId1: selectedDepartureFlight!
-                                                                        .fareFamilies!
-                                                                        .fareFamilies![
-                                                                            0]
-                                                                        .fareId
-                                                                        .toString(),
-                                                                    airlineLogo1:
-                                                                        selectedDepartureFlight!
-                                                                            .airLineLogo!,
-                                                                    airlineName1:
-                                                                        "${selectedDepartureFlight!.airLineName} (${selectedDepartureFlight!.airLine}-${selectedDepartureFlight!.flightSegments![0].flightNumber})",
-                                                                    airlineStop1: selectedDepartureFlight!.flightSegments!.length == 1
-                                                                        ? "Direct"
-                                                                        : "${selectedDepartureFlight!.flightSegments!.length - 1} Stop",
-                                                                    airlineClass1:
-                                                                        "Economy",
-                                                                    airlineRefund1: selectedDepartureFlight!.isRefundable ==
-                                                                            true
-                                                                        ? "Refundable"
-                                                                        : "Non Refundable",
-                                                                    airlineStart1:
-                                                                        selectedDepartureFlight!
-                                                                            .originCity
-                                                                            .toString(),
-                                                                    airlineEnd1:
-                                                                        selectedDepartureFlight!
-                                                                            .destinationCity
-                                                                            .toString(),
-                                                                    airlineStartTime1:
-                                                                        DateFormat('HH:mm')
-                                                                            .format(selectedDepartureFlight!.flightSegments![0].departureDateTime ?? DateTime.now()),
-                                                                    airlineEndTime1: DateFormat('HH:mm').format(selectedDepartureFlight!.flightSegments![0].arrivalDateTime ?? DateTime.now()),
-                                                                    airlineDuration1: selectedDepartureFlight!.duration.toString(),
-                                                                    traceId2: widget.traceId,
-                                                                    flightId2: returnDataFlightDetails![index].flightId.toString(),
-                                                                    fareId2: returnDataFlightDetails![index].fareFamilies!.fareFamilies![0].fareId.toString(),
-                                                                    airlineLogo2: returnDataFlightDetails![index].airLineLogo!,
-                                                                    airlineName2: "${returnDataFlightDetails![index].airLineName} (${returnDataFlightDetails![index].airLine}-${returnDataFlightDetails![index].flightSegments![0].flightNumber})",
-                                                                    airlineStop2: returnDataFlightDetails![index].flightSegments!.length == 1 ? "Direct" : "${returnDataFlightDetails![index].flightSegments!.length - 1} Stop",
-                                                                    airlineClass2: "Economy",
-                                                                    airlineRefund2: returnDataFlightDetails![index].isRefundable == true ? "Refundable" : "Non Refundable",
-                                                                    airlineStart2: returnDataFlightDetails![index].originCity.toString(),
-                                                                    airlineEnd2: returnDataFlightDetails![index].destinationCity.toString(),
-                                                                    airlineStartTime2: DateFormat('HH:mm').format(returnDataFlightDetails![index].flightSegments![0].departureDateTime ?? DateTime.now()),
-                                                                    airlineEndTime2: DateFormat('HH:mm').format(returnDataFlightDetails![index].flightSegments![0].arrivalDateTime ?? DateTime.now()),
-                                                                    airlineDuration2: returnDataFlightDetails![index].duration.toString(),
-                                                                    adultBasefare: double.parse(SharedPrefServices.getdomesticAmount() ?? '0.0'),
-                                                                    adulttaxfare: departureAdultTaxFare ?? 0,
-                                                                    childBasefare: departureChildFare ?? 0,
-                                                                    childtaxfare: departureChildTaxFare ?? 0,
-                                                                    infantBasefare: departureInfantFare ?? 0,
-                                                                    infanttaxfare: departureInfantTaxFare ?? 0,
-                                                                    returnAdultBasefare: amtArrival,
-                                                                    returnAdultTaxfare: returnAdultTaxFare ?? 0,
-                                                                    returnChildBasefare: returnChildFare ?? 0,
-                                                                    returnChildTaxfare: returnChildTaxFare ?? 0,
-                                                                    returnInfantBasefare: returnInfantFare ?? 0,
-                                                                    returnInfantTaxfare: returnInfantTaxFare ?? 0,
-                                                                    adultCount: widget.adultcount.toDouble(),
-                                                                    childCount: widget.childcount.toDouble(),
-                                                                    infantCount: widget.infantcount.toDouble());
-                                                              },
-                                                            ),
-                                                          );
-                                                          print('FareIds');
-                                                          print(
-                                                              selectedDepartureFlight!
-                                                                  .fareFamilies!
-                                                                  .fareFamilies![
-                                                                      0]
-                                                                  .fareId
-                                                                  .toString());
-
-                                                          if (returnDataFlightDetails![
-                                                                      index]
-                                                                  .fareFamilies!
-                                                                  .fareFamilies![
-                                                                      0]
-                                                                  .fareId!
-                                                                  .length >
-                                                              1) {
-                                                            // print(returnDataFlightDetails![
-                                                            //         index]
-                                                            //     .fareFamilies!
-                                                            //     .fareId![1]
-                                                            //     .toString());
-                                                          } else {
-                                                            print(
-                                                                "No second fareId available");
-                                                          }
-                                                        });
-                                                      },
-                                                      style: ElevatedButton
-                                                          .styleFrom(
-                                                              backgroundColor:
-                                                                  AppColors
-                                                                      .primary,
-                                                              shape:
-                                                                  RoundedRectangleBorder(
-                                                                borderRadius:
-                                                                    BorderRadius
-                                                                        .circular(
-                                                                            10),
-                                                              )),
-                                                      child: Text("Book Now",
-                                                          style: GoogleFonts
-                                                              .poppins(
-                                                            color: Colors.white,
-                                                            fontSize: 14,
-                                                          )))
-                                                ],
-                                              ))
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }),
-                          ),
-                    filterIcon
-                        ? Expanded(
-                            child: SingleChildScrollView(
-                              child: Container(
-                                color: Colors.green[100],
-                                child: Column(
-                                  children: [
-                                    const SizedBox(
-                                      height: 30,
-                                    ),
-                                    Container(
-                                      width: double.infinity,
-                                      margin: const EdgeInsets.only(
-                                          right: 15, left: 15),
-                                      decoration: BoxDecoration(
-                                          color: Colors.grey[300],
-                                          borderRadius:
-                                              BorderRadius.circular(3),
-                                          border: Border.all(
-                                              color: AppColors.primary)),
-                                      child: Container(
-                                        margin: const EdgeInsets.only(
-                                            right: 15, left: 15),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const SizedBox(
-                                              height: 20,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Filters",
-                                                  style: GoogleFonts.poppins(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      directStop = oneStop = depOne =
-                                                          depTwo = depThree = depFour =
-                                                              arvlOne = arvlTwo =
-                                                                  arvlThree = arvlFour =
-                                                                      refund =
-                                                                          nonrefund =
-                                                                              false;
-                                                      turnOffLocations();
-
-                                                      _currentRangeValues =
-                                                          RangeValues(
-                                                              double.parse(widget
-                                                                  .filterData!
-                                                                  .price!
-                                                                  .minPrice
-                                                                  .toString()),
-                                                              double.parse(widget
-                                                                  .filterData!
-                                                                  .price!
-                                                                  .maxPrice
-                                                                  .toString()));
-                                                    });
-                                                  },
-                                                  child: Text(
-                                                    "Clear all",
-                                                    style: GoogleFonts.poppins(
-                                                        color:
-                                                            AppColors.secondary,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(
-                                              height: 15,
-                                            ),
-                                            Divider(
-                                              thickness: 1.0,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Price Range",
-                                                  style: GoogleFonts.poppins(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      _currentRangeValues =
-                                                          RangeValues(
-                                                              double.parse(widget
-                                                                  .filterData!
-                                                                  .price!
-                                                                  .minPrice
-                                                                  .toString()),
-                                                              double.parse(widget
-                                                                  .filterData!
-                                                                  .price!
-                                                                  .maxPrice
-                                                                  .toString()));
-                                                    });
-                                                  },
-                                                  child: Text(
-                                                    "Clear",
-                                                    style: GoogleFonts.poppins(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  '${_currentRangeValues.start.toStringAsFixed(2)} INR',
-                                                  style: TextStyle(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14),
-                                                ),
-                                                Text(
-                                                  '${_currentRangeValues.end.toStringAsFixed(2)} INR',
-                                                  style: TextStyle(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(
-                                              height: 12,
-                                            ),
-                                            SliderTheme(
-                                              data: SliderThemeData(
-                                                  rangeThumbShape:
-                                                      const RoundRangeSliderThumbShape(
-                                                          enabledThumbRadius:
-                                                              7),
-                                                  overlayShape:
-                                                      const RoundSliderOverlayShape(
-                                                    overlayRadius: 5.0,
-                                                  ),
-                                                  trackHeight: 2,
-                                                  inactiveTrackColor:
-                                                      AppColors.textSecondary),
-                                              child: RangeSlider(
-                                                activeColor: AppColors.primary,
-                                                values: _currentRangeValues,
-                                                divisions: 10,
-                                                labels: labels,
-                                                min: _startValue,
-                                                max: _endValue,
-                                                onChanged:
-                                                    (RangeValues values) {
-                                                  setState(() {
-                                                    _currentRangeValues =
-                                                        values;
-                                                  });
-                                                },
-                                              ),
-                                            ),
-                                            Divider(
-                                              thickness: 1.0,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Stops",
-                                                  style: GoogleFonts.poppins(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      directStop =
-                                                          oneStop = false;
-                                                    });
-                                                  },
-                                                  child: Text(
-                                                    "Clear",
-                                                    style: GoogleFonts.poppins(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                _hasStopFilter("Direct")
-                                                    ? Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .all(4.0),
-                                                        child: InkWell(
-                                                          onTap: () {
-                                                            setState(() {
-                                                              directStop =
-                                                                  !directStop;
-                                                              // arrivalthree
-                                                              //     ? arrivalthree = false
-                                                              //     : arrivalthree = true;
-                                                            });
-                                                          },
-                                                          child: Card(
-                                                            color: directStop
-                                                                ? Colors.blue
-                                                                : Colors.white,
-                                                            shape:
-                                                                RoundedRectangleBorder(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          3),
-                                                            ),
-                                                            child: Center(
-                                                              child: Row(
-                                                                children: [
-                                                                  Padding(
-                                                                    padding:
-                                                                        const EdgeInsets
-                                                                            .all(
-                                                                            4.0),
-                                                                    child: Text(
-                                                                      "Direct",
-                                                                      style: GoogleFonts.poppins(
-                                                                          color: Colors
-                                                                              .black,
-                                                                          fontSize:
-                                                                              12,
-                                                                          fontWeight:
-                                                                              FontWeight.w500),
-                                                                    ),
-                                                                  )
-                                                                ],
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      )
-                                                    : Container(),
-                                                _hasStopFilter("1 Stop (s)")
-                                                    ? Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .all(4.0),
-                                                        child: InkWell(
-                                                          onTap: () {
-                                                            setState(() {
-                                                              oneStop =
-                                                                  !oneStop;
-                                                              // arrivalthree
-                                                              //     ? arrivalthree = false
-                                                              //     : arrivalthree = true;
-                                                            });
-                                                          },
-                                                          child: Card(
-                                                            color: oneStop
-                                                                ? Colors.blue
-                                                                : Colors.white,
-                                                            shape:
-                                                                RoundedRectangleBorder(
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          3),
-                                                            ),
-                                                            child: Center(
-                                                              child: Row(
-                                                                children: [
-                                                                  Padding(
-                                                                    padding:
-                                                                        const EdgeInsets
-                                                                            .all(
-                                                                            4.0),
-                                                                    child: Text(
-                                                                      "1 Stop (s)",
-                                                                      style: GoogleFonts.poppins(
-                                                                          color: Colors
-                                                                              .black,
-                                                                          fontSize:
-                                                                              12,
-                                                                          fontWeight:
-                                                                              FontWeight.w500),
-                                                                    ),
-                                                                  )
-                                                                ],
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      )
-                                                    : Container(),
-                                              ],
-                                            ),
-                                            Divider(
-                                              thickness: 1.0,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Departure Time",
-                                                  style: GoogleFonts.poppins(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      depOne = depTwo =
-                                                          depThree =
-                                                              depFour = false;
-                                                    });
-                                                  },
-                                                  child: Text(
-                                                    "Clear",
-                                                    style: GoogleFonts.poppins(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        depOne = !depOne;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: depOne
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Column(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      top: 4,
-                                                                      left: 4,
-                                                                      right: 4),
-                                                              child: Icon(
-                                                                Icons.sunny,
-                                                                color: AppColors
-                                                                    .primary,
-                                                              ),
-                                                            ),
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "00-06",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        depTwo = !depTwo;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: depTwo
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Column(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      top: 4,
-                                                                      left: 4,
-                                                                      right: 4),
-                                                              child: Icon(
-                                                                Icons.sunny,
-                                                                color: AppColors
-                                                                    .primary,
-                                                              ),
-                                                            ),
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "06-12",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        depThree = !depThree;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: depThree
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Column(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      top: 4,
-                                                                      left: 4,
-                                                                      right: 4),
-                                                              child: Icon(
-                                                                Icons.sunny,
-                                                                color: AppColors
-                                                                    .primary,
-                                                              ),
-                                                            ),
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "12-18",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        depFour = !depFour;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: depFour
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Column(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      top: 4,
-                                                                      left: 4,
-                                                                      right: 4),
-                                                              child: Icon(
-                                                                Icons.sunny,
-                                                                color: AppColors
-                                                                    .primary,
-                                                              ),
-                                                            ),
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "18-23",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                )
-                                              ],
-                                            ),
-                                            Divider(
-                                              thickness: 1.0,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Arrival Time",
-                                                  style: GoogleFonts.poppins(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      arvlOne = arvlTwo =
-                                                          arvlThree =
-                                                              arvlFour = false;
-                                                    });
-                                                  },
-                                                  child: Text(
-                                                    "Clear",
-                                                    style: GoogleFonts.poppins(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        arvlOne = !arvlOne;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: arvlOne
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Column(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      top: 4,
-                                                                      left: 4,
-                                                                      right: 4),
-                                                              child: Icon(
-                                                                Icons.sunny,
-                                                                color: AppColors
-                                                                    .primary,
-                                                              ),
-                                                            ),
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "00-06",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        arvlTwo = !arvlTwo;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: arvlTwo
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Column(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      top: 4,
-                                                                      left: 4,
-                                                                      right: 4),
-                                                              child: Icon(
-                                                                Icons.sunny,
-                                                                color: AppColors
-                                                                    .primary,
-                                                              ),
-                                                            ),
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "06-12",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        arvlThree = !arvlThree;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: arvlThree
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Column(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      top: 4,
-                                                                      left: 4,
-                                                                      right: 4),
-                                                              child: Icon(
-                                                                Icons.sunny,
-                                                                color: AppColors
-                                                                    .primary,
-                                                              ),
-                                                            ),
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "12-18",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        arvlFour = !arvlFour;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: arvlFour
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Column(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .only(
-                                                                      top: 4,
-                                                                      left: 4,
-                                                                      right: 4),
-                                                              child: Icon(
-                                                                Icons.sunny,
-                                                                color: AppColors
-                                                                    .primary,
-                                                              ),
-                                                            ),
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "18-23",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                )
-                                              ],
-                                            ),
-                                            Divider(
-                                              thickness: 1.0,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Fire Type",
-                                                  style: GoogleFonts.poppins(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      refund =
-                                                          nonrefund = false;
-                                                    });
-                                                  },
-                                                  child: Text(
-                                                    "Clear",
-                                                    style: GoogleFonts.poppins(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        refund = !refund;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: refund
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Row(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "Refundable",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.all(4.0),
-                                                  child: InkWell(
-                                                    onTap: () {
-                                                      setState(() {
-                                                        nonrefund = !nonrefund;
-                                                      });
-                                                    },
-                                                    child: Card(
-                                                      color: nonrefund
-                                                          ? Colors.blue
-                                                          : Colors.white,
-                                                      shape:
-                                                          RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(3),
-                                                      ),
-                                                      child: Center(
-                                                        child: Row(
-                                                          children: [
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(4.0),
-                                                              child: Text(
-                                                                "Non Refundable",
-                                                                style: GoogleFonts.poppins(
-                                                                    color: Colors
-                                                                        .black,
-                                                                    fontSize:
-                                                                        12,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w500),
-                                                              ),
-                                                            )
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Divider(
-                                              thickness: 1.0,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Connecting Locations",
-                                                  style: GoogleFonts.poppins(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      // refund = nonrefund = false;
-                                                      for (var loc
-                                                          in _connectingLocationcheckboxList) {
-                                                        loc.isChecked = false;
-                                                      }
-                                                    });
-                                                  },
-                                                  child: Text(
-                                                    "Clear",
-                                                    style: GoogleFonts.poppins(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            SizedBox(
-                                              height: 32 *
-                                                  double.parse(widget
-                                                      .filterData!
-                                                      .connect!
-                                                      .length
-                                                      .toString()),
-                                              child: ListView.builder(
-                                                  itemCount:
-                                                      _connectingLocationcheckboxList
-                                                          .length,
-                                                  itemBuilder:
-                                                      (context, index) {
-                                                    return _buildCheckboxListTile(
-                                                        _connectingLocationcheckboxList[
-                                                            index]);
-                                                  }),
-                                            ),
-                                            Divider(
-                                              thickness: 1.0,
-                                              color: AppColors.textSecondary,
-                                            ),
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Text(
-                                                  "Air Lines",
-                                                  style: GoogleFonts.poppins(
-                                                      color: AppColors.primary,
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500),
-                                                ),
-                                                InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      for (var airLine
-                                                          in _airLinescheckboxList) {
-                                                        airLine.isChecked =
-                                                            false;
-                                                      }
-                                                    });
-                                                  },
-                                                  child: Text(
-                                                    "Clear",
-                                                    style: GoogleFonts.poppins(
-                                                        color: AppColors
-                                                            .textSecondary,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w500),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            SizedBox(
-                                              height: 32 *
-                                                  double.parse(widget
-                                                      .filterData!
-                                                      .airlines!
-                                                      .length
-                                                      .toString()),
-                                              child: ListView.builder(
-                                                  itemCount:
-                                                      _airLinescheckboxList
-                                                          .length,
-                                                  itemBuilder:
-                                                      (context, index) {
-                                                    return _buildAirlinesCheckboxListTile(
-                                                        _airLinescheckboxList[
-                                                            index]);
-                                                  }),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    Divider(
-                                      color: Colors.grey.shade400,
-                                      thickness: 1.2,
-                                    ),
-                                    Align(
-                                      alignment: Alignment.bottomRight,
-                                      child: Container(
-                                        margin:
-                                            const EdgeInsets.only(right: 15),
-                                        height: 40,
-                                        width: 100,
-                                        child: ElevatedButton(
-                                            onPressed: () {
-                                              setState(() {
-                                                updateFilterData();
-                                                filterIcon = false;
-                                              });
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    AppColors.primary,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                )),
-                                            child: Text("Apply",
-                                                style: GoogleFonts.poppins(
-                                                    color: Colors.white,
-                                                    fontSize: 16,
-                                                    fontWeight:
-                                                        FontWeight.w500))),
-                                      ),
-                                    ),
-                                    const SizedBox(
-                                      height: 10,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          )
-                        : Container()
-                  ],
-                ),
-              ));
-  }
-
-  updateData() {
-    setState(() {
-      dataFlightDetails = widget.originalData;
-      returnDataFlightDetails = widget.returnFlightDetails;
-    });
-  }
-
-  fillConnectingLocationList() {
-    _connectingLocationcheckboxList = List.generate(
-        widget.filterData!.connect!.length,
-        (index) => ConnectingLocationsCheckboxModel(
-            title: widget.filterData!.connect![index].label.toString()));
-  }
-
-  fillAirLinesList() {
-    _airLinescheckboxList = List.generate(
-        widget.filterData!.airlines!.length,
-        (index) => AirlinesCheckboxModel(
-            title: widget.filterData!.airlines![index].label.toString()));
-  }
-
-  Widget _buildCheckboxListTile(
-      ConnectingLocationsCheckboxModel connectingLocationcheckboxList) {
-    return CheckboxListTile(
-      activeColor: Colors.blue,
-      title: Text(
-        connectingLocationcheckboxList.title,
-        style: GoogleFonts.poppins(
-            color: Colors.black, fontSize: 12, fontWeight: FontWeight.w500),
       ),
-      value: connectingLocationcheckboxList.isChecked,
-      onChanged: (bool? value) {
-        setState(() {
-          connectingLocationcheckboxList.isChecked = value ?? false;
-        });
-      },
     );
   }
+}
 
-  Widget _buildAirlinesCheckboxListTile(
-      AirlinesCheckboxModel airlinesCheckboxModel) {
-    return CheckboxListTile(
-      activeColor: Colors.blue,
-      title: Text(
-        airlinesCheckboxModel.title,
-        style: GoogleFonts.poppins(
-            color: Colors.black, fontSize: 12, fontWeight: FontWeight.w500),
-      ),
-      value: airlinesCheckboxModel.isChecked,
-      onChanged: (bool? value) {
-        setState(() {
-          airlinesCheckboxModel.isChecked = value ?? false;
-        });
-      },
-    );
-  }
+/// One leg's (onward's or return's) own independent filter selection — see
+/// the doc comment on `_FetchedDomesticMulticityFlightsState`'s
+/// `_onwardFilters`/`_returnFilters` fields for why this isn't shared.
+class _LegFilterState {
+  RangeValues range = const RangeValues(0, 0);
+  FlightSortOption? sort;
+  bool directStop = false;
+  bool oneStop = false;
+  bool dep1 = false, dep2 = false, dep3 = false, dep4 = false;
+  bool arv1 = false, arv2 = false, arv3 = false, arv4 = false;
+  bool refund = false;
+  bool nonrefund = false;
+  List<ConnectingLocationsCheckboxModel> connecting = [];
+  List<AirlinesCheckboxModel> airlines = [];
 
-  turnOffLocations() {
-    for (var loc in _connectingLocationcheckboxList) {
-      loc.isChecked = false;
-    }
-    for (var airLine in _airLinescheckboxList) {
-      airLine.isChecked = false;
+  bool get hasActiveFilters =>
+      directStop ||
+      oneStop ||
+      dep1 ||
+      dep2 ||
+      dep3 ||
+      dep4 ||
+      arv1 ||
+      arv2 ||
+      arv3 ||
+      arv4 ||
+      refund ||
+      nonrefund ||
+      connecting.any((f) => f.isChecked) ||
+      airlines.any((f) => f.isChecked);
+
+  /// Feeds the quick-filter bar's "Filters" badge for this leg.
+  int get activeFilterCount =>
+      (directStop ? 1 : 0) +
+      (oneStop ? 1 : 0) +
+      (dep1 ? 1 : 0) +
+      (dep2 ? 1 : 0) +
+      (dep3 ? 1 : 0) +
+      (dep4 ? 1 : 0) +
+      (arv1 ? 1 : 0) +
+      (arv2 ? 1 : 0) +
+      (arv3 ? 1 : 0) +
+      (arv4 ? 1 : 0) +
+      (refund ? 1 : 0) +
+      (nonrefund ? 1 : 0) +
+      connecting.where((f) => f.isChecked).length +
+      airlines.where((f) => f.isChecked).length;
+}
+
+class _LegFare {
+  const _LegFare({required this.basefare, required this.adultTaxFare, required this.childFare, required this.infantFare});
+  final double basefare;
+  final double adultTaxFare;
+  final double childFare;
+  final double infantFare;
+}
+
+class _LegBookingFields {
+  const _LegBookingFields({
+    required this.name,
+    required this.stop,
+    required this.refund,
+    required this.start,
+    required this.end,
+    required this.startTime,
+    required this.endTime,
+    required this.duration,
+  });
+  final String name;
+  final String stop;
+  final String refund;
+  final String start;
+  final String end;
+  final String startTime;
+  final String endTime;
+  final String duration;
+}
+
+
+/// The dual pane itself: onward and return each fill the full page width
+/// (standard `PageView` swipe between them), with a compact "peek" rail of
+/// mini price/time cards for the *other* leg fading in along the trailing
+/// edge as you drag towards it — tapping the rail (or finishing the drag)
+/// brings that pane into full focus. Both panes scroll vertically on their
+/// own `ListView`, independent of the horizontal page drag (different
+/// gesture axes, so Flutter's gesture arena doesn't need any special
+/// handling to keep them from fighting each other).
+class _DualPaneFlights extends StatefulWidget {
+  const _DualPaneFlights({
+    required this.onward,
+    required this.returnFlights,
+    required this.selectedOnward,
+    required this.selectedReturn,
+    required this.onSelectOnward,
+    required this.onSelectReturn,
+    required this.currency,
+    required this.onFocusChanged,
+  });
+
+  final List<shared.FlightDetail> onward;
+  final List<shared.FlightDetail> returnFlights;
+  final shared.FlightDetail? selectedOnward;
+  final shared.FlightDetail? selectedReturn;
+  final ValueChanged<shared.FlightDetail> onSelectOnward;
+  final ValueChanged<shared.FlightDetail> onSelectReturn;
+  final double currency;
+
+  /// Fires (0 or 1) whenever the in-focus pane changes, so the parent
+  /// screen's AppBar filter icon knows which leg's `_LegFilterState` to
+  /// open/tint for.
+  final ValueChanged<int> onFocusChanged;
+
+  @override
+  State<_DualPaneFlights> createState() => _DualPaneFlightsState();
+}
+
+class _DualPaneFlightsState extends State<_DualPaneFlights> {
+  static const _peekWidth = 108.0;
+
+  late final PageController _controller = PageController()..addListener(_onScroll);
+  double _page = 0;
+  int _lastReportedFocus = 0;
+
+  void _onScroll() {
+    if (!_controller.hasClients) return;
+    final page = _controller.page;
+    if (page == null) return;
+    if (page != _page) setState(() => _page = page);
+    final rounded = page.round().clamp(0, 1);
+    if (rounded != _lastReportedFocus) {
+      _lastReportedFocus = rounded;
+      widget.onFocusChanged(rounded);
     }
   }
 
-  removeDuplicatesfromList() {
-    setState(() {
-      dataFlightDetails!.toSet().toList();
-    });
+  @override
+  void dispose() {
+    _controller.removeListener(_onScroll);
+    _controller.dispose();
+    super.dispose();
   }
 
-  updateFilterData() {
-    // hotelsData!.clear();
-    setState(() {
-      dataFlightDetails = widget.originalData!.where((flight) {
-        return ((flight.fareFamilies!.fareFamilies![0].adultPublishFare! *
-                    double.parse(
-                        SharedPrefServices.getcurrencyAmount().toString())) >=
-                _currentRangeValues.start &&
-            (flight.fareFamilies!.fareFamilies![0].adultPublishFare! *
-                    double.parse(
-                        SharedPrefServices.getcurrencyAmount().toString())) <=
-                _currentRangeValues.end);
-      }).toList();
+  void _focus(int page) {
+    _controller.animateToPage(page, duration: const Duration(milliseconds: 320), curve: Curves.easeOutCubic);
+  }
 
-      if (directStop) {
-        dataFlightDetails = widget.originalData!.where((flight) {
-          return (flight.flightSegments!.length == 1 &&
-              (flight.fareFamilies!.fareFamilies![0].adultPublishFare! *
-                      double.parse(
-                          SharedPrefServices.getcurrencyAmount().toString())) >=
-                  _currentRangeValues.start &&
-              (flight.fareFamilies!.fareFamilies![0].adultPublishFare! *
-                      double.parse(
-                          SharedPrefServices.getcurrencyAmount().toString())) <=
-                  _currentRangeValues.end);
-        }).toList();
-      }
-      if (oneStop) {
-        dataFlightDetails = widget.originalData!.where((flight) {
-          return (flight.flightSegments!.length == 2 &&
-              (flight.fareFamilies!.fareFamilies![0].adultPublishFare! *
-                      double.parse(
-                          SharedPrefServices.getcurrencyAmount().toString())) >=
-                  _currentRangeValues.start &&
-              (flight.fareFamilies!.fareFamilies![0].adultPublishFare! *
-                      double.parse(
-                          SharedPrefServices.getcurrencyAmount().toString())) <=
-                  _currentRangeValues.end);
-        }).toList();
-      }
+  @override
+  Widget build(BuildContext context) {
+    final returnOpacity = (1 - _page).clamp(0.0, 1.0);
+    final onwardPeekOpacity = _page.clamp(0.0, 1.0);
 
-      bool isTimeInRange(TimeOfDay time, TimeOfDay start, TimeOfDay end) {
-        return (time.hour > start.hour ||
-                (time.hour == start.hour && time.minute >= start.minute)) &&
-            (time.hour < end.hour ||
-                (time.hour == end.hour && time.minute <= end.minute));
-      }
-
-      if (depOne) {
-        dataFlightDetails = widget.originalData!.where((flight) {
-          return (isTimeInRange(
-              const TimeOfDay(hour: 0, minute: 0),
-              TimeOfDay(
-                  hour: flight.flightSegments![0].departureDateTime!.hour,
-                  minute: flight.flightSegments![0].departureDateTime!.minute),
-              const TimeOfDay(hour: 6, minute: 0)));
-        }).toList();
-      }
-      if (depTwo) {
-        dataFlightDetails = widget.originalData!.where((flight) {
-          return (isTimeInRange(
-              const TimeOfDay(hour: 6, minute: 0),
-              TimeOfDay(
-                  hour: flight.flightSegments![0].departureDateTime!.hour,
-                  minute: flight.flightSegments![0].departureDateTime!.minute),
-              const TimeOfDay(hour: 12, minute: 0)));
-        }).toList();
-      }
-      if (depThree) {
-        dataFlightDetails = widget.originalData!.where((flight) {
-          return (isTimeInRange(
-              const TimeOfDay(hour: 12, minute: 0),
-              TimeOfDay(
-                  hour: flight.flightSegments![0].departureDateTime!.hour,
-                  minute: flight.flightSegments![0].departureDateTime!.minute),
-              const TimeOfDay(hour: 18, minute: 0)));
-        }).toList();
-      }
-      if (depOne) {
-        dataFlightDetails = widget.originalData!.where((flight) {
-          return (isTimeInRange(
-              const TimeOfDay(hour: 18, minute: 0),
-              TimeOfDay(
-                  hour: flight.flightSegments![0].departureDateTime!.hour,
-                  minute: flight.flightSegments![0].departureDateTime!.minute),
-              const TimeOfDay(hour: 23, minute: 59)));
-        }).toList();
-      }
-      //arrival filters
-      if (arvlOne) {
-        dataFlightDetails = widget.originalData!.where((flight) {
-          return (isTimeInRange(
-              const TimeOfDay(hour: 0, minute: 0),
-              TimeOfDay(
-                  hour: flight.flightSegments![0].arrivalDateTime!.hour,
-                  minute: flight.flightSegments![0].arrivalDateTime!.minute),
-              const TimeOfDay(hour: 6, minute: 0)));
-        }).toList();
-      }
-      if (arvlTwo) {
-        dataFlightDetails = widget.originalData!.where((flight) {
-          return (isTimeInRange(
-              const TimeOfDay(hour: 6, minute: 0),
-              TimeOfDay(
-                  hour: flight.flightSegments![0].arrivalDateTime!.hour,
-                  minute: flight.flightSegments![0].arrivalDateTime!.minute),
-              const TimeOfDay(hour: 12, minute: 0)));
-        }).toList();
-      }
-      if (arvlThree) {
-        dataFlightDetails = widget.originalData!.where((flight) {
-          return (isTimeInRange(
-              const TimeOfDay(hour: 12, minute: 0),
-              TimeOfDay(
-                  hour: flight.flightSegments![0].arrivalDateTime!.hour,
-                  minute: flight.flightSegments![0].arrivalDateTime!.minute),
-              const TimeOfDay(hour: 18, minute: 0)));
-        }).toList();
-      }
-      if (arvlFour) {
-        dataFlightDetails = widget.originalData!.where((flight) {
-          return (isTimeInRange(
-              const TimeOfDay(hour: 18, minute: 0),
-              TimeOfDay(
-                  hour: flight.flightSegments![0].arrivalDateTime!.hour,
-                  minute: flight.flightSegments![0].arrivalDateTime!.minute),
-              const TimeOfDay(hour: 23, minute: 59)));
-        }).toList();
-      }
-      if (refund) {
-        dataFlightDetails = widget.originalData!.where((flight) {
-          return (flight.isRefundable == true);
-        }).toList();
-      }
-      if (nonrefund) {
-        dataFlightDetails = widget.originalData!.where((flight) {
-          return (flight.isRefundable == false);
-        }).toList();
-      }
-
-      for (var filter in _connectingLocationcheckboxList) {
-        if (filter.isChecked) {
-          dataFlightDetails = widget.originalData!.where((flight) {
-            print(flight.flightSegments![0].destinationName == filter.title);
-            return (flight.flightSegments![0].destinationName == filter.title);
-          }).toList();
-        }
-      }
-
-      for (var filter in _airLinescheckboxList) {
-        if (filter.isChecked) {
-          dataFlightDetails = widget.originalData!.where((flight) {
-            print(flight.airLineName == filter.title);
-            return (flight.airLineName == filter.title);
-          }).toList();
-        }
-      }
-    });
-    removeDuplicatesfromList();
+    return Stack(
+      children: [
+        PageView(
+          controller: _controller,
+          children: [
+            Padding(
+              padding: EdgeInsets.only(left: 12, right: _peekWidth + 4, top: 8, bottom: 8),
+              child: _LegListView(
+                label: 'Onward',
+                flights: widget.onward,
+                selected: widget.selectedOnward,
+                onSelect: widget.onSelectOnward,
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.only(left: _peekWidth + 4, right: 12, top: 8, bottom: 8),
+              child: _LegListView(
+                label: 'Return',
+                flights: widget.returnFlights,
+                selected: widget.selectedReturn,
+                onSelect: widget.onSelectReturn,
+              ),
+            ),
+          ],
+        ),
+        if (returnOpacity > 0.01)
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: _peekWidth,
+            child: IgnorePointer(
+              ignoring: returnOpacity < 0.05,
+              child: Opacity(
+                opacity: returnOpacity,
+                child: _PeekRail(
+                  label: 'Return',
+                  flights: widget.returnFlights,
+                  selected: widget.selectedReturn,
+                  currency: widget.currency,
+                  onTap: () => _focus(1),
+                ),
+              ),
+            ),
+          ),
+        if (onwardPeekOpacity > 0.01)
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: _peekWidth,
+            child: IgnorePointer(
+              ignoring: onwardPeekOpacity < 0.05,
+              child: Opacity(
+                opacity: onwardPeekOpacity,
+                child: _PeekRail(
+                  label: 'Onward',
+                  flights: widget.onward,
+                  selected: widget.selectedOnward,
+                  currency: widget.currency,
+                  onTap: () => _focus(0),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }
 
-// Model class for the ConnectingLocations checkbox item
-class ConnectingLocationsCheckboxModel {
-  String title;
-  bool isChecked;
+class _LegListView extends StatelessWidget {
+  const _LegListView({required this.label, required this.flights, required this.selected, required this.onSelect});
 
-  ConnectingLocationsCheckboxModel(
-      {required this.title, this.isChecked = false});
+  final String label;
+  final List<shared.FlightDetail> flights;
+  final shared.FlightDetail? selected;
+  final ValueChanged<shared.FlightDetail> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    if (flights.isEmpty) {
+      return Center(
+        child: Text('No $label flights available', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+      );
+    }
+    return ListView.builder(
+      itemCount: flights.length,
+      itemBuilder: (context, index) {
+        final flight = flights[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: FlightResultCard(
+            flight: flight,
+            dense: true,
+            selected: identical(selected, flight),
+            onTap: () => onSelect(flight),
+          ),
+        );
+      },
+    );
+  }
 }
 
-// Model class for the Airlines checkbox item
-class AirlinesCheckboxModel {
-  String title;
-  bool isChecked;
+/// The peeking column of compact mini-cards for the leg not currently in
+/// focus — a static (non-scrolling) strip capped to a handful of flights,
+/// since its job is to signal "there's a return leg here too, drag/tap to
+/// see it," not to be a fully usable list on its own.
+class _PeekRail extends StatelessWidget {
+  const _PeekRail({
+    required this.label,
+    required this.flights,
+    required this.selected,
+    required this.currency,
+    required this.onTap,
+  });
 
-  AirlinesCheckboxModel({required this.title, this.isChecked = false});
+  final String label;
+  final List<shared.FlightDetail> flights;
+  final shared.FlightDetail? selected;
+  final double currency;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Material(
+      color: AppColors.subtleBackground,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(label,
+                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: Colors.grey.shade600)),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  for (final flight in flights.take(6)) _buildMiniCard(context, flight, primary),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniCard(BuildContext context, shared.FlightDetail flight, Color primary) {
+    final isSelected = identical(selected, flight);
+    final segments = flight.flightSegments ?? const [];
+    final time = segments.isNotEmpty && segments.first.departureDateTime != null
+        ? DateFormat('HH:mm').format(segments.first.departureDateTime!)
+        : '--:--';
+    final fareFamily = flight.fareFamilies?.fareFamilies?.isNotEmpty == true ? flight.fareFamilies!.fareFamilies!.first : null;
+    final price = (fareFamily?.totalPublishFare ?? 0) * currency;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: isSelected ? primary : Colors.grey.shade200, width: isSelected ? 1.6 : 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              FlightAirlineLogo(url: flight.airLineLogo, size: 14),
+              const SizedBox(width: 5),
+              Text(time, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text('₹${price.toStringAsFixed(0)}',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: primary)),
+        ],
+      ),
+    );
+  }
 }
 
-// adultfare =
-//     dataFlightDetails![index]
-//         .fareFamilies!
-//         .fareFamilies![0]
-//         .adultFare;
-// adulttaxfare = double.parse(
-//     dataFlightDetails![index]
-//         .fareFamilies!
-//         .fareFamilies![0]
-//         .markup
-//         .toString());
+/// Bottom bar: combined round-trip total once both legs are picked, one
+/// Book action — no "Lock Price" (spec 0015: not a feature this app's data
+/// model/backend supports, not invented here).
+class _BookingBar extends StatelessWidget {
+  const _BookingBar({
+    required this.onwardFare,
+    required this.returnFare,
+    required this.canBook,
+    required this.onBook,
+  });
 
-// childfare = double.parse(
-//     dataFlightDetails![index]
-//         .fareFamilies!
-//         .fareFamilies![0]
-//         .childNetFare
-//         .toString());
+  final double onwardFare;
+  final double returnFare;
+  final bool canBook;
+  final VoidCallback onBook;
 
-// childtaxfare = 0;
-// infantfare = double.parse(
-//     dataFlightDetails![index]
-//         .fareFamilies!
-//         .fareFamilies![0]
-//         .infantNetFare
-//         .toString());
-// infanttaxfare = 0;
-
-// Navigator.of(context).push(
-//   MaterialPageRoute(
-//     builder:
-//         (BuildContext context) {
-//       // airlineLogo,
-
-//       return BookFlightFormpage(
-//           traceId: traceId,
-//           airlineLogo:
-//               dataFlightDetails![index]
-//                   .airLineLogo!,
-//           airlineName:
-//               "${dataFlightDetails![index].airLineName} (${dataFlightDetails![index].airLine}-${dataFlightDetails![index].flightSegments![0].flightNumber})",
-//           airlineStop:
-//               dataFlightDetails![index]
-//                           .flightSegments!
-//                           .length ==
-//                       1
-//                   ? "Direct"
-//                   : "${dataFlightDetails![index].flightSegments!.length - 1} Stop",
-//           airlineClass:
-//               "Economy",
-//           airlineRefund:
-//               dataFlightDetails![index].isRefundable == true
-//                   ? "Refundable"
-//                   : "Non Refundable",
-//           airlineStart:
-//               dataFlightDetails![index]
-//                   .originCity
-//                   .toString(),
-//           airlineEnd:
-//               dataFlightDetails![index]
-//                   .destinationCity
-//                   .toString(),
-//           airlineStartTime: DateFormat(
-//                   'HH:mm')
-//               .format(dataFlightDetails![index]
-//                       .flightSegments![0]
-//                       .departureDateTime ??
-//                   DateTime.now()),
-//           airlineEndTime: DateFormat('HH:mm').format(dataFlightDetails![index].flightSegments![0].arrivalDateTime ?? DateTime.now()),
-//           airlineDuration: dataFlightDetails![index].duration.toString(),
-//           adultBasefare: adultfare ?? 0,
-//           adulttaxfare: adulttaxfare ?? 0,
-//           childBasefare: childfare ?? 0,
-//           childtaxfare: childtaxfare ?? 0,
-//           infantBasefare: infantfare ?? 0,
-//           infanttaxfare: infanttaxfare ?? 0,
-//           adultCount: widget.adultcount.toDouble(),
-//           childCount: widget.childcount.toDouble(),
-//           infantCount: widget.infantcount.toDouble());
-//     },
-//   ),
-// );
+  @override
+  Widget build(BuildContext context) {
+    final total = onwardFare + returnFare;
+    return Container(
+      padding: EdgeInsets.fromLTRB(16, 10, 16, 10 + MediaQuery.of(context).padding.bottom),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, -2))],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  canBook ? '₹${total.toStringAsFixed(0)}' : 'Select onward & return',
+                  style: TextStyle(
+                      fontSize: canBook ? 18 : 13,
+                      fontWeight: FontWeight.bold,
+                      color: canBook ? AppColors.textPrimary : Colors.grey.shade600),
+                ),
+                if (canBook)
+                  Text('Onward + Return · Total fare', style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600)),
+              ],
+            ),
+          ),
+          ElevatedButton(
+            onPressed: canBook ? onBook : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Book', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+}

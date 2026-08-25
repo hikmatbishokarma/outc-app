@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:outc/dashboard/flights/models/flights_list_model.dart';
-import 'package:outc/dashboard/flights/screens/book_flight_formpage.dart';
+import 'package:outc/dashboard/flights/models/get_cities_by_search_model.dart' show Datum;
 import 'package:outc/core/theme/design_tokens.dart';
-import 'package:outc/core/widgets/app_top_bar.dart';
-import 'package:outc/core/widgets/bottom_sheet_shell.dart';
-import 'package:outc/dashboard/flights/widgets/ticketdesign.dart';
+import 'package:outc/dashboard/flights/providers/airport_name_cache.dart';
+import 'package:outc/dashboard/flights/screens/search_flights.dart';
+import 'package:outc/dashboard/flights/widgets/flight_fares_sheet.dart';
+import 'package:outc/dashboard/flights/widgets/flight_filters_sheet.dart';
+import 'package:outc/dashboard/flights/widgets/flight_quick_filter_bar.dart';
+import 'package:outc/dashboard/flights/widgets/flight_result_card.dart';
+import 'package:outc/dashboard/flights/widgets/flight_trip_summary_bar.dart';
 
-import 'package:outc/widgets/components/components.dart';
-import 'package:outc/widgets/components/dialogtabsview.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
 
 class OneWayFlightlistPage extends StatefulWidget {
@@ -97,6 +98,13 @@ class _OneWayFlightlistPageState extends State<OneWayFlightlistPage> {
   List<ConnectingLocationsCheckboxModel> _connectingLocationcheckboxList = [];
   List<AirlinesCheckboxModel> _airLinescheckboxList = [];
 
+  // Trip summary bar (edit-search) state — resolved async since the results
+  // themselves only carry origin/destination IATA codes (see
+  // AirportNameCache's doc comment); starts null and fills in once the
+  // lookup completes, same pattern as FlightFaresSheet's route recap.
+  Datum? _originLookup;
+  Datum? _destLookup;
+
   @override
   void initState() {
     super.initState();
@@ -106,6 +114,38 @@ class _OneWayFlightlistPageState extends State<OneWayFlightlistPage> {
     _currentRangeValues = RangeValues(bounds.$1, bounds.$2);
     fillConnectingLocationList();
     fillAirLinesList();
+    _resolveTripSummaryNames();
+  }
+
+  FlightDetail? get _firstFlight =>
+      (widget.originalData ?? const <FlightDetail>[]).isNotEmpty ? widget.originalData!.first : null;
+
+  String _tripSummarySubtitle() {
+    final departureDate = _firstFlight?.flightSegments?.isNotEmpty == true
+        ? _firstFlight!.flightSegments!.first.departureDateTime
+        : null;
+    final travellerCount = widget.adultcount + widget.childcount + widget.infantcount;
+    return [
+      if (departureDate != null) DateFormat('dd MMM yyyy').format(departureDate),
+      '$travellerCount Traveller${travellerCount == 1 ? '' : 's'}',
+      'Economy',
+    ].join(' · ');
+  }
+
+  Future<void> _resolveTripSummaryNames() async {
+    final first = (widget.originalData ?? const <FlightDetail>[]).isNotEmpty
+        ? widget.originalData!.first
+        : null;
+    if (first == null) return;
+    final results = await Future.wait([
+      AirportNameCache.resolve(first.origin),
+      AirportNameCache.resolve(first.destination),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _originLookup = results[0];
+      _destLookup = results[1];
+    });
   }
 
   @override
@@ -123,18 +163,56 @@ class _OneWayFlightlistPageState extends State<OneWayFlightlistPage> {
 
     return Scaffold(
       backgroundColor: AppColors.panelBackground,
-      appBar: AppTopBar(
-        title: 'Flight Results',
-        actions: [
-          IconButton(
-            icon: Icon(Icons.filter_alt, color: _hasActiveFilters ? Theme.of(context).colorScheme.primary : null),
-            onPressed: () => _showFiltersSheet(context),
-          ),
-        ],
-      ),
+      // No separate "Flight Results" app-bar title/toolbar — the reference
+      // apps' results screen opens straight into the route/date search bar
+      // (back arrow built into that same row) with a quick-filter chip row
+      // right underneath it, not a generic title strip above both.
       body: SafeArea(
         child: Column(
           children: [
+            FlightTripSummaryBar(
+              routeLabel: '${placeLabel(_firstFlight?.origin, _originLookup)} → '
+                  '${placeLabel(_firstFlight?.destination, _destLookup)}',
+              subtitle: _tripSummarySubtitle(),
+              onBack: () => Navigator.of(context).pop(),
+              // Show the search form as a "Modify Flight Search" modal sheet
+              // *over* this results screen, instead of popping back to it or
+              // pushing a full opaque page — either of those reads as
+              // leaving the list entirely. A modal sheet keeps this list
+              // (and its already-fetched data) visible, dimmed, right
+              // underneath — matching the reference behavior — and Cancel
+              // just dismisses the sheet, no re-fetch.
+              onEdit: () => showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                useSafeArea: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => FractionallySizedBox(
+                  heightFactor: 0.94,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    child: const FlightsListPage(isModifyMode: true),
+                  ),
+                ),
+              ),
+            ),
+            FlightQuickFilterBar(
+              isCheapestFirstActive: _sortOption == FlightSortOption.priceLowToHigh,
+              onToggleCheapestFirst: () {
+                setState(() {
+                  _sortOption =
+                      _sortOption == FlightSortOption.priceLowToHigh ? null : FlightSortOption.priceLowToHigh;
+                });
+                updateFilterData();
+              },
+              isNonStopActive: directStop,
+              onToggleNonStop: () {
+                setState(() => directStop = !directStop);
+                updateFilterData();
+              },
+              activeFilterCount: _activeFilterCount,
+              onTapFilters: () => _showFiltersSheet(context),
+            ),
             flightsdata!.isEmpty
                 ? Center(
                     child: Text(
@@ -148,610 +226,26 @@ class _OneWayFlightlistPageState extends State<OneWayFlightlistPage> {
                   )
                 : Expanded(
                     child: ListView.builder(
-                        itemCount: flightsdata!.length,
-                        itemBuilder: (context, index) {
-                          // double amt = flightsdata![index]
-                          //         .fareFamilies!
-                          //         .fareFamilies![0]
-                          //         .adultPublishFare! *
-                          //     double.parse(
-                          //         SharedPrefServices.getcurrencyAmount()
-                          //             .toString());
-
-                          double amt = flightsdata![index]
-                                  .fareFamilies!
-                                  .fareFamilies![0]
-                                  .totalPublishFare! *
-                              double.parse(
-                                  SharedPrefServices.getcurrencyAmount()
-                                      .toString());
-                          return TicketDesign(
-                            width: double.infinity,
-                            // height: 350,
-                            isCornerRounded: true,
-                            color: Colors.grey.shade300,
-                            padding: const EdgeInsets.all(10),
-                            child: Container(
-                              child: Column(
-                                children: [
-                                  Container(
-                                    margin: const EdgeInsets.all(5),
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                        border: Border.all(
-                                          color: AppColors.primary,
-                                        ),
-                                        borderRadius: BorderRadius.circular(10),
-                                        color: Colors.grey.shade100),
-                                    child: Column(
-                                      children: [
-                                        Container(
-                                          margin: const EdgeInsets.all(5),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.start,
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  // Image(
-                                                  //   image: NetworkImage(
-                                                  //     widget.dataFlightDetails![index]
-                                                  // .flightDetails![0]
-                                                  //         .airLineLogo!,
-                                                  //   ),
-                                                  //   fit: BoxFit.fill,
-                                                  //   height: 30.0,
-                                                  //   width: 30.0,
-                                                  // ),
-
-                                                  Text(
-                                                    "${flightsdata![index].airLineName} (${flightsdata![index].airLine}-${flightsdata![index].flightSegments![0].flightNumber})",
-                                                    style: TextStyle(
-                                                      fontSize: 14.0,
-                                                      color: AppColors.primary,
-                                                      fontFamily: 'Poppins',
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.start,
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.end,
-                                                children: [
-                                                  Text(
-                                                    flightsdata![index]
-                                                                .flightSegments!
-                                                                .length ==
-                                                            1
-                                                        ? "Direct"
-                                                        : "${flightsdata![index].flightSegments!.length - 1} Stop",
-                                                    style: const TextStyle(
-                                                      fontSize: 12.0,
-                                                      color: Colors.black,
-                                                      fontFamily: 'Poppins',
-                                                    ),
-                                                  ),
-                                                  const Text(
-                                                    "Class: Economy",
-                                                    style: TextStyle(
-                                                      fontSize: 12.0,
-                                                      color: Colors.black,
-                                                      fontFamily: 'Poppins',
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-
-                                        // works below
-                                        Container(
-                                          margin: const EdgeInsets.only(
-                                              left: 5, right: 5),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Icon(
-                                                Icons.flight_takeoff,
-                                                size: 30,
-                                                color: AppColors.primary,
-                                              ),
-                                              Text(
-                                                flightsdata![index]
-                                                            .isRefundable ==
-                                                        true
-                                                    ? "Refundable"
-                                                    : "Non Refundable",
-                                                style: TextStyle(
-                                                  fontSize: 12.0,
-                                                  color: flightsdata![index]
-                                                              .isRefundable ==
-                                                          true
-                                                      ? Colors.green
-                                                      : Colors.red,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontFamily: 'Poppins',
-                                                ),
-                                              ),
-                                              Icon(
-                                                Icons.flight_land,
-                                                size: 30,
-                                                color: AppColors.primary,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        Container(
-                                          margin: const EdgeInsets.all(5),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                flightsdata![index]
-                                                    .originCity
-                                                    .toString(),
-                                                style: const TextStyle(
-                                                  fontSize: 14.0,
-                                                  color: Colors.black,
-                                                  fontFamily: 'Poppins',
-                                                ),
-                                              ),
-                                              SizedBox(
-                                                width: 150,
-                                                child: Divider(
-                                                  color: AppColors.primary,
-                                                  thickness: 3,
-                                                ),
-                                              ),
-                                              Text(
-                                                flightsdata![index]
-                                                    .destinationCity
-                                                    .toString(),
-                                                style: const TextStyle(
-                                                  fontSize: 14.0,
-                                                  color: Colors.black,
-                                                  fontFamily: 'Poppins',
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        Container(
-                                          margin: const EdgeInsets.all(5),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                DateFormat('HH:mm').format(
-                                                    flightsdata![index]
-                                                            .flightSegments![0]
-                                                            .departureDateTime ??
-                                                        DateTime.now()),
-                                                style: const TextStyle(
-                                                  fontSize: 12.0,
-                                                  color: Colors.black,
-                                                  fontFamily: 'Poppins',
-                                                ),
-                                              ),
-                                              Text(
-                                                "${flightsdata![index].duration}",
-                                                style: const TextStyle(
-                                                  fontSize: 12.0,
-                                                  color: Colors.black,
-                                                  fontFamily: 'Poppins',
-                                                ),
-                                              ),
-                                              Text(
-                                                DateFormat('HH:mm').format(
-                                                    flightsdata![index]
-                                                            .flightSegments![0]
-                                                            .arrivalDateTime ??
-                                                        DateTime.now()),
-                                                style: const TextStyle(
-                                                  fontSize: 12.0,
-                                                  color: Colors.black,
-                                                  fontFamily: 'Poppins',
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  // working above.....
-
-                                  Container(
-                                    margin: const EdgeInsets.all(8),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        GestureDetector(
-                                          onTap: () {
-                                            showDialog(
-                                                context: context,
-                                                builder:
-                                                    (BuildContext context) {
-                                                  return AlertDialog(
-                                                    content: Wrap(
-                                                      // height: 150,
-                                                      children: [
-                                                        Row(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .spaceAround,
-                                                          children: [
-                                                            Text(
-                                                              "Baggage Details",
-                                                              style: TextStyle(
-                                                                fontSize: 14.0,
-                                                                color: AppColors
-                                                                    .primary,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                                fontFamily:
-                                                                    'Poppins',
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        Divider(
-                                                          color: Colors
-                                                              .grey.shade400,
-                                                          thickness: 1.0,
-                                                        ),
-                                                        Column(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .start,
-                                                          children: [
-                                                            const SizedBox(
-                                                              height: 10,
-                                                            ),
-                                                            Row(
-                                                              mainAxisAlignment:
-                                                                  MainAxisAlignment
-                                                                      .spaceAround,
-                                                              children: [
-                                                                Row(
-                                                                  children: [
-                                                                    Icon(
-                                                                      Icons
-                                                                          .flight_takeoff,
-                                                                      color: AppColors
-                                                                          .primary,
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                                Text(
-                                                                  "${flightsdata![index].origin} - ${flightsdata![index].destination}",
-                                                                  style:
-                                                                      TextStyle(
-                                                                    fontSize:
-                                                                        14.0,
-                                                                    color: AppColors
-                                                                        .primary,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                    fontFamily:
-                                                                        'Poppins',
-                                                                  ),
-                                                                ),
-                                                                Text(
-                                                                  "${flightsdata![index].airLineName} - ${flightsdata![index].airLine}",
-                                                                  style:
-                                                                      TextStyle(
-                                                                    fontSize:
-                                                                        14.0,
-                                                                    color: AppColors
-                                                                        .textSecondary,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                    fontFamily:
-                                                                        'Poppins',
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                            const SizedBox(
-                                                              height: 10,
-                                                            ),
-                                                            Row(
-                                                              children: [
-                                                                Icon(
-                                                                  Icons
-                                                                      .luggage_outlined,
-                                                                  color: AppColors
-                                                                      .secondary,
-                                                                ),
-                                                                Text(
-                                                                  "${flightsdata![index].flightSegments![0].checkInBaggage} CheckedIn Baggage",
-                                                                  style:
-                                                                      TextStyle(
-                                                                    fontSize:
-                                                                        14.0,
-                                                                    color: AppColors
-                                                                        .secondary,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                    fontFamily:
-                                                                        'Poppins',
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                            Row(
-                                                              children: [
-                                                                Icon(
-                                                                  Icons
-                                                                      .luggage_outlined,
-                                                                  color: AppColors
-                                                                      .secondary,
-                                                                ),
-                                                                Text(
-                                                                  flightsdata![
-                                                                              index]
-                                                                          .flightSegments![
-                                                                              0]
-                                                                          .cabinBaggage!
-                                                                          .isEmpty
-                                                                      ? "7 kgs Cabin Baggage"
-                                                                      : "${flightsdata![index].flightSegments![0].cabinBaggage} Cabin Baggage",
-                                                                  style:
-                                                                      TextStyle(
-                                                                    fontSize:
-                                                                        14.0,
-                                                                    color: AppColors
-                                                                        .secondary,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .bold,
-                                                                    fontFamily:
-                                                                        'Poppins',
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                            Divider(
-                                                              color: Colors.grey
-                                                                  .shade400,
-                                                              thickness: 1.0,
-                                                            ),
-                                                          ],
-                                                        )
-                                                      ],
-                                                    ),
-                                                  );
-                                                });
-                                          },
-                                          child: Card(
-                                            elevation: 0.0,
-                                            shape: RoundedRectangleBorder(
-                                              side: BorderSide(
-                                                color: AppColors.textSecondary,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.all(8.0),
-                                              child: Column(
-                                                children: [
-                                                  Text(
-                                                    "Baggage",
-                                                    style: textStyleHeading(),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        InkWell(
-                                          onTap: () {
-                                            showDialog(
-                                              context: context,
-                                              builder: (BuildContext context) {
-                                                return TabviewDialog(
-                                                  flightsdata: flightsdata!,
-                                                  index: index,
-                                                );
-                                              },
-                                            );
-                                          },
-                                          child: Card(
-                                            elevation: 0.0,
-                                            shape: RoundedRectangleBorder(
-                                              side: BorderSide(
-                                                color: AppColors.textSecondary,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.all(8.0),
-                                              child: Column(
-                                                children: [
-                                                  Text(
-                                                    "flight details",
-                                                    style: textStyleHeading(),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-
-                                  Container(
-                                      margin: const EdgeInsets.only(
-                                        left: 5,
-                                        right: 5,
-                                        bottom: 5,
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Text(
-                                                  SharedPrefServices
-                                                          .getcurrencycode()
-                                                      .toString(),
-                                                  style: TextStyle(
-                                                    fontSize: 14.0,
-                                                    color: AppColors.primary,
-                                                    fontWeight: FontWeight.w700,
-                                                    fontFamily: 'poppins',
-                                                  )),
-                                              const SizedBox(
-                                                width: 5,
-                                              ),
-                                              Text(amt.toStringAsFixed(2),
-                                                  style: TextStyle(
-                                                    fontSize: 14.0,
-                                                    color: AppColors.primary,
-                                                    fontWeight: FontWeight.w700,
-                                                    fontFamily: 'poppins',
-                                                  )),
-                                            ],
-                                          ),
-                                          ElevatedButton(
-                                              onPressed: () async {
-                                                adultfare = flightsdata![index]
-                                                    .fareFamilies!
-                                                    .fareFamilies![0]
-                                                    .adultFare;
-                                                adulttaxfare = double.parse(
-                                                    flightsdata![index]
-                                                        .fareFamilies!
-                                                        .fareFamilies![0]
-                                                        .markup
-                                                        .toString());
-
-                                                childfare = double.parse(
-                                                    flightsdata![index]
-                                                        .fareFamilies!
-                                                        .fareFamilies![0]
-                                                        .childNetFare
-                                                        .toString());
-                                                childtaxfare = 0;
-                                                infantfare = double.parse(
-                                                    flightsdata![index]
-                                                        .fareFamilies!
-                                                        .fareFamilies![0]
-                                                        .infantNetFare
-                                                        .toString());
-                                                infanttaxfare = 0;
-                                                print(widget.traceId);
-
-                                                print('Print Fare Id one way');
-
-                                                print(flightsdata![index]
-                                                    .fareFamilies!
-                                                    .fareFamilies![0]
-                                                    .fareId
-                                                    .toString());
-
-                                                Navigator.of(context).push(
-                                                  MaterialPageRoute(
-                                                    builder:
-                                                        (BuildContext context) {
-                                                      // airlineLogo,
-
-                                                      return BookFlightFormpage(
-                                                          traceId: widget
-                                                              .traceId,
-                                                          flightId: flightsdata![index]
-                                                              .flightId
-                                                              .toString(),
-                                                          fareId: flightsdata![index]
-                                                              .fareFamilies!
-                                                              .fareFamilies![0]
-                                                              .fareId
-                                                              .toString(),
-                                                          airlineLogo:
-                                                              flightsdata![index]
-                                                                  .airLineLogo!,
-                                                          airlineName:
-                                                              "${flightsdata![index].airLineName} (${flightsdata![index].airLine}-${flightsdata![index].flightSegments![0].flightNumber})",
-                                                          airlineStop: flightsdata![index]
-                                                                      .flightSegments!
-                                                                      .length ==
-                                                                  1
-                                                              ? "Direct"
-                                                              : "${flightsdata![index].flightSegments!.length - 1} Stop",
-                                                          airlineClass:
-                                                              "Economy",
-                                                          airlineRefund: flightsdata![index].isRefundable == true
-                                                              ? "Refundable"
-                                                              : "Non Refundable",
-                                                          airlineStart:
-                                                              flightsdata![index]
-                                                                  .originCity
-                                                                  .toString(),
-                                                          airlineEnd:
-                                                              flightsdata![index]
-                                                                  .destinationCity
-                                                                  .toString(),
-                                                          airlineStartTime: DateFormat('HH:mm').format(flightsdata![index]
-                                                                  .flightSegments![0]
-                                                                  .departureDateTime ??
-                                                              DateTime.now()),
-                                                          airlineEndTime: DateFormat('HH:mm').format(flightsdata![index].flightSegments![0].arrivalDateTime ?? DateTime.now()),
-                                                          airlineDuration: flightsdata![index].duration.toString(),
-                                                          adultBasefare: amt,
-                                                          adulttaxfare: adulttaxfare ?? 0,
-                                                          childBasefare: childfare ?? 0,
-                                                          childtaxfare: childtaxfare ?? 0,
-                                                          infantBasefare: infantfare ?? 0,
-                                                          infanttaxfare: infanttaxfare ?? 0,
-                                                          adultCount: widget.adultcount.toDouble(),
-                                                          childCount: widget.childcount.toDouble(),
-                                                          infantCount: widget.infantcount.toDouble());
-                                                    },
-                                                  ),
-                                                );
-                                              },
-                                              style: ElevatedButton.styleFrom(
-                                                  backgroundColor:
-                                                      AppColors.primary,
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            10),
-                                                  )),
-                                              child: Text("Book Now",
-                                                  style: GoogleFonts.poppins(
-                                                    color: Colors.white,
-                                                    fontSize: 14,
-                                                  )))
-                                        ],
-                                      ))
-                                ],
-                              ),
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      itemCount: flightsdata!.length,
+                      itemBuilder: (context, index) {
+                        final flight = flightsdata![index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: FlightResultCard(
+                            flight: flight,
+                            onTap: () => FlightFaresSheet.show(
+                              context,
+                              flight: flight,
+                              traceId: widget.traceId,
+                              adultCount: widget.adultcount,
+                              childCount: widget.childcount,
+                              infantCount: widget.infantcount,
                             ),
-                          );
-                        }),
+                          ),
+                        );
+                      },
+                    ),
                   ),
           ],
         ),
@@ -771,33 +265,24 @@ class _OneWayFlightlistPageState extends State<OneWayFlightlistPage> {
     });
   }
 
-  /// Whether any customer-chosen filter is currently narrowing the result
-  /// set — drives the funnel icon's tint so it's obvious filters are active
-  /// without opening the sheet.
-  bool get _hasActiveFilters =>
-      directStop ||
-      oneStop ||
-      depOne ||
-      depTwo ||
-      depThree ||
-      depFour ||
-      arvlOne ||
-      arvlTwo ||
-      arvlThree ||
-      arvlFour ||
-      refund ||
-      nonrefund ||
-      _connectingLocationcheckboxList.any((f) => f.isChecked) ||
-      _airLinescheckboxList.any((f) => f.isChecked);
-
-  Duration _journeyDuration(FlightDetail flight) {
-    final segments = flight.flightSegments ?? const [];
-    if (segments.isEmpty) return Duration.zero;
-    final departure = segments.first.departureDateTime;
-    final arrival = segments.last.arrivalDateTime;
-    if (departure == null || arrival == null) return Duration.zero;
-    return arrival.difference(departure);
-  }
+  /// Feeds the "Filters" pill's badge in `FlightQuickFilterBar` — every
+  /// individual active condition counts once (Non Stop counts here too once
+  /// toggled, same as the reference apps' own badge).
+  int get _activeFilterCount =>
+      (directStop ? 1 : 0) +
+      (oneStop ? 1 : 0) +
+      (depOne ? 1 : 0) +
+      (depTwo ? 1 : 0) +
+      (depThree ? 1 : 0) +
+      (depFour ? 1 : 0) +
+      (arvlOne ? 1 : 0) +
+      (arvlTwo ? 1 : 0) +
+      (arvlThree ? 1 : 0) +
+      (arvlFour ? 1 : 0) +
+      (refund ? 1 : 0) +
+      (nonrefund ? 1 : 0) +
+      _connectingLocationcheckboxList.where((f) => f.isChecked).length +
+      _airLinescheckboxList.where((f) => f.isChecked).length;
 
   /// Rebuilds `flightsdata` from `widget.originalData` against every active
   /// filter as one combined (AND'd) predicate, then applies the chosen
@@ -807,79 +292,24 @@ class _OneWayFlightlistPageState extends State<OneWayFlightlistPage> {
   /// instead of all of them narrowing the list together. This also adds
   /// sorting, which didn't exist before.
   updateFilterData() {
+    final currency = double.tryParse(SharedPrefServices.getcurrencyAmount().toString()) ?? 1;
     setState(() {
-      bool isTimeInRange(TimeOfDay time, TimeOfDay start, TimeOfDay end) {
-        return (time.hour > start.hour ||
-                (time.hour == start.hour && time.minute >= start.minute)) &&
-            (time.hour < end.hour ||
-                (time.hour == end.hour && time.minute <= end.minute));
-      }
-
-      bool inSelectedBuckets(DateTime? time, bool b1, bool b2, bool b3, bool b4) {
-        if (time == null) return true;
-        if (!(b1 || b2 || b3 || b4)) return true;
-        final t = TimeOfDay(hour: time.hour, minute: time.minute);
-        return (b1 && isTimeInRange(const TimeOfDay(hour: 0, minute: 0), t, const TimeOfDay(hour: 6, minute: 0))) ||
-            (b2 && isTimeInRange(const TimeOfDay(hour: 6, minute: 0), t, const TimeOfDay(hour: 12, minute: 0))) ||
-            (b3 && isTimeInRange(const TimeOfDay(hour: 12, minute: 0), t, const TimeOfDay(hour: 18, minute: 0))) ||
-            (b4 && isTimeInRange(const TimeOfDay(hour: 18, minute: 0), t, const TimeOfDay(hour: 23, minute: 59)));
-      }
-
-      final currency = double.tryParse(SharedPrefServices.getcurrencyAmount().toString()) ?? 1;
-      final selectedConnectingLocations =
-          _connectingLocationcheckboxList.where((f) => f.isChecked).map((f) => f.title).toSet();
-      final selectedAirlines = _airLinescheckboxList.where((f) => f.isChecked).map((f) => f.title).toSet();
-
-      flightsdata = (widget.originalData ?? const <FlightDetail>[]).where((flight) {
-        final fare = flight.fareFamilies!.fareFamilies![0].adultPublishFare! * currency;
-        if (fare < _currentRangeValues.start || fare > _currentRangeValues.end) return false;
-
-        if (directStop && flight.flightSegments!.length != 1) return false;
-        if (oneStop && flight.flightSegments!.length != 2) return false;
-
-        if (!inSelectedBuckets(
-            flight.flightSegments?[0].departureDateTime, depOne, depTwo, depThree, depFour)) {
-          return false;
-        }
-        if (!inSelectedBuckets(
-            flight.flightSegments?[0].arrivalDateTime, arvlOne, arvlTwo, arvlThree, arvlFour)) {
-          return false;
-        }
-
-        if (refund && flight.isRefundable != true) return false;
-        if (nonrefund && flight.isRefundable != false) return false;
-
-        if (selectedConnectingLocations.isNotEmpty &&
-            !selectedConnectingLocations.contains(flight.flightSegments?[0].destinationName)) {
-          return false;
-        }
-        if (selectedAirlines.isNotEmpty && !selectedAirlines.contains(flight.airLineName)) {
-          return false;
-        }
-
-        return true;
-      }).toList();
-
-      final sortOption = _sortOption;
-      if (sortOption != null) {
-        flightsdata!.sort((a, b) {
-          switch (sortOption) {
-            case FlightSortOption.priceLowToHigh:
-              return a.fareFamilies!.fareFamilies![0].adultPublishFare!
-                  .compareTo(b.fareFamilies!.fareFamilies![0].adultPublishFare!);
-            case FlightSortOption.priceHighToLow:
-              return b.fareFamilies!.fareFamilies![0].adultPublishFare!
-                  .compareTo(a.fareFamilies!.fareFamilies![0].adultPublishFare!);
-            case FlightSortOption.durationShortest:
-              return _journeyDuration(a).compareTo(_journeyDuration(b));
-            case FlightSortOption.departureEarliest:
-              final aDep = a.flightSegments?[0].departureDateTime;
-              final bDep = b.flightSegments?[0].departureDateTime;
-              if (aDep == null || bDep == null) return 0;
-              return aDep.compareTo(bDep);
-          }
-        });
-      }
+      flightsdata = applyFlightFilters(
+        widget.originalData ?? const <FlightDetail>[],
+        adapter: flightDetailFilterAdapter,
+        range: _currentRangeValues,
+        directStop: directStop,
+        oneStop: oneStop,
+        dep: (depOne, depTwo, depThree, depFour),
+        arv: (arvlOne, arvlTwo, arvlThree, arvlFour),
+        refund: refund,
+        nonrefund: nonrefund,
+        connectingLocations:
+            _connectingLocationcheckboxList.where((f) => f.isChecked).map((f) => f.title).toSet(),
+        airlines: _airLinescheckboxList.where((f) => f.isChecked).map((f) => f.title).toSet(),
+        currency: currency,
+        sort: _sortOption,
+      );
     });
     removeDuplicatesfromList();
   }
@@ -907,496 +337,64 @@ class _OneWayFlightlistPageState extends State<OneWayFlightlistPage> {
     }
   }
 
-  /// Main "Filters" bottom sheet — a row per filter group, each drilling
-  /// into its own sheet, mirroring the pattern already shipped for bus
-  /// (`BusFilterSheets`/spec 0007) via the shared `BottomSheetShell`. This
-  /// replaces the old always-inline, unstyled green filter panel.
+  /// Main "Filters" bottom sheet (spec 0015) — every group open and
+  /// multi-selectable at once, replacing spec 0014's drill-down "tap a row,
+  /// open its own sub-sheet, come back" version. A live "Show N flights"
+  /// count on the Apply button updates as any chip is toggled, using the
+  /// same `applyFlightFilters` predicate `updateFilterData()` applies for
+  /// real once Apply is tapped.
   void _showFiltersSheet(BuildContext context) {
+    final currency = double.tryParse(SharedPrefServices.getcurrencyAmount().toString()) ?? 1;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetContext) => BottomSheetShell(
-        title: 'Filters',
-        primaryActionLabel: 'Done',
-        onPrimaryAction: () => Navigator.of(sheetContext).pop(),
-        secondaryActionLabel: 'Clear All',
-        onSecondaryAction: () {
+      builder: (_) => FlightFiltersSheet<FlightDetail>(
+        originalData: widget.originalData ?? const <FlightDetail>[],
+        adapter: flightDetailFilterAdapter,
+        hasDirect: _hasStopFilter('Direct'),
+        hasOneStop: _hasStopFilter('1 Stop (s)'),
+        connectingLocationLabels: [for (final loc in _connectingLocationcheckboxList) loc.title],
+        airlineLabels: [for (final airline in _airLinescheckboxList) airline.title],
+        priceBounds: _priceBounds(),
+        initialRange: _currentRangeValues,
+        initialSort: _sortOption,
+        initialDirectStop: directStop,
+        initialOneStop: oneStop,
+        initialDep: (depOne, depTwo, depThree, depFour),
+        initialArv: (arvlOne, arvlTwo, arvlThree, arvlFour),
+        initialRefund: refund,
+        initialNonrefund: nonrefund,
+        initialConnecting: [for (final loc in _connectingLocationcheckboxList) loc.isChecked],
+        initialAirlines: [for (final airline in _airLinescheckboxList) airline.isChecked],
+        currency: currency,
+        onApply: (result) {
           setState(() {
-            directStop = oneStop = depOne = depTwo = depThree = depFour =
-                arvlOne = arvlTwo = arvlThree = arvlFour = refund = nonrefund = false;
-            turnOffLocations();
-            _sortOption = null;
-            final bounds = _priceBounds();
-            _currentRangeValues = RangeValues(bounds.$1, bounds.$2);
+            _currentRangeValues = result.range;
+            _sortOption = result.sort;
+            directStop = result.directStop;
+            oneStop = result.oneStop;
+            depOne = result.dep.$1;
+            depTwo = result.dep.$2;
+            depThree = result.dep.$3;
+            depFour = result.dep.$4;
+            arvlOne = result.arv.$1;
+            arvlTwo = result.arv.$2;
+            arvlThree = result.arv.$3;
+            arvlFour = result.arv.$4;
+            refund = result.refund;
+            nonrefund = result.nonrefund;
+            for (var i = 0; i < _connectingLocationcheckboxList.length; i++) {
+              _connectingLocationcheckboxList[i].isChecked = result.connecting[i];
+            }
+            for (var i = 0; i < _airLinescheckboxList.length; i++) {
+              _airLinescheckboxList[i].isChecked = result.airlines[i];
+            }
           });
           updateFilterData();
-          Navigator.of(sheetContext).pop();
-        },
-        primaryActionColor: Theme.of(context).colorScheme.primary,
-        body: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _FilterRow(label: 'Sort By', onTap: () => _showSortBySheet(context)),
-            _FilterRow(label: 'Price Range', onTap: () => _showPriceRangeSheet(context)),
-            _FilterRow(label: 'Stops', onTap: () => _showStopsSheet(context)),
-            _FilterRow(label: 'Departure Time', onTap: () => _showDepartureTimeSheet(context)),
-            _FilterRow(label: 'Arrival Time', onTap: () => _showArrivalTimeSheet(context)),
-            _FilterRow(label: 'Airlines', onTap: () => _showAirlinesSheet(context)),
-            if (widget.filterData?.connect?.isNotEmpty ?? false)
-              _FilterRow(label: 'Connecting Locations', onTap: () => _showConnectingLocationsSheet(context)),
-            _FilterRow(label: 'Refundable', onTap: () => _showRefundableSheet(context)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showSortBySheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _SortBySheet(
-        selected: _sortOption,
-        onApply: (option) {
-          setState(() => _sortOption = option);
-          updateFilterData();
         },
       ),
     );
   }
-
-  void _showPriceRangeSheet(BuildContext context) {
-    final bounds = _priceBounds();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _PriceRangeSheet(
-        min: bounds.$1,
-        max: bounds.$2,
-        current: _currentRangeValues,
-        onApply: (range) {
-          setState(() => _currentRangeValues = range);
-          updateFilterData();
-        },
-        onClear: () {
-          setState(() => _currentRangeValues = RangeValues(bounds.$1, bounds.$2));
-          updateFilterData();
-        },
-      ),
-    );
-  }
-
-  void _showStopsSheet(BuildContext context) {
-    final options = [
-      if (_hasStopFilter('Direct')) _ToggleOption(label: 'Direct', icon: Icons.flight, selected: directStop),
-      if (_hasStopFilter('1 Stop (s)'))
-        _ToggleOption(label: '1 Stop (s)', icon: Icons.flight_land, selected: oneStop),
-    ];
-    _showToggleSheet(context, title: 'Stops', options: options, onApply: (result) {
-      setState(() {
-        directStop = result.any((o) => o.label == 'Direct' && o.selected);
-        oneStop = result.any((o) => o.label == '1 Stop (s)' && o.selected);
-      });
-      updateFilterData();
-    }, onClear: () {
-      setState(() => directStop = oneStop = false);
-      updateFilterData();
-    });
-  }
-
-  void _showDepartureTimeSheet(BuildContext context) {
-    _showTimeBucketSheet(
-      context,
-      title: 'Departure Time',
-      selected: (depOne, depTwo, depThree, depFour),
-      onApply: (b1, b2, b3, b4) {
-        setState(() {
-          depOne = b1;
-          depTwo = b2;
-          depThree = b3;
-          depFour = b4;
-        });
-        updateFilterData();
-      },
-      onClear: () {
-        setState(() => depOne = depTwo = depThree = depFour = false);
-        updateFilterData();
-      },
-    );
-  }
-
-  void _showArrivalTimeSheet(BuildContext context) {
-    _showTimeBucketSheet(
-      context,
-      title: 'Arrival Time',
-      selected: (arvlOne, arvlTwo, arvlThree, arvlFour),
-      onApply: (b1, b2, b3, b4) {
-        setState(() {
-          arvlOne = b1;
-          arvlTwo = b2;
-          arvlThree = b3;
-          arvlFour = b4;
-        });
-        updateFilterData();
-      },
-      onClear: () {
-        setState(() => arvlOne = arvlTwo = arvlThree = arvlFour = false);
-        updateFilterData();
-      },
-    );
-  }
-
-  void _showTimeBucketSheet(
-    BuildContext context, {
-    required String title,
-    required (bool, bool, bool, bool) selected,
-    required void Function(bool, bool, bool, bool) onApply,
-    required VoidCallback onClear,
-  }) {
-    final options = [
-      _ToggleOption(label: '00-06', icon: Icons.bedtime_outlined, selected: selected.$1),
-      _ToggleOption(label: '06-12', icon: Icons.wb_sunny_outlined, selected: selected.$2),
-      _ToggleOption(label: '12-18', icon: Icons.light_mode_outlined, selected: selected.$3),
-      _ToggleOption(label: '18-23', icon: Icons.nights_stay_outlined, selected: selected.$4),
-    ];
-    _showToggleSheet(context, title: title, options: options, onApply: (result) {
-      onApply(result[0].selected, result[1].selected, result[2].selected, result[3].selected);
-    }, onClear: onClear);
-  }
-
-  void _showRefundableSheet(BuildContext context) {
-    final options = [
-      _ToggleOption(label: 'Refundable', icon: Icons.check_circle_outline, selected: refund),
-      _ToggleOption(label: 'Non Refundable', icon: Icons.block, selected: nonrefund),
-    ];
-    _showToggleSheet(context, title: 'Refundable', options: options, singleSelect: true, onApply: (result) {
-      setState(() {
-        refund = result.any((o) => o.label == 'Refundable' && o.selected);
-        nonrefund = result.any((o) => o.label == 'Non Refundable' && o.selected);
-      });
-      updateFilterData();
-    }, onClear: () {
-      setState(() => refund = nonrefund = false);
-      updateFilterData();
-    });
-  }
-
-  void _showConnectingLocationsSheet(BuildContext context) {
-    final options = [
-      for (final loc in _connectingLocationcheckboxList)
-        _ToggleOption(label: loc.title, icon: Icons.location_on_outlined, selected: loc.isChecked),
-    ];
-    _showToggleSheet(context, title: 'Connecting Locations', options: options, onApply: (result) {
-      setState(() {
-        for (var i = 0; i < _connectingLocationcheckboxList.length; i++) {
-          _connectingLocationcheckboxList[i].isChecked = result[i].selected;
-        }
-      });
-      updateFilterData();
-    }, onClear: () {
-      setState(() {
-        for (final loc in _connectingLocationcheckboxList) {
-          loc.isChecked = false;
-        }
-      });
-      updateFilterData();
-    });
-  }
-
-  void _showAirlinesSheet(BuildContext context) {
-    final options = [
-      for (final airline in _airLinescheckboxList)
-        _ToggleOption(label: airline.title, icon: Icons.flight_outlined, selected: airline.isChecked),
-    ];
-    _showToggleSheet(context, title: 'Airlines', options: options, onApply: (result) {
-      setState(() {
-        for (var i = 0; i < _airLinescheckboxList.length; i++) {
-          _airLinescheckboxList[i].isChecked = result[i].selected;
-        }
-      });
-      updateFilterData();
-    }, onClear: () {
-      setState(() {
-        for (final airline in _airLinescheckboxList) {
-          airline.isChecked = false;
-        }
-      });
-      updateFilterData();
-    });
-  }
-
-  void _showToggleSheet(
-    BuildContext context, {
-    required String title,
-    required List<_ToggleOption> options,
-    required ValueChanged<List<_ToggleOption>> onApply,
-    required VoidCallback onClear,
-    bool singleSelect = false,
-  }) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _ToggleFilterSheet(
-        title: title,
-        options: options,
-        singleSelect: singleSelect,
-        onApply: onApply,
-        onClear: onClear,
-      ),
-    );
-  }
 }
 
-// Model class for the ConnectingLocations checkbox item
-class ConnectingLocationsCheckboxModel {
-  String title;
-  bool isChecked;
-
-  ConnectingLocationsCheckboxModel(
-      {required this.title, this.isChecked = false});
-}
-
-// Model class for the Airlines checkbox item
-class AirlinesCheckboxModel {
-  String title;
-  bool isChecked;
-
-  AirlinesCheckboxModel({required this.title, this.isChecked = false});
-}
-
-enum FlightSortOption {
-  priceLowToHigh,
-  priceHighToLow,
-  durationShortest,
-  departureEarliest;
-
-  String get label => switch (this) {
-        FlightSortOption.priceLowToHigh => 'Price: Low to High',
-        FlightSortOption.priceHighToLow => 'Price: High to Low',
-        FlightSortOption.durationShortest => 'Duration: Shortest',
-        FlightSortOption.departureEarliest => 'Departure: Earliest',
-      };
-
-  IconData get icon => switch (this) {
-        FlightSortOption.priceLowToHigh => Icons.arrow_upward,
-        FlightSortOption.priceHighToLow => Icons.arrow_downward,
-        FlightSortOption.durationShortest => Icons.timelapse,
-        FlightSortOption.departureEarliest => Icons.schedule,
-      };
-}
-
-/// A row in the main "Filters" sheet that drills into its own sub-sheet —
-/// same shape as bus's `_AllFiltersRow` (`bus_filter_sheets.dart`).
-class _FilterRow extends StatelessWidget {
-  const _FilterRow({required this.label, required this.onTap});
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () {
-        Navigator.of(context).pop();
-        onTap();
-      },
-    );
-  }
-}
-
-class _ToggleOption {
-  _ToggleOption({required this.label, this.icon, required this.selected});
-  final String label;
-  final IconData? icon;
-  bool selected;
-}
-
-/// Generic multi-select (or, with [singleSelect], radio-style) sheet reused
-/// for Stops, Departure/Arrival Time, Refundable, Connecting Locations, and
-/// Airlines — the six filter groups that all boil down to "toggle a few
-/// named options on or off". Mirrors bus's `_CheckboxSheetContent`.
-class _ToggleFilterSheet extends StatefulWidget {
-  const _ToggleFilterSheet({
-    required this.title,
-    required this.options,
-    required this.onApply,
-    required this.onClear,
-    this.singleSelect = false,
-  });
-
-  final String title;
-  final List<_ToggleOption> options;
-  final ValueChanged<List<_ToggleOption>> onApply;
-  final VoidCallback onClear;
-  final bool singleSelect;
-
-  @override
-  State<_ToggleFilterSheet> createState() => _ToggleFilterSheetState();
-}
-
-class _ToggleFilterSheetState extends State<_ToggleFilterSheet> {
-  late final List<_ToggleOption> _options = [
-    for (final option in widget.options)
-      _ToggleOption(label: option.label, icon: option.icon, selected: option.selected),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return BottomSheetShell(
-      title: widget.title,
-      primaryActionLabel: 'Apply',
-      primaryActionColor: Theme.of(context).colorScheme.primary,
-      onPrimaryAction: () {
-        widget.onApply(_options);
-        Navigator.of(context).pop();
-      },
-      secondaryActionLabel: 'Clear',
-      onSecondaryAction: () {
-        widget.onClear();
-        Navigator.of(context).pop();
-      },
-      body: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final option in _options)
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              value: option.selected,
-              secondary:
-                  option.icon != null ? Icon(option.icon, color: Theme.of(context).colorScheme.primary) : null,
-              title: Text(option.label),
-              activeColor: Theme.of(context).colorScheme.primary,
-              onChanged: (checked) {
-                setState(() {
-                  if (widget.singleSelect && (checked ?? false)) {
-                    for (final other in _options) {
-                      other.selected = false;
-                    }
-                  }
-                  option.selected = checked ?? false;
-                });
-              },
-            ),
-          if (_options.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Text('No options available', style: TextStyle(color: Colors.grey.shade600)),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SortBySheet extends StatefulWidget {
-  const _SortBySheet({required this.selected, required this.onApply});
-  final FlightSortOption? selected;
-  final ValueChanged<FlightSortOption?> onApply;
-
-  @override
-  State<_SortBySheet> createState() => _SortBySheetState();
-}
-
-class _SortBySheetState extends State<_SortBySheet> {
-  late FlightSortOption? _selected = widget.selected;
-
-  @override
-  Widget build(BuildContext context) {
-    return BottomSheetShell(
-      title: 'Sort By',
-      primaryActionLabel: 'Apply',
-      primaryActionColor: Theme.of(context).colorScheme.primary,
-      onPrimaryAction: () {
-        widget.onApply(_selected);
-        Navigator.of(context).pop();
-      },
-      secondaryActionLabel: 'Clear',
-      onSecondaryAction: () {
-        widget.onApply(null);
-        Navigator.of(context).pop();
-      },
-      body: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final option in FlightSortOption.values)
-            RadioListTile<FlightSortOption>(
-              contentPadding: EdgeInsets.zero,
-              value: option,
-              groupValue: _selected,
-              activeColor: Theme.of(context).colorScheme.primary,
-              secondary: Icon(option.icon, color: Theme.of(context).colorScheme.primary),
-              title: Text(option.label),
-              onChanged: (value) => setState(() => _selected = value),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PriceRangeSheet extends StatefulWidget {
-  const _PriceRangeSheet({
-    required this.min,
-    required this.max,
-    required this.current,
-    required this.onApply,
-    required this.onClear,
-  });
-
-  final double min;
-  final double max;
-  final RangeValues current;
-  final ValueChanged<RangeValues> onApply;
-  final VoidCallback onClear;
-
-  @override
-  State<_PriceRangeSheet> createState() => _PriceRangeSheetState();
-}
-
-class _PriceRangeSheetState extends State<_PriceRangeSheet> {
-  late RangeValues _range = widget.current;
-
-  @override
-  Widget build(BuildContext context) {
-    return BottomSheetShell(
-      title: 'Price Range',
-      primaryActionLabel: 'Apply',
-      primaryActionColor: Theme.of(context).colorScheme.primary,
-      onPrimaryAction: () {
-        widget.onApply(_range);
-        Navigator.of(context).pop();
-      },
-      secondaryActionLabel: 'Clear',
-      onSecondaryAction: () {
-        widget.onClear();
-        Navigator.of(context).pop();
-      },
-      body: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'INR ${_range.start.toStringAsFixed(0)} - INR ${_range.end.toStringAsFixed(0)}',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-          RangeSlider(
-            values: _range,
-            min: widget.min,
-            max: widget.max,
-            activeColor: Theme.of(context).colorScheme.primary,
-            labels: RangeLabels(
-              'INR ${_range.start.toStringAsFixed(0)}',
-              'INR ${_range.end.toStringAsFixed(0)}',
-            ),
-            onChanged: (values) => setState(() => _range = values),
-          ),
-        ],
-      ),
-    );
-  }
-}

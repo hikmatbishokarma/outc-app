@@ -25,6 +25,7 @@ class MultiCityFormCard extends StatelessWidget {
     required this.onSearch,
     required this.isSearching,
     this.minSegments = 2,
+    this.searchButtonLabel = 'SEARCH FLIGHTS',
   });
 
   final List<RouteSegmentData> segments;
@@ -41,6 +42,7 @@ class MultiCityFormCard extends StatelessWidget {
   final VoidCallback onSearch;
   final bool isSearching;
   final int minSegments;
+  final String searchButtonLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +141,7 @@ class MultiCityFormCard extends StatelessWidget {
               // matching comment in one_way_round_trip_form.dart. The
               // full-screen Flight_ProgressBar overlay already shows the
               // loading animation; onPressed still disables the tap.
-              SearchButton(onPressed: isSearching ? null : onSearch),
+              SearchButton(onPressed: isSearching ? null : onSearch, label: searchButtonLabel),
             ],
           ),
         ),

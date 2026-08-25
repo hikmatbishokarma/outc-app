@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:outc/core/widgets/glass_surface.dart';
 
 /// Generic modal-bottom-sheet chrome: rounded top corners, a drag handle,
-/// a title row with a close button, a scrollable [body] slot, and a fixed
-/// primary-action button pinned to the bottom. Callers own their own
-/// content and just supply [body]/[primaryActionLabel]/[onPrimaryAction].
+/// a title row with a close button, a scrollable [body] slot, and an
+/// optional fixed primary-action button pinned to the bottom. Callers own
+/// their own content and just supply [body] and, if a bottom action makes
+/// sense, [primaryActionLabel]/[onPrimaryAction].
 ///
 /// Open with:
 /// ```dart
@@ -27,8 +28,8 @@ class BottomSheetShell extends StatelessWidget {
     super.key,
     required this.title,
     required this.body,
-    required this.primaryActionLabel,
-    required this.onPrimaryAction,
+    this.primaryActionLabel,
+    this.onPrimaryAction,
     this.primaryActionColor,
     this.maxHeightFraction = 0.85,
     this.secondaryActionLabel,
@@ -38,8 +39,12 @@ class BottomSheetShell extends StatelessWidget {
 
   final String title;
   final Widget body;
-  final String primaryActionLabel;
-  final VoidCallback onPrimaryAction;
+
+  /// Leave both null when the body already carries its own action(s) (e.g.
+  /// a per-item Book button) and a bottom bar would just be a redundant
+  /// second way to dismiss what the header's close (×) already does.
+  final String? primaryActionLabel;
+  final VoidCallback? onPrimaryAction;
   final Color? primaryActionColor;
   final double maxHeightFraction;
   final bool glass;
@@ -126,72 +131,75 @@ class BottomSheetShell extends StatelessWidget {
                 child: body,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-              child: (secondaryActionLabel != null && onSecondaryAction != null)
-                  ? Row(
-                      children: [
-                        TextButton(
-                          onPressed: onSecondaryAction,
+            if (onPrimaryAction != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+                child: (secondaryActionLabel != null && onSecondaryAction != null)
+                    ? Row(
+                        children: [
+                          TextButton(
+                            onPressed: onSecondaryAction,
+                            child: Text(
+                              secondaryActionLabel!,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontFamily: 'Poppins',
+                                fontWeight: FontWeight.w700,
+                                color: actionColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: SizedBox(
+                              height: 52,
+                              child: ElevatedButton(
+                                onPressed: onPrimaryAction,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: actionColor,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: Text(
+                                  primaryActionLabel!,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontFamily: 'Poppins',
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: onPrimaryAction,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: actionColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                           child: Text(
-                            secondaryActionLabel!,
-                            style: TextStyle(
+                            primaryActionLabel!,
+                            style: const TextStyle(
                               fontSize: 16,
                               fontFamily: 'Poppins',
                               fontWeight: FontWeight.w700,
-                              color: actionColor,
+                              color: Colors.white,
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: SizedBox(
-                            height: 52,
-                            child: ElevatedButton(
-                              onPressed: onPrimaryAction,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: actionColor,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: Text(
-                                primaryActionLabel,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  : SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: onPrimaryAction,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: actionColor,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Text(
-                          primaryActionLabel,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
                           ),
                         ),
                       ),
-                    ),
-            ),
+              )
+            else
+              const SizedBox(height: 12),
           ],
         );
   }
