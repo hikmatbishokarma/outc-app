@@ -14,16 +14,28 @@ import 'package:outc/services/api_services_list.dart';
 import 'package:outc/widgets/sharedprefservices.dart';
 
 /// Which of the two booking-step overlays (if any) should be showing.
-enum FlightBookingPhase { none, pricing, booking }
+/// `pricing` (the silent `confirmFare()` check) deliberately has no overlay
+/// of its own — see `isConfirmingFare`.
+enum FlightBookingPhase { none, blocking, booking }
 
 /// Checkout (passenger details) state for a chosen fare, plus submission
-/// (price -> block -> book) once the customer taps "Proceed". Scoped to
+/// (block -> pay -> book) once the customer taps "Proceed". Scoped to
 /// `BookFlightFormpage` only, same pattern as `BusCheckoutProvider` being
 /// scoped to the bus checkout screen. Ports the validation, request-
 /// building, and block/pay/book orchestration that used to live inline in
-/// `BookFlightFormpage`'s `setState` calls — the sequence itself
-/// (`flightOnewayPrice` -> `flightOnewayBlock` -> payment -> `flightOnewayBook`)
-/// is unchanged, just relocated out of the widget.
+/// `BookFlightFormpage`'s `setState` calls.
+///
+/// `flightOnewayPrice` used to run bundled with `flightOnewayBlock`, both
+/// deferred until the customer tapped Proceed — after they'd already filled
+/// in the entire passenger form. That made the price check pointless (it
+/// couldn't inform anything the customer saw, and any staleness surfaced
+/// only after the longest possible delay since search) and doesn't match
+/// the website, which prices the fare right after selection, before
+/// passenger details. `confirmFare()` now runs once, automatically, as soon
+/// as this screen opens (see `BookFlightFormpage`'s `create:`) — quietly,
+/// so it doesn't block the customer from filling in the form while it's in
+/// flight — and `blockFare()` (Proceed) only runs `flightOnewayBlock`,
+/// waiting on `confirmFare()` first if it's still running.
 class FlightCheckoutProvider extends ChangeNotifier {
   FlightCheckoutProvider({
     required this.traceId,
@@ -87,12 +99,10 @@ class FlightCheckoutProvider extends ChangeNotifier {
   static const double convenienceFee = 200;
   double get grandTotal => total + convenienceFee;
 
-  /// Neither `flightOnewayPrice`+`flightOnewayBlock` nor `flightOnewayBook`
-  /// report real intermediate progress — same situation bus's block/book
-  /// calls are in. Paced by `_runStepTimer` while the real calls run
-  /// underneath.
-  static const List<BookingStep> pricingSteps = [
-    BookingStep('Checking fare', 'Confirming the latest price'),
+  /// Neither `flightOnewayBlock` nor `flightOnewayBook` report real
+  /// intermediate progress — same situation bus's block/book calls are in.
+  /// Paced by `_runStepTimer` while the real calls run underneath.
+  static const List<BookingStep> blockingSteps = [
     BookingStep('Holding your seat', 'Please wait a moment'),
     BookingStep('Redirecting to payment', 'Preparing your payment page'),
   ];
@@ -108,21 +118,37 @@ class FlightCheckoutProvider extends ChangeNotifier {
   Timer? _stepTimer;
 
   List<BookingStep> get activeSteps =>
-      phase == FlightBookingPhase.pricing ? pricingSteps : bookingSteps;
+      phase == FlightBookingPhase.blocking ? blockingSteps : bookingSteps;
 
-  bool get isBooking => phase != FlightBookingPhase.none;
+  /// True once `confirmFare()` has succeeded — `blockFare()` refuses to run
+  /// `flightOnewayBlock` against an unconfirmed/failed fare.
+  bool isFarePriced = false;
+
+  /// True while `confirmFare()`'s network call is in flight. Deliberately
+  /// not surfaced as a full-screen overlay (unlike `phase`) — this runs the
+  /// moment the screen opens and shouldn't stop the customer from starting
+  /// to fill in the form; `blockFare()` awaits it if Proceed is tapped
+  /// before it's finished.
+  bool isConfirmingFare = false;
+  Future<void>? _confirmFareFuture;
+
+  bool get isBooking => isConfirmingFare || phase != FlightBookingPhase.none;
 
   String? errorMessage;
 
   /// Dismisses the full-screen error state (see `book_flight_formpage.dart`)
   /// so the form underneath is tappable again — the form itself is left
-  /// untouched, same as `FlightsListPage`'s search-error overlay.
+  /// untouched, same as `FlightsListPage`'s search-error overlay. Also
+  /// retries `confirmFare()` if the fare was never successfully priced —
+  /// otherwise the customer would be dropped back onto a form that can
+  /// never submit, with no obvious reason why.
   void clearError() {
     errorMessage = null;
     notifyListeners();
+    if (!isFarePriced) confirmFare();
   }
 
-  /// Set once `priceAndBlock()` succeeds; `confirmBooking()` books against it.
+  /// Set once `blockFare()` succeeds; `confirmBooking()` books against it.
   String? _bookingRefNo;
 
   void setPhone(String value) {
@@ -260,19 +286,24 @@ class FlightCheckoutProvider extends ChangeNotifier {
     if (remaining > Duration.zero) await Future.delayed(remaining);
   }
 
-  /// Prices the fare one last time, then blocks it. The checkout screen
-  /// routes the returned `Data`'s `pgType`/`paymentLink` through
-  /// `paymentGatewayFor` (`lib/core/payment_gateway.dart`) before calling
-  /// `confirmBooking()`. Returns the blocked data on success, or `null` with
-  /// `errorMessage` set on failure.
-  Future<block_model.Data?> priceAndBlock() async {
-    phase = FlightBookingPhase.pricing;
-    currentStep = 0;
+  /// Confirms the fare's current price. Runs once, automatically, the
+  /// moment the checkout screen opens (see `BookFlightFormpage`'s
+  /// `create:`) — not deferred until Proceed — so a stale/invalid fare
+  /// (an expired traceId/fareId, most likely, given how this backend call
+  /// has crashed live before — see `flights_price_response.dart`) surfaces
+  /// immediately instead of after the customer has spent time filling in
+  /// the whole passenger form. Safe to call again (e.g. from `clearError()`
+  /// after a failure) — each call replaces `_confirmFareFuture`.
+  Future<void> confirmFare() {
+    final future = _confirmFareInternal();
+    _confirmFareFuture = future;
+    return future;
+  }
+
+  Future<void> _confirmFareInternal() async {
+    isConfirmingFare = true;
     errorMessage = null;
     notifyListeners();
-    _runStepTimer(pricingSteps.length);
-
-    final stopwatch = Stopwatch()..start();
     try {
       final bookingContext = BookingContext.current();
       final priceRequest = price_model.FLightPriceRequestModel(
@@ -309,11 +340,42 @@ class FlightCheckoutProvider extends ChangeNotifier {
       final priceResponse = await _service.flightOnewayPrice(priceRequest);
       if (priceResponse.statusCode != 200 && priceResponse.statusCode != 201) {
         errorMessage = 'Could not fetch the latest fare. Please try again.';
-        return null;
+        return;
       }
-      currentStep = 1;
+      isFarePriced = true;
+    } catch (e) {
+      errorMessage =
+          'Something went wrong while pricing this fare. Please try again.';
+    } finally {
+      isConfirmingFare = false;
       notifyListeners();
+    }
+  }
 
+  /// Blocks (holds) the already-`confirmFare()`-priced fare. The checkout
+  /// screen routes the returned `Data`'s `pgType`/`paymentLink` through
+  /// `paymentGatewayFor` (`lib/core/payment_gateway.dart`) before calling
+  /// `confirmBooking()`. Returns the blocked data on success, or `null` with
+  /// `errorMessage` set on failure.
+  Future<block_model.Data?> blockFare() async {
+    // Proceed can be tapped before the automatic confirmFare() finishes
+    // (a fast typist, or a fast network) — wait for it rather than racing.
+    if (isConfirmingFare) await _confirmFareFuture;
+    if (!isFarePriced) {
+      errorMessage ??= 'This fare could not be confirmed. Please try again.';
+      notifyListeners();
+      return null;
+    }
+
+    phase = FlightBookingPhase.blocking;
+    currentStep = 0;
+    errorMessage = null;
+    notifyListeners();
+    _runStepTimer(blockingSteps.length);
+
+    final stopwatch = Stopwatch()..start();
+    try {
+      final bookingContext = BookingContext.current();
       final blockRequest = form_model.FlightFormRequestModel(
         pgType: bookingContext.pgTypeValue,
         userId: bookingContext.userId,
@@ -355,7 +417,7 @@ class FlightCheckoutProvider extends ChangeNotifier {
         errorMessage = 'Could not hold this fare. Please try again.';
         return null;
       }
-      currentStep = pricingSteps.length - 1;
+      currentStep = blockingSteps.length - 1;
       notifyListeners();
       await Future.delayed(const Duration(milliseconds: 350));
       _bookingRefNo = blockResponse.data.bookingRefNo;
@@ -363,7 +425,7 @@ class FlightCheckoutProvider extends ChangeNotifier {
     } catch (e) {
       await _holdMinimumDisplay(stopwatch, const Duration(milliseconds: 900));
       errorMessage =
-          'Something went wrong while pricing this fare. Please try again.';
+          'Something went wrong while holding this fare. Please try again.';
       return null;
     } finally {
       _stepTimer?.cancel();
@@ -373,7 +435,7 @@ class FlightCheckoutProvider extends ChangeNotifier {
   }
 
   /// Books against the reference number captured by a prior successful
-  /// `priceAndBlock()` call. Returns the book response on success, or `null`
+  /// `blockFare()` call. Returns the book response on success, or `null`
   /// with `errorMessage` set on failure.
   Future<FlightOnewayBookResponse?> confirmBooking() async {
     final refNo = _bookingRefNo;

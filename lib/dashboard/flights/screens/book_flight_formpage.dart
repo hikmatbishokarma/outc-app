@@ -91,7 +91,7 @@ class BookFlightFormpage extends StatelessWidget {
         childtaxfare: childtaxfare,
         infantBasefare: infantBasefare,
         infanttaxfare: infanttaxfare,
-      ),
+      )..confirmFare(),
       child: _FormView(widget: this),
     );
   }
@@ -135,14 +135,17 @@ class _FormView extends StatelessWidget {
               ),
               bottomNavigationBar: _BottomBar(provider: provider, widget: widget),
             ),
-            // Covers the form during both priceAndBlock() (before payment)
-            // and confirmBooking() (after payment) — same treatment as
-            // BusCheckoutScreen's overlay stack.
-            if (provider.phase == FlightBookingPhase.pricing)
+            // Covers the form during both blockFare() (before payment) and
+            // confirmBooking() (after payment) — same treatment as
+            // BusCheckoutScreen's overlay stack. confirmFare() (the price
+            // check that now runs automatically when this screen opens)
+            // deliberately has no overlay of its own — see
+            // FlightCheckoutProvider.isConfirmingFare.
+            if (provider.phase == FlightBookingPhase.blocking)
               BookingStepOverlay(
                 icon: Icons.confirmation_number_outlined,
                 title: 'Holding your fare',
-                subtitle: "We're confirming the latest price and holding your seat before payment.",
+                subtitle: "We're holding your seat before payment.",
                 steps: provider.activeSteps,
                 currentStep: provider.currentStep,
                 footerIcon: Icons.lock_outline,
@@ -160,14 +163,16 @@ class _FormView extends StatelessWidget {
                 footerText: 'Your payment is safe and secure. This usually takes a few seconds.',
                 footerColor: AppColors.success,
               ),
-            // A failed priceAndBlock()/confirmBooking() used to just pop a
-            // SnackBar — easy to miss, and since nothing cleared
-            // `errorMessage`, tapping Proceed again after fixing nothing
-            // reliably fired the exact same toast again, which read as the
-            // same error nagging back rather than a fresh attempt. Same
-            // full-screen illustrated treatment as `FlightsListPage`'s
-            // search-error overlay instead, with a retry that dismisses it
-            // onto the still-filled form.
+            // Covers a failed confirmFare() (the automatic price check —
+            // surfaces immediately on open instead of after the whole form
+            // is filled in), blockFare(), or confirmBooking(). Used to just
+            // pop a SnackBar for the latter two — easy to miss, and since
+            // nothing cleared `errorMessage`, tapping Proceed again after
+            // fixing nothing reliably fired the exact same toast again.
+            // Same full-screen illustrated treatment as `FlightsListPage`'s
+            // search-error overlay instead; retrying re-runs confirmFare()
+            // if the fare was never priced (see `clearError()`), or just
+            // dismisses onto the still-filled form otherwise.
             if (provider.errorMessage != null && provider.phase == FlightBookingPhase.none)
               Positioned.fill(
                 child: Material(
@@ -859,7 +864,7 @@ class _BottomBar extends StatelessWidget {
     if (!context.mounted) return;
     if (!loggedIn) return;
 
-    final blockData = await provider.priceAndBlock();
+    final blockData = await provider.blockFare();
     if (!context.mounted) return;
     // A null result means `provider.errorMessage` is set — the `ErrorState`
     // overlay in `_FormView` picks that up reactively, so there's nothing
@@ -874,7 +879,7 @@ class _BottomBar extends StatelessWidget {
 
         final bookResponse = await provider.confirmBooking();
         if (!context.mounted) return;
-        // Same reactive `ErrorState` overlay as the priceAndBlock() failure
+        // Same reactive `ErrorState` overlay as the blockFare() failure
         // above picks this up via `provider.errorMessage`.
         if (bookResponse == null) return;
 
