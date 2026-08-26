@@ -114,6 +114,14 @@ class FlightCheckoutProvider extends ChangeNotifier {
 
   String? errorMessage;
 
+  /// Dismisses the full-screen error state (see `book_flight_formpage.dart`)
+  /// so the form underneath is tappable again — the form itself is left
+  /// untouched, same as `FlightsListPage`'s search-error overlay.
+  void clearError() {
+    errorMessage = null;
+    notifyListeners();
+  }
+
   /// Set once `priceAndBlock()` succeeds; `confirmBooking()` books against it.
   String? _bookingRefNo;
 

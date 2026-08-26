@@ -98,6 +98,7 @@ class ErrorState extends StatelessWidget {
     required this.message,
     this.onRetry,
     this.retryLabel = 'Retry',
+    this.illustrationAsset = 'images/illustrations/error.svg',
   });
 
   final String title;
@@ -105,10 +106,16 @@ class ErrorState extends StatelessWidget {
   final VoidCallback? onRetry;
   final String retryLabel;
 
+  /// Defaults to the generic "oops" illustration — but that one has "404"
+  /// baked into the artwork, so anything that isn't literally a not-found
+  /// page (a failed booking/payment step, for instance) should pass a
+  /// different asset rather than show a wrong, specific error code.
+  final String illustrationAsset;
+
   @override
   Widget build(BuildContext context) {
     return _FeedbackScaffold(
-      body: SvgPicture.asset('images/illustrations/error.svg', height: 160, width: 160),
+      body: SvgPicture.asset(illustrationAsset, height: 160, width: 160),
       title: title,
       message: message,
       actionLabel: onRetry == null ? null : retryLabel,
