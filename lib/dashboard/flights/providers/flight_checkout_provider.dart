@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart' show IterableExtension;
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
@@ -8,6 +9,9 @@ import 'package:outc/core/widgets/booking_step_overlay.dart';
 import 'package:outc/dashboard/flights/models/flight_checkout_draft.dart';
 import 'package:outc/dashboard/flights/models/flightbalaji.dart' as form_model;
 import 'package:outc/dashboard/flights/models/flight_price_model.dart' as price_model;
+import 'package:outc/dashboard/flights/models/flights_list_model.dart' show FlightDetail;
+import 'package:outc/dashboard/flights/models/flights_price_response.dart'
+    show FareFamily;
 import 'package:outc/dashboard/flights/models/one_way_book_response.dart';
 import 'package:outc/loginflow/model/flight_oneway_book_response_model.dart' as block_model;
 import 'package:outc/services/api_services_list.dart';
@@ -37,6 +41,16 @@ enum FlightBookingPhase { none, blocking, booking }
 /// flight — and `blockFare()` (Proceed) only runs `flightOnewayBlock`,
 /// waiting on `confirmFare()` first if it's still running.
 class FlightCheckoutProvider extends ChangeNotifier {
+  /// The identity `search_flights.dart`'s original `/airSearch` call
+  /// unconditionally uses (matches the website too), regardless of who's
+  /// actually logged in — not `BookingContext`'s real customerId/
+  /// roleTypeValue. Every request that references the traceId/flightId/
+  /// fareId minted by that search (price, airSearch-echo, block) must
+  /// reuse this same identity or the backend can't resolve them — see
+  /// `_confirmFareInternal()`'s doc comment for how that was confirmed.
+  static const int _searchUserId = 1;
+  static const int _searchRoleType = 4;
+
   FlightCheckoutProvider({
     required this.traceId,
     required this.flightId,
@@ -50,6 +64,7 @@ class FlightCheckoutProvider extends ChangeNotifier {
     required this.childtaxfare,
     required this.infantBasefare,
     required this.infanttaxfare,
+    this.selectedFlightDetail,
   })  : adultCount = adultCount,
         childCount = childCount,
         infantCount = infantCount,
@@ -77,6 +92,12 @@ class FlightCheckoutProvider extends ChangeNotifier {
   final double infantBasefare;
   final double infanttaxfare;
 
+  /// The exact object the fare sheet rendered this fare from — sent back
+  /// verbatim as `airPrice`'s `selected` field (see `flight_price_model.dart`
+  /// for why). Only the one-way flow (`flight_fares_sheet.dart`) passes this
+  /// today.
+  final FlightDetail? selectedFlightDetail;
+
   final List<FlightPassengerDraft> passengers;
 
   String phone = '';
@@ -84,14 +105,29 @@ class FlightCheckoutProvider extends ChangeNotifier {
   String address = '';
   bool termsAccepted = false;
 
-  double get basefare =>
-      adultCount * adultBasefare +
-      childCount * childBasefare +
-      infantCount * infantBasefare;
-  double get taxes =>
-      adultCount * adulttaxfare +
-      childCount * childtaxfare +
-      infantCount * infanttaxfare;
+  /// Set once `confirmFare()` succeeds — the actual current price for this
+  /// fare, confirmed via `airPrice`. Until then (or if pricing fails),
+  /// `basefare`/`taxes`/`total` fall back to the estimate carried over from
+  /// the search results screen, so the summary isn't blank while the
+  /// automatic price check is still in flight.
+  FareFamily? _confirmedFare;
+
+  double get basefare {
+    final confirmed = _confirmedFare;
+    if (confirmed != null) return (confirmed.totalPublishFare - confirmed.totalTaxFare).toDouble();
+    return adultCount * adultBasefare +
+        childCount * childBasefare +
+        infantCount * infantBasefare;
+  }
+
+  double get taxes {
+    final confirmed = _confirmedFare;
+    if (confirmed != null) return confirmed.totalTaxFare.toDouble();
+    return adultCount * adulttaxfare +
+        childCount * childtaxfare +
+        infantCount * infanttaxfare;
+  }
+
   double get total => basefare + taxes;
 
   /// Same flat convenience fee `book_flight_formpage.dart` has always added
@@ -269,6 +305,56 @@ class FlightCheckoutProvider extends ChangeNotifier {
     ];
   }
 
+  /// The `airSearch` field `confirmFare()`'s price request needs (see
+  /// `flight_price_model.dart`) — reconstructed from `selectedFlightDetail`
+  /// plus the same constants `search_flights.dart` already hardcodes for
+  /// every one-way search (`priceForTrip`, `cabinClass`, `stopOver`, etc.),
+  /// rather than threading the original search request through an extra
+  /// screen. `null` when `selectedFlightDetail` wasn't passed in (round-
+  /// trip/multi-city today), same as `selected`.
+  Map<String, dynamic>? _buildAirSearch() {
+    final flight = selectedFlightDetail;
+    if (flight == null) return null;
+    final departureDate = flight.flightSegments?.firstOrNull?.departureDateTime;
+    final searchDate = departureDate == null
+        ? null
+        : DateTime(departureDate.year, departureDate.month, departureDate.day);
+    return {
+      'originDestinations': [
+        {
+          // DateTime.toIso8601String() appends milliseconds
+          // ("...T00:00:00.000") — the real request has a clean
+          // "...T00:00:00", so match that instead of leaving one more
+          // unverified difference in a payload that's already been wrong
+          // twice.
+          'departureDateTime':
+              DateFormat('yyyy-MM-ddTHH:mm:ss').format(searchDate ?? DateTime.now()),
+          'origin': flight.origin ?? '',
+          'destination': flight.destination ?? '',
+          'flightDateFlex': 1,
+        },
+      ],
+      'priceForTrip': 'REGULAR',
+      'adultCount': adultCount,
+      'childCount': childCount,
+      'infantCount': infantCount,
+      'cabinClass': 'Economy',
+      'includeCarrier': '',
+      'excludeCarrier': '',
+      'stopOver': 'none',
+      'airTravelType': 'oneWay',
+      'flightDateFlex': 3,
+      'itineraryViewType': '1',
+      // Deliberately not bookingContext.userId/roleTypeValue — see
+      // _searchUserId's doc comment above.
+      'userId': _searchUserId,
+      'roleType': _searchRoleType,
+      'membership': 1,
+      'traceId': traceId,
+      'resultsType': 'COMBINED',
+    };
+  }
+
   void _runStepTimer(int stepCount) {
     _stepTimer?.cancel();
     _stepTimer = Timer.periodic(const Duration(milliseconds: 650), (timer) {
@@ -305,10 +391,14 @@ class FlightCheckoutProvider extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
     try {
-      final bookingContext = BookingContext.current();
       final priceRequest = price_model.FLightPriceRequestModel(
-        userId: bookingContext.userId,
-        roleType: bookingContext.roleTypeValue,
+        // Pricing under a *different* userId/roleType than the one the
+        // trace was created under is what was causing this to come back
+        // with an empty flightDetails (no crash, no error, just nothing to
+        // price) — confirmed by diffing a real successful website request
+        // against ours down to this field. See _searchUserId's doc comment.
+        userId: _searchUserId,
+        roleType: _searchRoleType,
         membership: 1,
         traceId: traceId,
         flightIds: [flightId],
@@ -316,13 +406,19 @@ class FlightCheckoutProvider extends ChangeNotifier {
           price_model.SelectedFlight(
             fareId: fareId,
             flightId: flightId,
-            coupanType: 'Discount',
-            fareType: 'Economy',
+            // Matches a captured real website request exactly (see
+            // flight_price_model.dart's doc comment on `selected`) — this
+            // used to send 'Discount'/'Economy', neither of which the
+            // website ever sends.
+            coupanType: 'General',
+            fareType: 'Publish',
             subCabinClass: 'A',
           ),
         ],
+        selected: selectedFlightDetail == null ? null : [selectedFlightDetail!.toJson()],
+        airSearch: _buildAirSearch(),
         airTravelType: 'oneWay',
-        mappingType: 'Combined',
+        mappingType: 'COMBINED',
         itineraryViewType: '1',
         gstDetails: price_model.GstDetails(
           gstAddressLine1: '',
@@ -342,6 +438,15 @@ class FlightCheckoutProvider extends ChangeNotifier {
         errorMessage = 'Could not fetch the latest fare. Please try again.';
         return;
       }
+      // Only one flight/fare was ever requested (flightIds/selectedFlights
+      // above are single-element) — the response mirrors that shape back,
+      // one flightDetail with one priced fareFamily.
+      final fareFamilies = priceResponse.data?.flightDetails.firstOrNull?.fareFamilies;
+      if (fareFamilies == null || fareFamilies.isEmpty) {
+        errorMessage = 'Could not fetch the latest fare. Please try again.';
+        return;
+      }
+      _confirmedFare = fareFamilies.first;
       isFarePriced = true;
     } catch (e) {
       errorMessage =
@@ -378,13 +483,15 @@ class FlightCheckoutProvider extends ChangeNotifier {
       final bookingContext = BookingContext.current();
       final blockRequest = form_model.FlightFormRequestModel(
         pgType: bookingContext.pgTypeValue,
-        userId: bookingContext.userId,
+        // Same userId/roleType as confirmFare()'s price request, for the
+        // same reason — see _searchUserId's doc comment.
+        userId: _searchUserId,
         traceId: traceId,
         currency: 'INR',
         currencyRatio: 1,
         membership: 1,
         promoData: '',
-        roleType: bookingContext.roleTypeValue,
+        roleType: _searchRoleType,
         passengers: _buildRequestPassengers(),
         gstDetails: form_model.GstDetails(
           gstAddressLine1: '',

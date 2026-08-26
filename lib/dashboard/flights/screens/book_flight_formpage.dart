@@ -10,6 +10,7 @@ import 'package:outc/core/widgets/bottom_sheet_shell.dart';
 import 'package:outc/core/widgets/feedback_states.dart';
 import 'package:outc/dashboard/flights/models/flight_checkout_draft.dart';
 import 'package:outc/dashboard/flights/models/flight_eticket_data.dart';
+import 'package:outc/dashboard/flights/models/flights_list_model.dart' show FlightDetail;
 import 'package:outc/dashboard/flights/providers/flight_checkout_provider.dart';
 import 'package:outc/dashboard/flights/screens/flight_eticket_screen.dart';
 import 'package:outc/loginflow/auth_gate.dart';
@@ -50,6 +51,7 @@ class BookFlightFormpage extends StatelessWidget {
     required this.adultCount,
     required this.childCount,
     required this.infantCount,
+    this.selectedFlightDetail,
   });
 
   final String airlineLogo;
@@ -75,6 +77,13 @@ class BookFlightFormpage extends StatelessWidget {
   final double childCount;
   final double infantCount;
 
+  /// The exact search-results/fare-sheet flight object this booking started
+  /// from — see `FlightCheckoutProvider.selectedFlightDetail` for why this
+  /// matters. Only `flight_fares_sheet.dart` (the one-way flow) passes this
+  /// today; round-trip/multi-city callers omit it and `confirmFare()` just
+  /// sends `airPrice` without a `selected` field, same as before this fix.
+  final FlightDetail? selectedFlightDetail;
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -91,6 +100,7 @@ class BookFlightFormpage extends StatelessWidget {
         childtaxfare: childtaxfare,
         infantBasefare: infantBasefare,
         infanttaxfare: infanttaxfare,
+        selectedFlightDetail: selectedFlightDetail,
       )..confirmFare(),
       child: _FormView(widget: this),
     );

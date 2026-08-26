@@ -532,6 +532,7 @@ class _FareBlockState extends State<_FareBlock> {
           adultCount: widget.adultCount.toDouble(),
           childCount: widget.childCount.toDouble(),
           infantCount: widget.infantCount.toDouble(),
+          selectedFlightDetail: flight,
         ),
       ),
     );

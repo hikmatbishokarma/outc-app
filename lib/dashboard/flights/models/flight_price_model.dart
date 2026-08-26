@@ -14,6 +14,29 @@ class FLightPriceRequestModel {
   String itineraryViewType;
   GstDetails gstDetails;
 
+  /// The full originally-selected flight (the exact object the search
+  /// results/fare-sheet rendered from — see `FlightDetail.toJson()` in
+  /// `flights_list_model.dart`), matching the website's request payload's
+  /// `selected` field. Confirmed missing here by capturing a real working
+  /// website request and diffing it against what this model sent — the
+  /// backend's `airPrice` endpoint has been crashing with "Cannot read
+  /// properties of undefined (reading '0')" on every single call this
+  /// session, fresh or stale, which matches indexing into a `selected`
+  /// array that was never actually in the request body at all.
+  /// Nullable/omitted-when-null because only the one-way flow
+  /// (`flight_fares_sheet.dart`) threads this through today — round-trip
+  /// and multi-city select from a differently-shaped result model that
+  /// hasn't been verified against this same contract yet.
+  List<Map<String, dynamic>>? selected;
+
+  /// The original search criteria (route, date, passenger mix) echoed back
+  /// — also confirmed required by diffing a real *successful* website
+  /// request against ours: adding `selected` alone stopped the crash but
+  /// still came back with an empty `flightDetails`; adding this is what
+  /// actually got a priced result back. Same nullable/one-way-only caveat
+  /// as `selected`.
+  Map<String, dynamic>? airSearch;
+
   FLightPriceRequestModel({
     required this.userId,
     required this.roleType,
@@ -25,6 +48,8 @@ class FLightPriceRequestModel {
     required this.mappingType,
     required this.itineraryViewType,
     required this.gstDetails,
+    this.selected,
+    this.airSearch,
   });
 
   Map<dynamic, dynamic> toJson() {
@@ -35,6 +60,8 @@ class FLightPriceRequestModel {
       'traceId': traceId,
       'flightIds': flightIds,
       'selectedFlights': selectedFlights.map((flight) => flight.toJson()).toList(),
+      if (airSearch != null) 'airSearch': airSearch,
+      if (selected != null) 'selected': selected,
       'airTravelType': airTravelType,
       'mappingType': mappingType,
       'itineraryViewType': itineraryViewType,
