@@ -32,6 +32,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+android/build/
 
 # Symbolication related
 app.*.symbols
@@ -74,3 +75,6 @@ android/local.properties
 
 # Claude Code local session state (not part of the project)
 .claude/*.lock
+# Android signing credentials
+android/key.properties
+android/app/*.jks

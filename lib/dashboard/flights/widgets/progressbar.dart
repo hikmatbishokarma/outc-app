@@ -28,10 +28,19 @@ class Flight_ProgressBar extends StatelessWidget {
         child,
         if (inAsyncCall)
           Positioned.fill(
-            child: ColoredBox(
-              color: Colors.white,
-              child: Center(
-                child: TravelLoadingIndicator(size: 220, caption: caption),
+            // Sits as a sibling of `child`'s own Scaffold in this Stack, not
+            // a descendant of it — without its own Material ancestor here,
+            // the caption text picks up debug-mode fallback styling (a
+            // stray underline under every line of text). Same fix as
+            // `BookingStepOverlay` and search_flights.dart's ErrorState
+            // overlay.
+            child: Material(
+              type: MaterialType.transparency,
+              child: ColoredBox(
+                color: Colors.white,
+                child: Center(
+                  child: TravelLoadingIndicator(size: 220, caption: caption),
+                ),
               ),
             ),
           ),

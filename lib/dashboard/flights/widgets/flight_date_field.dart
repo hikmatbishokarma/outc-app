@@ -16,6 +16,7 @@ class FlightDateField extends StatelessWidget {
     this.helperText,
     this.emphasizePlaceholder = false,
     this.compact = false,
+    this.showLabel = true,
   });
 
   final String label;
@@ -28,6 +29,10 @@ class FlightDateField extends StatelessWidget {
   /// Tighter icon/font sizing for side-by-side layouts (multi-city's
   /// FROM/TO/DATE row), where this field only gets a third of the width.
   final bool compact;
+
+  /// False when the caller renders [label] itself outside the box (multi-
+  /// city's MMT-style layout — see route_card.dart) instead of inline here.
+  final bool showLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +49,7 @@ class FlightDateField extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (hasDate) ...[
+                if (hasDate && showLabel) ...[
                   Text(
                     label,
                     maxLines: 1,
@@ -59,19 +64,46 @@ class FlightDateField extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                 ],
-                Text(
-                  hasDate ? DateFormat.yMMMEd().format(date!) : placeholder,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: hasDate ? (compact ? 13 : 16) : (compact ? 12 : 15),
-                    fontFamily: 'Poppins',
-                    fontWeight: FontWeight.w700,
-                    color: !hasDate && emphasizePlaceholder
-                        ? AppColors.primary
-                        : Colors.black87,
+                if (hasDate && compact) ...[
+                  // Compact mode (multi-city's 3-column FROM/TO/DATE row,
+                  // label shown above the box instead) mirrors the FROM/TO
+                  // fields' two-row shape: "27 Aug" then "Thu, 2026" below,
+                  // instead of cramming everything into one line.
+                  Text(
+                    DateFormat('dd MMM').format(date!),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
                   ),
-                ),
+                  Text(
+                    DateFormat('EEE, y').format(date!),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontFamily: 'Poppins',
+                      color: Colors.black54,
+                    ),
+                  ),
+                ] else
+                  Text(
+                    hasDate ? DateFormat.yMMMEd().format(date!) : placeholder,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: hasDate ? 16 : 15,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w700,
+                      color: !hasDate && emphasizePlaceholder
+                          ? AppColors.primary
+                          : Colors.black87,
+                    ),
+                  ),
                 if (!hasDate && helperText != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),

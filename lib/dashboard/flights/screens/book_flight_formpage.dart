@@ -7,8 +7,10 @@ import 'package:outc/core/theme/design_tokens.dart';
 import 'package:outc/core/widgets/app_top_bar.dart';
 import 'package:outc/core/widgets/booking_step_overlay.dart';
 import 'package:outc/core/widgets/bottom_sheet_shell.dart';
+import 'package:outc/core/widgets/feedback_states.dart';
 import 'package:outc/dashboard/flights/models/flight_checkout_draft.dart';
 import 'package:outc/dashboard/flights/models/flight_eticket_data.dart';
+import 'package:outc/dashboard/flights/models/flights_list_model.dart' show FlightDetail;
 import 'package:outc/dashboard/flights/providers/flight_checkout_provider.dart';
 import 'package:outc/dashboard/flights/screens/flight_eticket_screen.dart';
 import 'package:outc/loginflow/auth_gate.dart';
@@ -49,6 +51,7 @@ class BookFlightFormpage extends StatelessWidget {
     required this.adultCount,
     required this.childCount,
     required this.infantCount,
+    this.selectedFlightDetail,
   });
 
   final String airlineLogo;
@@ -74,6 +77,13 @@ class BookFlightFormpage extends StatelessWidget {
   final double childCount;
   final double infantCount;
 
+  /// The exact search-results/fare-sheet flight object this booking started
+  /// from — see `FlightCheckoutProvider.selectedFlightDetail` for why this
+  /// matters. Only `flight_fares_sheet.dart` (the one-way flow) passes this
+  /// today; round-trip/multi-city callers omit it and `confirmFare()` just
+  /// sends `airPrice` without a `selected` field, same as before this fix.
+  final FlightDetail? selectedFlightDetail;
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -90,7 +100,8 @@ class BookFlightFormpage extends StatelessWidget {
         childtaxfare: childtaxfare,
         infantBasefare: infantBasefare,
         infanttaxfare: infanttaxfare,
-      ),
+        selectedFlightDetail: selectedFlightDetail,
+      )..confirmFare(),
       child: _FormView(widget: this),
     );
   }
@@ -120,6 +131,13 @@ class _FormView extends StatelessWidget {
                     const SizedBox(height: 12),
                     _SectionCard(child: _PassengerSection(provider: provider)),
                     const SizedBox(height: 12),
+                    // Placed after Traveller Details, in the main scroll —
+                    // not hidden inside the Fare Summary sheet behind the
+                    // price's info icon, where nobody goes looking for a
+                    // coupon field. See `_PromoCodeCard` for why this stays
+                    // a no-op rather than actually recalculating the total.
+                    _SectionCard(child: _PromoCodeCard(provider: provider)),
+                    const SizedBox(height: 12),
                     _TermsRow(provider: provider),
                     const SizedBox(height: 100),
                   ],
@@ -127,14 +145,17 @@ class _FormView extends StatelessWidget {
               ),
               bottomNavigationBar: _BottomBar(provider: provider, widget: widget),
             ),
-            // Covers the form during both priceAndBlock() (before payment)
-            // and confirmBooking() (after payment) — same treatment as
-            // BusCheckoutScreen's overlay stack.
-            if (provider.phase == FlightBookingPhase.pricing)
+            // Covers the form during both blockFare() (before payment) and
+            // confirmBooking() (after payment) — same treatment as
+            // BusCheckoutScreen's overlay stack. confirmFare() (the price
+            // check that now runs automatically when this screen opens)
+            // deliberately has no overlay of its own — see
+            // FlightCheckoutProvider.isConfirmingFare.
+            if (provider.phase == FlightBookingPhase.blocking)
               BookingStepOverlay(
                 icon: Icons.confirmation_number_outlined,
                 title: 'Holding your fare',
-                subtitle: "We're confirming the latest price and holding your seat before payment.",
+                subtitle: "We're holding your seat before payment.",
                 steps: provider.activeSteps,
                 currentStep: provider.currentStep,
                 footerIcon: Icons.lock_outline,
@@ -151,6 +172,34 @@ class _FormView extends StatelessWidget {
                 footerIcon: Icons.check_circle_outline,
                 footerText: 'Your payment is safe and secure. This usually takes a few seconds.',
                 footerColor: AppColors.success,
+              ),
+            // Covers a failed confirmFare() (the automatic price check —
+            // surfaces immediately on open instead of after the whole form
+            // is filled in), blockFare(), or confirmBooking(). Used to just
+            // pop a SnackBar for the latter two — easy to miss, and since
+            // nothing cleared `errorMessage`, tapping Proceed again after
+            // fixing nothing reliably fired the exact same toast again.
+            // Same full-screen illustrated treatment as `FlightsListPage`'s
+            // search-error overlay instead; retrying re-runs confirmFare()
+            // if the fare was never priced (see `clearError()`), or just
+            // dismisses onto the still-filled form otherwise.
+            if (provider.errorMessage != null && provider.phase == FlightBookingPhase.none)
+              Positioned.fill(
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: ColoredBox(
+                    color: AppColors.panelBackground,
+                    child: SafeArea(
+                      child: ErrorState(
+                        title: 'Could not proceed',
+                        message: provider.errorMessage!,
+                        onRetry: provider.clearError,
+                        retryLabel: 'Try Again',
+                        illustrationAsset: 'images/illustrations/action_failed.svg',
+                      ),
+                    ),
+                  ),
+                ),
               ),
           ],
         );
@@ -522,6 +571,13 @@ class _PassengerFormCardState extends State<_PassengerFormCard> {
               width: 96,
               child: DropdownButtonFormField<String>(
                 initialValue: passenger.title,
+                // Without this, the dropdown sizes itself to its intrinsic
+                // content (selected text + built-in arrow) rather than the
+                // 96px box it's actually given — on a title long enough
+                // (or just unlucky font metrics for "MR"), that intrinsic
+                // width comes out a few pixels wider than the box, and
+                // RenderFlex throws "overflowed by N pixels" here.
+                isExpanded: true,
                 decoration: _fieldDecoration(context, 'Title'),
                 items: [
                   for (final title in passenger.paxType.titleOptions)
@@ -651,8 +707,9 @@ class _LegalLink extends StatelessWidget {
 
 /// Fare Summary — reached via the small info icon next to the price in the
 /// bottom bar, same "not shown inline in the main scroll" pattern bus's
-/// `_FareSummarySheet` uses. Also carries the (decorative, non-functional —
-/// same as before this redesign) promo-code field.
+/// `_FareSummarySheet` uses. Just the fare breakdown — the promo-code field
+/// used to live here too, but that buried it behind a tap on the info icon
+/// instead of showing it on the page; see `_PromoCodeCard`.
 class _FareSummarySheet extends StatelessWidget {
   const _FareSummarySheet({required this.provider});
   final FlightCheckoutProvider provider;
@@ -687,25 +744,6 @@ class _FareSummarySheet extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          const Text('Apply Promo', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  decoration: _fieldDecoration(context, 'Enter Your Promo Code'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton(
-                // Same as before this redesign: no promo backend exists yet,
-                // so this stays a decorative no-op.
-                onPressed: () {},
-                child: const Text('APPLY'),
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -717,6 +755,45 @@ class _FareSummarySheet extends StatelessWidget {
       children: [
         Text(label, style: TextStyle(color: Colors.grey.shade700)),
         Text('INR ${amount.toStringAsFixed(2)}'),
+      ],
+    );
+  }
+}
+
+/// Its own visible section on the page, after Traveller Details — not
+/// tucked inside `_FareSummarySheet` behind the price's info icon, where a
+/// coupon field is easy to never find. Still a no-op: there's no live
+/// promo/coupon-validation endpoint (see `api_services_list.dart` — the
+/// only `promoCode`/`isCouponReedem` wiring that ever existed is a fully
+/// commented-out method against the old `anjmal` backend), so "APPLY" can't
+/// actually recalculate `provider.grandTotal` without either a real
+/// endpoint or faking a discount — the latter would just show the customer
+/// a wrong total, which is worse than this staying an honest no-op.
+class _PromoCodeCard extends StatelessWidget {
+  const _PromoCodeCard({required this.provider});
+  final FlightCheckoutProvider provider;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Apply Promo Code', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                decoration: _fieldDecoration(context, 'Enter Your Promo Code'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            ElevatedButton(
+              onPressed: () {},
+              child: const Text('APPLY'),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -797,14 +874,12 @@ class _BottomBar extends StatelessWidget {
     if (!context.mounted) return;
     if (!loggedIn) return;
 
-    final blockData = await provider.priceAndBlock();
+    final blockData = await provider.blockFare();
     if (!context.mounted) return;
-    if (blockData == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(provider.errorMessage ?? 'Booking failed. Please try again.')),
-      );
-      return;
-    }
+    // A null result means `provider.errorMessage` is set — the `ErrorState`
+    // overlay in `_FormView` picks that up reactively, so there's nothing
+    // to do here beyond stopping the submit flow.
+    if (blockData == null) return;
 
     paymentGatewayFor(blockData.pgType).open(
       context,
@@ -814,12 +889,9 @@ class _BottomBar extends StatelessWidget {
 
         final bookResponse = await provider.confirmBooking();
         if (!context.mounted) return;
-        if (bookResponse == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(provider.errorMessage ?? 'Booking failed. Please try again.')),
-          );
-          return;
-        }
+        // Same reactive `ErrorState` overlay as the blockFare() failure
+        // above picks this up via `provider.errorMessage`.
+        if (bookResponse == null) return;
 
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(

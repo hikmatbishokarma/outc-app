@@ -35,6 +35,7 @@ class OneWayRoundTripFormCard extends StatelessWidget {
     required this.onTravellersChanged,
     required this.onSearch,
     required this.isSearching,
+    this.searchButtonLabel = 'SEARCH FLIGHTS',
   });
 
   final TripType tripType;
@@ -58,6 +59,7 @@ class OneWayRoundTripFormCard extends StatelessWidget {
   final ValueChanged<TravellerSelection> onTravellersChanged;
   final VoidCallback onSearch;
   final bool isSearching;
+  final String searchButtonLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -179,7 +181,7 @@ class OneWayRoundTripFormCard extends StatelessWidget {
           // flight, so also swapping this button's own content for a
           // spinner produced two loaders on screen at once. onPressed still
           // disables the tap.
-          SearchButton(onPressed: isSearching ? null : onSearch),
+          SearchButton(onPressed: isSearching ? null : onSearch, label: searchButtonLabel),
         ],
       ),
     );

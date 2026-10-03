@@ -102,19 +102,28 @@ class RouteSegmentData {
 class FlightSearchFormProvider extends ChangeNotifier {
   FlightSearchFormProvider() {
     tripType = _tripTypeFromSharedPref(SharedPrefServices.getselecedscroller());
+
+    final firstDestCity = _nullIfEmpty(SharedPrefServices.getcityTo());
+    final firstDestAirportCode = _nullIfEmpty(SharedPrefServices.getairportcodeTo());
+    final firstDestCountry = _nullIfEmpty(SharedPrefServices.getcountryTo());
+
     multiCitySegments = [
       RouteSegmentData(
         originCity: _nullIfEmpty(SharedPrefServices.getcityFrom()),
         originAirportCode: _nullIfEmpty(SharedPrefServices.getairportcodeFrom()),
         originCountry: _nullIfEmpty(SharedPrefServices.getcountryFrom()),
-        destinationCity: _nullIfEmpty(SharedPrefServices.getcityTo()),
-        destinationAirportCode: _nullIfEmpty(SharedPrefServices.getairportcodeTo()),
-        destinationCountry: _nullIfEmpty(SharedPrefServices.getcountryTo()),
+        destinationCity: firstDestCity,
+        destinationAirportCode: firstDestAirportCode,
+        destinationCountry: firstDestCountry,
       ),
       RouteSegmentData(
-        originCity: _nullIfEmpty(SharedPrefServices.getcityFromTwo()),
-        originAirportCode: _nullIfEmpty(SharedPrefServices.getairportcodeFromTwo()),
-        originCountry: _nullIfEmpty(SharedPrefServices.getcountryFromTwo()),
+        // A multi-city trip is a connected chain (BLR→DEL→BOM), not
+        // independent legs — leg 2 starts where leg 1 lands. Falls back to
+        // leg 1's destination only when leg 2 has no persisted city of its
+        // own yet, so a returning user's own prior choice still wins.
+        originCity: _nullIfEmpty(SharedPrefServices.getcityFromTwo()) ?? firstDestCity,
+        originAirportCode: _nullIfEmpty(SharedPrefServices.getairportcodeFromTwo()) ?? firstDestAirportCode,
+        originCountry: _nullIfEmpty(SharedPrefServices.getcountryFromTwo()) ?? firstDestCountry,
         destinationCity: _nullIfEmpty(SharedPrefServices.getcityToTwo()),
         destinationAirportCode: _nullIfEmpty(SharedPrefServices.getairportcodeToTwo()),
         destinationCountry: _nullIfEmpty(SharedPrefServices.getcountryToTwo()),
@@ -178,7 +187,14 @@ class FlightSearchFormProvider extends ChangeNotifier {
   }
 
   void addSegment() {
-    multiCitySegments.add(RouteSegmentData());
+    // New city continues the chain from wherever the last leg lands,
+    // same reasoning as the constructor's leg-2 default.
+    final last = multiCitySegments.isNotEmpty ? multiCitySegments.last : null;
+    multiCitySegments.add(RouteSegmentData(
+      originCity: last?.destinationCity,
+      originAirportCode: last?.destinationAirportCode,
+      originCountry: last?.destinationCountry,
+    ));
     notifyListeners();
   }
 
@@ -190,6 +206,18 @@ class FlightSearchFormProvider extends ChangeNotifier {
 
   void updateSegment(int index, RouteSegmentData data) {
     multiCitySegments[index] = data;
+    // Editing a leg's destination keeps the *next* leg's starting point in
+    // sync — without this, changing "Flight 1: BLR → DEL" to "BLR → BOM"
+    // would silently leave "Flight 2" still starting from DEL, a city the
+    // trip no longer visits.
+    if (index + 1 < multiCitySegments.length) {
+      final next = multiCitySegments[index + 1];
+      multiCitySegments[index + 1] = next.copyWith(
+        originCity: data.destinationCity,
+        originAirportCode: data.destinationAirportCode,
+        originCountry: data.destinationCountry,
+      );
+    }
     notifyListeners();
   }
 }

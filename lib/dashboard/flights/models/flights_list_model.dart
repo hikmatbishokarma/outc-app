@@ -322,34 +322,6 @@ class Stop {
 }
 
 class FlightDetail {
-  // final String? flightId;
-  // final String? airLine;
-  // final String? airLineName;
-  // final String? airLineLogo;
-  // final String? duration;
-  // final String? origin;
-  // final String? originName;
-  // final String? originCity;
-  // final String? originCountry;
-  // final String? destination;
-  // final String? destiantionName;
-  // final String? destinationCity;
-  // final String? destinationCountry;
-  // // final String? supplierParameter;
-  // // final int? supplierId;
-  // final List<FlightSegment>? flightSegments;
-  // final FareFamilies? fareFamilies;
-  // // final bool? isLcc;
-  // // final bool? isBookOffline;
-  // final bool? isRefundable;
-  // // final bool? isPanRequiredAtBook;
-  // // final bool? isPanRequiredAtTicket;
-  // // final bool? isPassportRequiredAtBook;
-  // // final bool? isPassportRequiredAtTicket;
-  // // final bool? isGstMandatory;
-  // // final ResultFareType? resultFareType;
-  // // final SupplierKey? supplierKey;
-
   final String? flightId;
   final String? airLine;
   final String? airLineName;
@@ -363,20 +335,29 @@ class FlightDetail {
   final String? destiantionName;
   final String? destinationCity;
   final String? destinationCountry;
-  // final String? supplierParameter;
-  // final int? supplierId;
+  final String? supplierParameter;
+  final int? supplierId;
   final List<FlightSegment>? flightSegments;
   final FareFamilies? fareFamilies;
-  // final bool? isLcc;
-  // final bool? isBookOffline;
+  final bool? isLcc;
+  final bool? isBookOffline;
   final bool? isRefundable;
-  // final bool? isPanRequiredAtBook;
-  // final bool? isPanRequiredAtTicket;
-  // final bool? isPassportRequiredAtBook;
-  // final bool? isPassportRequiredAtTicket;
-  // final bool? isGstMandatory;
-  // final ResultFareType? resultFareType;
-  // final SupplierKey? supplierKey;
+  final bool? isPanRequiredAtBook;
+  final bool? isPanRequiredAtTicket;
+  final bool? isPassportRequiredAtBook;
+  final bool? isPassportRequiredAtTicket;
+  final bool? isGstMandatory;
+  // Plain strings, not enums — `resultFareType`/`supplierKey` were
+  // previously scaffolded as enum-typed fields (`ResultFareType`/
+  // `SupplierKey`) that were never actually defined anywhere in this file,
+  // which is exactly why this whole block stayed commented out rather than
+  // a deliberate omission. Confirmed as plain values ("Publish", "FCI") by
+  // capturing a real successful `airPrice` request/response pair — no
+  // enum needed for either.
+  final String? resultFareType;
+  final String? supplierKey;
+  final String? supplierName;
+  final bool? isVisible;
 
   FlightDetail({
     this.flightId,
@@ -392,20 +373,22 @@ class FlightDetail {
     this.destiantionName,
     this.destinationCity,
     this.destinationCountry,
-    // this.supplierParameter,
-    // this.supplierId,
+    this.supplierParameter,
+    this.supplierId,
     this.flightSegments,
     this.fareFamilies,
-    // this.isLcc,
-    // this.isBookOffline,
+    this.isLcc,
+    this.isBookOffline,
     this.isRefundable,
-    // this.isPanRequiredAtBook,
-    // this.isPanRequiredAtTicket,
-    // this.isPassportRequiredAtBook,
-    // this.isPassportRequiredAtTicket,
-    // this.isGstMandatory,
-    // this.resultFareType,
-    // this.supplierKey,
+    this.isPanRequiredAtBook,
+    this.isPanRequiredAtTicket,
+    this.isPassportRequiredAtBook,
+    this.isPassportRequiredAtTicket,
+    this.isGstMandatory,
+    this.resultFareType,
+    this.supplierKey,
+    this.supplierName,
+    this.isVisible,
   });
 
   factory FlightDetail.fromJson(Map<String, dynamic> json) => FlightDetail(
@@ -422,8 +405,8 @@ class FlightDetail {
         destiantionName: json["destiantionName"].toString(),
         destinationCity: json["destinationCity"].toString(),
         destinationCountry: json["destinationCountry"].toString(),
-        // supplierParameter: json["supplierParameter"],
-        // supplierId: json["supplierId"],
+        supplierParameter: json["supplierParameter"]?.toString(),
+        supplierId: (json["supplierId"] as num?)?.toInt(),
         flightSegments: json["flightSegments"] == null
             ? []
             : List<FlightSegment>.from(
@@ -431,16 +414,18 @@ class FlightDetail {
         fareFamilies: json["fareFamilies"] == null
             ? null
             : FareFamilies.fromJson(json["fareFamilies"]),
-        // isLcc: json["isLCC"],
-        // isBookOffline: json["isBookOffline"],
+        isLcc: json["isLCC"],
+        isBookOffline: json["isBookOffline"],
         isRefundable: json["isRefundable"],
-        // isPanRequiredAtBook: json["isPanRequiredAtBook"],
-        // isPanRequiredAtTicket: json["isPanRequiredAtTicket"],
-        // isPassportRequiredAtBook: json["isPassportRequiredAtBook"],
-        // isPassportRequiredAtTicket: json["isPassportRequiredAtTicket"],
-        // isGstMandatory: json["isGSTMandatory"],
-        // resultFareType: resultFareTypeValues.map[json["resultFareType"]]!,
-        // supplierKey: supplierKeyValues.map[json["supplierKey"]]!,
+        isPanRequiredAtBook: json["isPanRequiredAtBook"],
+        isPanRequiredAtTicket: json["isPanRequiredAtTicket"],
+        isPassportRequiredAtBook: json["isPassportRequiredAtBook"],
+        isPassportRequiredAtTicket: json["isPassportRequiredAtTicket"],
+        isGstMandatory: json["isGSTMandatory"],
+        resultFareType: json["resultFareType"]?.toString(),
+        supplierKey: json["supplierKey"]?.toString(),
+        supplierName: json["supplierName"]?.toString(),
+        isVisible: json["isVisible"],
       );
 
   Map<String, dynamic> toJson() => {
@@ -457,22 +442,24 @@ class FlightDetail {
         "destiantionName": destiantionName,
         "destinationCity": destinationCity,
         "destinationCountry": destinationCountry,
-        // "supplierParameter": supplierParameter,
-        // "supplierId": supplierId,
+        "supplierParameter": supplierParameter,
+        "supplierId": supplierId,
         "flightSegments": flightSegments == null
             ? []
             : List<dynamic>.from(flightSegments!.map((x) => x.toJson())),
         "fareFamilies": fareFamilies?.toJson(),
-        // "isLCC": isLcc,
-        // "isBookOffline": isBookOffline,
+        "isLCC": isLcc,
+        "isBookOffline": isBookOffline,
         "isRefundable": isRefundable,
-        // "isPanRequiredAtBook": isPanRequiredAtBook,
-        // "isPanRequiredAtTicket": isPanRequiredAtTicket,
-        // "isPassportRequiredAtBook": isPassportRequiredAtBook,
-        // "isPassportRequiredAtTicket": isPassportRequiredAtTicket,
-        // "isGSTMandatory": isGstMandatory,
-        // "resultFareType": resultFareTypeValues.reverse[resultFareType],
-        // "supplierKey": supplierKeyValues.reverse[supplierKey],
+        "isPanRequiredAtBook": isPanRequiredAtBook,
+        "isPanRequiredAtTicket": isPanRequiredAtTicket,
+        "isPassportRequiredAtBook": isPassportRequiredAtBook,
+        "isPassportRequiredAtTicket": isPassportRequiredAtTicket,
+        "isGSTMandatory": isGstMandatory,
+        "resultFareType": resultFareType,
+        "supplierKey": supplierKey,
+        "supplierName": supplierName,
+        "isVisible": isVisible,
       };
 }
 
@@ -503,11 +490,11 @@ class FareFamilies {
 
 class FareFamily {
   final String? fareId;
-  // final String? purchaseType;
-  // final String? fareType;
-  // final String? coupanType;
-  // final String? currency;
-  // final String? supplierParameter;
+  final String? purchaseType;
+  final String? fareType;
+  final String? coupanType;
+  final String? currency;
+  final String? supplierParameter;
   final List<FlightFare>? flightFares;
   final List<FareRule>? fareRules;
   final List<Baggage>? baggage;
@@ -515,8 +502,8 @@ class FareFamily {
   final List<SegmentInfo>? segmentInfos;
   final bool? isRefundable;
   final bool? isGstMandatory;
-  // final int? commission;
-  // final int? plb;
+  final int? commission;
+  final int? plb;
   final num? markup;
   final double? adultNetFare;
   final num? childNetFare;
@@ -530,11 +517,11 @@ class FareFamily {
 
   FareFamily({
     this.fareId,
-    // this.purchaseType,
-    // this.fareType,
-    // this.coupanType,
-    // this.currency,
-    // this.supplierParameter,
+    this.purchaseType,
+    this.fareType,
+    this.coupanType,
+    this.currency,
+    this.supplierParameter,
     this.flightFares,
     this.fareRules,
     this.baggage,
@@ -542,8 +529,8 @@ class FareFamily {
     this.segmentInfos,
     this.isRefundable,
     this.isGstMandatory,
-    // this.commission,
-    // this.plb,
+    this.commission,
+    this.plb,
     this.markup,
     this.adultNetFare,
     this.childNetFare,
@@ -558,11 +545,17 @@ class FareFamily {
 
   factory FareFamily.fromJson(Map<String, dynamic> json) => FareFamily(
         fareId: json["fareId"],
-        // purchaseType: purchaseTypeValues.map[json["purchaseType"]]!,
-        // fareType: fareTypeValues.map[json["fareType"]]!,
-        // coupanType: coupanTypeValues.map[json["coupanType"]]!,
-        // currency: currencyValues.map[json["currency"]]!,
-        // supplierParameter: json["supplierParameter"],
+        // Plain strings, not enums — same reasoning as FlightDetail's
+        // resultFareType/supplierKey above: these were scaffolded against
+        // enum maps (purchaseTypeValues/fareTypeValues/etc.) that don't
+        // exist anywhere in this file, so this whole block never ran.
+        // Confirmed plain values ("Instant", "Publish", "General", "INR")
+        // from a real captured request/response pair.
+        purchaseType: json["purchaseType"]?.toString(),
+        fareType: json["fareType"]?.toString(),
+        coupanType: json["coupanType"]?.toString(),
+        currency: json["currency"]?.toString(),
+        supplierParameter: json["supplierParameter"]?.toString(),
         flightFares: json["flightFares"] == null
             ? []
             : List<FlightFare>.from(
@@ -585,8 +578,14 @@ class FareFamily {
                 json["segmentInfos"]!.map((x) => SegmentInfo.fromJson(x))),
         isRefundable: json["isRefundable"],
         isGstMandatory: json["isGstMandatory"],
-        // commission: json["commission"],
-        // plb: json["plb"],
+        // (json["commission"] as num?)?.toInt() rather than a direct
+        // assignment — this backend has proven inconsistent about sending
+        // int vs double for money-adjacent fields (confirmed live: the
+        // same fare field came back as an int for one flight and a double
+        // for another in the same session), and a bare int-typed field
+        // assigned a double crashes instead of converting.
+        commission: (json["commission"] as num?)?.toInt(),
+        plb: (json["plb"] as num?)?.toInt(),
         markup: json["markup"],
         adultNetFare: json["adultNetFare"]?.toDouble(),
         childNetFare: json["childNetFare"],
@@ -601,11 +600,11 @@ class FareFamily {
 
   Map<String, dynamic> toJson() => {
         "fareId": fareId,
-        // "purchaseType": purchaseTypeValues.reverse[purchaseType],
-        // "fareType": fareTypeValues.reverse[fareType],
-        // "coupanType": coupanTypeValues.reverse[coupanType],
-        // "currency": currencyValues.reverse[currency],
-        // "supplierParameter": supplierParameter,
+        "purchaseType": purchaseType,
+        "fareType": fareType,
+        "coupanType": coupanType,
+        "currency": currency,
+        "supplierParameter": supplierParameter,
         "flightFares": flightFares == null
             ? []
             : List<dynamic>.from(flightFares!.map((x) => x.toJson())),
@@ -624,8 +623,8 @@ class FareFamily {
             : List<dynamic>.from(segmentInfos!.map((x) => x.toJson())),
         "isRefundable": isRefundable,
         "isGstMandatory": isGstMandatory,
-        // "commission": commission,
-        // "plb": plb,
+        "commission": commission,
+        "plb": plb,
         "markup": markup,
         "adultNetFare": adultNetFare,
         "childNetFare": childNetFare,
